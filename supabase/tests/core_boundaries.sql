@@ -38,8 +38,8 @@ begin
   if (public._day_record(v_uid, '2020-01-05', '2020-01-04 06:30+09')->>'runningSeconds')::bigint <> 0 then
     raise exception 'Future running day must be zero';
   end if;
-  if v_day->>'attendance' <> 'pending' or v_day->'goalMinutes' <> 'null'::jsonb then
-    raise exception 'Pending policies must remain pending';
+  if v_day->>'attendance' <> 'present' or v_day->'goalMinutes' <> 'null'::jsonb then
+    raise exception 'Running time must count toward attendance without a goal';
   end if;
 
   insert into public.goal_versions(user_id, effective_date, weekday_minutes)

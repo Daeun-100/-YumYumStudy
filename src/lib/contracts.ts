@@ -15,9 +15,11 @@ export type DayRecord = {
   // Snapshot-only portion of an unclosed session; never include in closedSeconds.
   runningSeconds: number;
   goalMinutes: number | null;
-  // Extend only after attendance policy is agreed.
-  attendance: 'pending';
+  attendance: 'present' | 'absent' | 'pending';
+  isRestDay: boolean;
+  goalAchieved: boolean | null;
 };
+export type GoalSettings = { current: GoalWeek; scheduled: GoalWeek | null; effectiveDate: StudyDate | null };
 export type RoomMember = { profile: Profile; today: DayRecord; activeSession: StudySession | null };
 export type Snapshot<T> = { serverNow: string; data: T };
 export type TodayData = { profile: Profile; day: DayRecord; activeSession: StudySession | null };
@@ -48,7 +50,7 @@ export function toStudyError(error: unknown): StudyError {
 }
 
 export function validateGoalWeek(value: unknown): asserts value is GoalWeek {
-  if (!Array.isArray(value) || value.length !== 7 || !Array.from(value).every((minutes) => minutes === null || (Number.isSafeInteger(minutes) && minutes >= 0))) {
-    throw new StudyError('VALIDATION', '요일별 목표는 월요일부터 7개의 정수 분 또는 미설정 값이어야 합니다.');
+  if (!Array.isArray(value) || value.length !== 7 || !Array.from(value).every((minutes) => minutes === null || (Number.isSafeInteger(minutes) && minutes >= 0 && minutes <= 1440))) {
+    throw new StudyError('VALIDATION', '요일별 목표는 월요일부터 7개의 0~1,440분 정수 또는 미설정 값이어야 합니다.');
   }
 }

@@ -1,9 +1,9 @@
 import { StudyError, validateGoalWeek } from '../lib/contracts';
-import type { ConnectionState, DayRecord, GoalWeek, RoomMember, Snapshot, StudyDate, StudySession, TodayData } from '../lib/contracts';
+import type { ConnectionState, DayRecord, GoalSettings, GoalWeek, RoomMember, Snapshot, StudyDate, StudySession, TodayData } from '../lib/contracts';
 import { getSupabase } from '../lib/supabase';
 import { getStudyDayBounds } from '../lib/study-day';
 import { callRpc } from './rpc';
-import { decodeGoals, decodeHistory, decodeRoom, decodeSession, decodeSnapshot, decodeToday } from './decode';
+import { decodeGoals, decodeGoalSettings, decodeHistory, decodeRoom, decodeSession, decodeSnapshot, decodeToday } from './decode';
 
 function validateUuid(value: string): void {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
@@ -26,9 +26,12 @@ export async function getRoom(): Promise<Snapshot<RoomMember[]>> {
   return decodeSnapshot(await callRpc('get_room'), decodeRoom);
 }
 export async function getGoals(): Promise<GoalWeek> { return decodeGoals(await callRpc('get_goals')); }
+export async function getGoalSettings(): Promise<Snapshot<GoalSettings>> {
+  return decodeSnapshot(await callRpc('get_goal_settings'), decodeGoalSettings);
+}
 export async function saveGoals(goals: GoalWeek): Promise<void> {
   validateGoalWeek(goals);
-  throw new StudyError('POLICY_PENDING', '목표 변경 적용 정책을 먼저 정해야 합니다.');
+  await callRpc('save_goals', { p_weekday_minutes: goals });
 }
 export async function getHistory(from: StudyDate, to: StudyDate): Promise<Snapshot<DayRecord[]>> {
   const start = getStudyDayBounds(from).startMs;
@@ -43,8 +46,14 @@ export function subscribeStudyChanges(onChange: () => void, onState: (state: Con
   onState('connecting');
   const channel = client.channel(`study-changes-${++subscriptionId}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'study_sessions' }, () => { if (!disposed) onChange(); })
+    .on('system', {}, (payload) => {
+      if (!disposed && payload.extension === 'postgres_changes') {
+        onState(payload.status === 'ok' ? 'connected' : 'disconnected');
+      }
+    })
     .subscribe((status) => {
-      if (!disposed) onState(status === 'SUBSCRIBED' ? 'connected' : 'disconnected');
+      // A joined socket can precede the actual database replication listener.
+      if (!disposed && status !== 'SUBSCRIBED') onState('disconnected');
     });
   return () => {
     disposed = true;

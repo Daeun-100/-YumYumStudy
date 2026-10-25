@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { decodeDay, decodeGoals, decodeHistory, decodeRoom, decodeSession, decodeSnapshot, decodeToday } from '../src/data/decode.ts';
 
 const profile = { id: 'user-a', displayName: '같은이름' };
-const day = { studyDate: '2026-10-26', closedSeconds: 1800, runningSeconds: 900, goalMinutes: null, attendance: 'pending' };
+const day = { studyDate: '2026-10-26', closedSeconds: 1800, runningSeconds: 900, goalMinutes: null, attendance: 'present', isRestDay: false, goalAchieved: null };
 const session = { id: 'session-a', userId: profile.id, startedAt: '2026-10-26T00:00:00Z', endedAt: null };
 
 test('decode snapshot keeps provisional and closed times separate', () => {
@@ -11,12 +11,12 @@ test('decode snapshot keeps provisional and closed times separate', () => {
   assert.equal(decoded.data.day.closedSeconds, 1800);
   assert.equal(decoded.data.day.runningSeconds, 900);
   assert.equal(decoded.data.day.goalMinutes, null);
-  assert.equal(decoded.data.day.attendance, 'pending');
+  assert.equal(decoded.data.day.attendance, 'present');
   assert.deepEqual(decodeHistory([day]), [day]);
 });
 
 test('malformed data and other users active sessions are rejected rather than replaced with zero', () => {
-  for (const value of [null, { ...day, runningSeconds: -1 }, { ...day, closedSeconds: '30' }, { ...day, studyDate: '2026-02-30' }, { ...day, attendance: 'absent' }]) {
+  for (const value of [null, { ...day, runningSeconds: -1 }, { ...day, closedSeconds: '30' }, { ...day, studyDate: '2026-02-30' }, { ...day, attendance: 'unknown' }, { ...day, goalMinutes: 1441 }]) {
     assert.throws(() => decodeDay(value));
   }
   assert.throws(() => decodeToday({ profile, day, activeSession: { ...session, userId: 'user-b' } }));

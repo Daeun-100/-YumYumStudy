@@ -1,5 +1,5 @@
 import { StudyError, validateGoalWeek } from '../lib/contracts.ts';
-import type { DayRecord, GoalWeek, Profile, RoomMember, Snapshot, StudySession, TodayData } from '../lib/contracts.ts';
+import type { DayRecord, GoalSettings, GoalWeek, Profile, RoomMember, Snapshot, StudySession, TodayData } from '../lib/contracts.ts';
 import { getStudyDayBounds } from '../lib/study-day.ts';
 
 function invalid(): never { throw new StudyError('UNKNOWN', '서버 기록 형식을 확인하지 못했습니다. 다시 조회해 주세요.'); }
@@ -32,15 +32,27 @@ export function decodeDay(value: unknown): DayRecord {
   const row = record(value);
   const studyDate = text(row.studyDate);
   getStudyDayBounds(studyDate);
-  if (row.attendance !== 'pending') return invalid();
+  if (!['pending', 'present', 'absent'].includes(String(row.attendance))
+    || typeof row.isRestDay !== 'boolean'
+    || (row.goalAchieved !== null && typeof row.goalAchieved !== 'boolean')) return invalid();
+  const goalMinutes = row.goalMinutes === null ? null : seconds(row.goalMinutes);
+  if (goalMinutes !== null && goalMinutes > 1440) return invalid();
   return {
     studyDate, closedSeconds: seconds(row.closedSeconds), runningSeconds: seconds(row.runningSeconds),
-    goalMinutes: row.goalMinutes === null ? null : seconds(row.goalMinutes), attendance: 'pending',
+    goalMinutes, attendance: row.attendance as DayRecord['attendance'],
+    isRestDay: row.isRestDay, goalAchieved: row.goalAchieved,
   };
 }
 export function decodeGoals(value: unknown): GoalWeek {
   validateGoalWeek(value);
   return value;
+}
+export function decodeGoalSettings(value: unknown): GoalSettings {
+  const row = record(value);
+  const effectiveDate = row.effectiveDate === null ? null : text(row.effectiveDate);
+  if (effectiveDate !== null) getStudyDayBounds(effectiveDate);
+  if ((row.scheduled === null) !== (effectiveDate === null)) return invalid();
+  return { current: decodeGoals(row.current), scheduled: row.scheduled === null ? null : decodeGoals(row.scheduled), effectiveDate };
 }
 export function decodeSnapshot<T>(value: unknown, decode: (value: unknown) => T): Snapshot<T> {
   const row = record(value);

@@ -24,7 +24,7 @@ Expo Router와 Supabase 클라이언트, 자동 익명 UID 발급·세션 저장
 
 공통 시작 화면에는 버전 표시와 업데이트 안내가 연결되어 있다. Supabase 배포 정보 테이블은 준비했으며 새 버전 활성화 전에는 안내하지 않는다. APK 설치 및 웹 호스팅 갱신은 아직 실기기로 검증하지 않았다.
 
-인증 오류나 기존 세션 유실 시 자동으로 새 UID를 만들지 않고 재시도를 안내한다. 분업 인계와 실제 검사 결과는 [00 공통 기반](docs/execution/reports/00.md), [01 DB 코어](docs/execution/reports/01.md)를 참고한다. 목표 저장은 정책 확정 대기 오류를 반환한다.
+인증 오류나 기존 세션 유실 시 자동으로 새 UID를 만들지 않고 재시도를 안내한다. 분업 인계와 실제 검사 결과는 [00 공통 기반](docs/execution/reports/00.md), [01 DB 코어](docs/execution/reports/01.md), [목표·출석 코어](docs/execution/reports/goals-attendance-core.md)를 참고한다. 목표 저장은 다음 공부 날짜부터 적용하며 출석은 진행 중 포함 1초 이상이다. 화면은 아직 연결하지 않았다.
 
 실제 DB 통합 검사: `node --env-file=.env.local scripts/check-study-core.mjs --run`. 테스트 사용자 2명과 종료 세션을 생성하므로 필요할 때만 실행한다. 일반 `npm test`는 외부 서비스에 쓰지 않는다.
 
