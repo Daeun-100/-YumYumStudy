@@ -17,11 +17,13 @@ const IdentityContext = createContext<(IdentityState & { retry(): void }) | null
 export function IdentityProvider({ children }: PropsWithChildren) {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<IdentityState>({ loading: true, uid: null, profile: null, error: null });
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const retry = useCallback(() => {
+    setState((value) => ({ ...value, loading: true, error: null }));
+    setAttempt((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     let disposed = false;
-    setState((value) => ({ ...value, loading: true, error: null }));
     async function initialize() {
       let verifiedUid: UID | null = null;
       try {

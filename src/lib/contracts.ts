@@ -12,6 +12,8 @@ export type GoalWeek = [number | null, number | null, number | null, number | nu
 export type DayRecord = {
   studyDate: StudyDate;
   closedSeconds: number;
+  // Snapshot-only portion of an unclosed session; never include in closedSeconds.
+  runningSeconds: number;
   goalMinutes: number | null;
   // Extend only after attendance policy is agreed.
   attendance: 'pending';

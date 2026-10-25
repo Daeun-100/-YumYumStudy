@@ -1,4 +1,4 @@
-# 세션 간 공통 계약 v1
+# 세션 간 공통 계약 v2
 
 00이 아래 계약을 `src/lib/contracts.ts`에 타입으로 작성한다. 01~04는 이를 그대로 사용한다. SDK API 문서가 아니라 이 프로젝트의 내부 인터페이스 설계다. 변경이 필요하면 통합 담당자가 계약과 소비자를 함께 변경한다.
 
@@ -9,11 +9,13 @@
 - `StudySession`: `id`, `userId`, `startedAt`(ISO UTC), `endedAt`(ISO UTC 또는 null).
 - `Profile`: `id`(UID), `displayName`. 고정 방 하나만 사용하며 UI에는 방 ID를 받지 않는다.
 - `GoalWeek`: 월요일부터 일요일까지 순서인 7개 원소의 배열. 각 원소는 정수 분 또는 null(미설정). 정확히 7개인지 런타임 검증한다. 0분 허용·변경 적용 시점은 정책 확정 전 저장 불가.
-- `DayRecord`: `studyDate`, `closedSeconds`(종료 세션만 날짜별 분할 합산), `goalMinutes`(null 가능), `attendance`(`pending` 또는 확정 정책에 따른 값). 정책 미확정 상태를 결석으로 표시하지 않는다.
+- `DayRecord`: `studyDate`, `closedSeconds`(종료 세션만 날짜별 분할 합산), `runningSeconds`(snapshot 기준 미종료 세션의 해당 날짜 잠정 시간), `goalMinutes`(null 가능), `attendance`(`pending` 또는 확정 정책에 따른 값). 정책 미확정 상태를 결석으로 표시하지 않는다.
 - `RoomMember`: `profile`, `today`(DayRecord), `activeSession`(null 가능).
 - `Snapshot<T>`: `serverNow`(ISO UTC), `data`(T). snapshot 전체는 한 기준 시각의 일관된 데이터여야 한다.
 
 진행 중 오늘 시간 = closedSeconds + 현재 세션과 오늘 공부 날짜 구간이 겹치는 초. 여러 날 지속된 세션을 전부 오늘 합계에 더하지 않는다. 표시 초는 음수가 되지 않게 내림한다. 서버 시간과 로컬 monotonic 경과를 기준으로 표시하고 재조회 시 기준을 갱신한다. 로컬 시계 변경이 확정 기록을 바꾸지 않는다.
+
+01 보완: 기록 화면은 `runningSeconds`를 잠정 시간으로 별도 표시해 오래 켜둔 세션의 과거 날짜 부분도 볼 수 있다. 오늘/친구 화면에서 activeSession으로 실시간 겹침을 계산할 때는 runningSeconds를 다시 더하지 않는다. 이 값은 `serverNow` 시점의 snapshot이며 확정 시간으로 저장하지 않는다. 기록 범위는 최대 366일이고 서버는 최신 공부 날짜부터 반환한다.
 
 ## 클라이언트 함수
 
