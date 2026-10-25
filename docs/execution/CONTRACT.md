@@ -25,6 +25,8 @@ ensureIdentity(): Promise<Profile>
 
 세션 복원 → 없으면 익명 인증 → 고정 방 프로필 확보. 동시 호출은 같은 진행 중 Promise를 재사용한다. 통신 실패와 세션 없음을 구분한다. 인증 세션 저장은 플랫폼 어댑터에 맡긴다.
 
+00 구현: 화면은 `useIdentity()`로 loading/uid/profile/error/retry를 받는다. UID 발급만 확인할 때 `ensureAuthIdentity(): Promise<UID>`를 사용할 수 있지만 고정 방 준비 완료를 의미하지 않는다. 프로필 작업이 끝나야 ensureIdentity가 성공한다. 01은 `ensureProfile()`을 구현하며 인증 로직을 별도로 복제하지 않는다. 저장된 UID 표식이 있는데 인증 세션이 없거나 UID가 바뀌면 자동으로 새 UID를 생성하지 않는다.
+
 `src/data/study.ts` (00은 시그니처와 명시적인 미연결 오류만, 01이 구현):
 
 ```ts

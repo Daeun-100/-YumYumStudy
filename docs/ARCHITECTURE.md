@@ -13,7 +13,7 @@
 
 ## 구조
 
-현재 `App.tsx`는 공통 시작 화면이다. 기능 구현 시 필요한 화면과 Supabase 연결부터 추가한다. 기능별 폴더와 도메인 계층을 미리 만들지 않는다. 플랫폼별 동작이 실제로 달라지는 부분만 `.web.ts`/`.native.ts` 등으로 분리한다.
+현재 `src/app/_layout.tsx`는 Expo Router와 공통 인증 상태·업데이트 안내를 제공하고 `src/app/index.tsx`는 UID 연결 확인 화면이다. 공통 타입과 날짜/시계·Supabase 연결은 `src/lib/`에 두고 `src/data/`에는 후속 DB 작업에서 채울 계약 함수만 둔다. 기능별 폴더와 도메인 계층을 미리 만들지 않는다. 플랫폼별 세션 저장만 `.web.ts`와 기본 네이티브 파일로 분리한다.
 
 클라이언트 → Supabase Auth/PostgreSQL RPC → PostgreSQL. Realtime은 화면 갱신 알림에 사용하고 최종 기록은 DB를 다시 조회한다. 별도 API 서버는 만들지 않는다.
 

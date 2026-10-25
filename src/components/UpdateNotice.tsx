@@ -45,7 +45,6 @@ export function UpdateNotice() {
     }
 
     void check();
-    const interval = setInterval(() => { void check(); }, 60000);
     const onVisibility = () => { void check(); };
     const subscription = platform === 'android'
       ? AppState.addEventListener('change', (state) => { if (state === 'active') void check(); })
@@ -54,7 +53,6 @@ export function UpdateNotice() {
     return () => {
       disposed = true;
       request?.abort();
-      clearInterval(interval);
       subscription?.remove();
       if (platform === 'web') document.removeEventListener('visibilitychange', onVisibility);
     };

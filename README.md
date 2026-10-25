@@ -16,13 +16,15 @@
 - `npm run android` — Android 개발 실행 (에뮬레이터 또는 연결된 기기 필요)
 - `npm run typecheck` — TypeScript 검사
 - `npm run lint` — Expo ESLint 검사
-- `npm test` — 업데이트 배포 번호·링크·조회 오류 검사
+- `npm test` — UID 복원·동시 초기화·날짜 경계·표시 시계·업데이트 검사
 - `npm run export:web` — 정적 웹 배포 파일을 `dist/`에 생성
 - `npm run build:android` — 로컬 Android 릴리스 빌드 (Android SDK/JDK 필요)
 
-현재는 공통 시작 화면과 개발 설정만 구성되어 있다. 자동 UID 발급·고정 방 참여, 타이머, DB 연결, PWA 설치 지원은 아직 구현하지 않았다. Android 네이티브 빌드는 별도 도구 설치와 실기기 검증이 필요하다.
+Expo Router와 Supabase 클라이언트, 자동 익명 UID 발급·세션 저장·복원을 구현했다. 웹은 localStorage, Android는 AsyncStorage를 사용한다. 현재 시작 화면에서 UID 연결을 확인할 수 있다. 고정 방 프로필 DB 연결·타이머·친구 현황·PWA 설치 지원은 아직 구현 전이다. Android 네이티브 빌드는 별도 도구 설치와 실기기 검증이 필요하다.
 
 공통 시작 화면에는 버전 표시와 업데이트 안내가 연결되어 있다. Supabase 배포 정보 테이블은 준비했으며 새 버전 활성화 전에는 안내하지 않는다. APK 설치 및 웹 호스팅 갱신은 아직 실기기로 검증하지 않았다.
+
+인증 오류나 기존 세션 유실 시 자동으로 새 UID를 만들지 않고 재시도를 안내한다. 고정 방 연결 대기는 의도적인 상태이며 `01` DB 작업에서 `src/data/profile.ts`를 연결한다. 현재 API stub은 데이터가 없는 것처럼 성공하지 않고 명시적인 오류를 반환한다. 현재 분업 인계 내용은 [00 결과 보고](docs/execution/reports/00.md)를 참고한다.
 
 ## 환경 변수
 
