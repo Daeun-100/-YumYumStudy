@@ -82,12 +82,32 @@ APK와 웹 결과는 해당 실행의 Artifacts에서 확인한다. 매 push마�
 `master` 병합 시 후보를 만든다. 첫 버전은 1.0.0 / 1, 이후에는 둘 다 증가해야 한다.
 `node scripts/check-release.mjs`가 기존 태그와 비교하여 같은 버전을 다른 코드에 재사용하지 못하게 한다.
 
-후보를 확인한 뒤 Actions → Publish Verified Web → branch `master` → 확인한 production 후보 ID 입력.
-이미 만든 결과를 production alias에 연결하므로 공개 시 다시 빌드하지 않는다.
-테스트 ID는 이 작업으로 production에 연결할 수 없다.
+후보 웹과 APK 설치를 확인한 뒤 GitHub Releases에서 해당 Draft의 **Publish release**를 누른다.
+`Publish Friend Release`가 production 환경 승인 뒤 실행된다. 기존 본인 승인 정책은 유지되므로
+Actions 실행 화면에서 **Review deployments → Approve and deploy**가 추가로 필요할 수 있다.
 
-APK 다운로드·설치 확인 후 링크를 친구에게 공유한다. 공개 배포를 완료한 플랫폼만
-Supabase app_releases를 갱신한다. 실제 초대 코드는 별도로 등록해야 신규 친구가 입장할 수 있다.
+1. 태그가 master에 포함된 코드인지, 앱 버전/빌드 번호, 성공한 Cloud Build 실행과 APK SHA-256을 검증한다.
+2. Supabase 인증 및 기존 공개 버전보다 낮지 않은지 확인한다.
+3. 이미 만든 웹 후보를 고정 주소에 연결한다. 다시 빌드하지 않는다.
+4. Supabase `app_releases`의 Android·웹 두 행을 한 요청으로 등록하고 활성화한다.
+5. Android 다운로드 주소는 공개 Release에 첨부한 APK의 고정 링크를 사용한다.
+
+Prerelease, 테스트 빌드, APK 없는 수동 Release, 다른 코드로 옮긴 태그, 이전 버전은 자동 공개하지 않는다.
+이 자동화 도입 전에 생성한 후보에는 `candidate.json`이 없으므로 새로운 Cloud Build 후보가 필요하다.
+웹 반영 후 Supabase 등록이 실패하면 웹은 이미 공개됐을 수 있다. Actions의 실패한 작업을 재실행한다.
+같은 버전·주소로 재실행하는 것은 허용하고 이미 공개된 더 높은 빌드로의 역행은 차단한다.
+Release 자체는 Publish 클릭 시 먼저 공개되므로 Actions 실패가 GitHub Release 공개까지 취소하지는 않는다.
+
+**활성화 준비:** 이 워크플로와 스크립트를 master에 병합하고 GitHub `production` Environment secret에
+`SUPABASE_RELEASE_SECRET_KEY`를 등록한다. 해당 Supabase 프로젝트의 서버용 `sb_secret_...` 키
+또는 legacy `service_role` 키를 사용한다. 공개 publishable/anon 키로는 등록할 수 없다.
+서버용 키는 DB의 RLS를 우회하므로 앱의 EXPO_PUBLIC 변수·Git·채팅에 넣지 않는다.
+URL은 기존 repository variable `EXPO_PUBLIC_SUPABASE_URL`을 재사용한다.
+Release 태그 `v*`가 production 환경에서 허용되어야 한다.
+
+기존 `Publish Verified Web` 수동 작업은 웹만 반영하는 복구/별도 공개용으로 남아 있으며
+Supabase를 변경하지 않는다. APK·웹을 함께 공개할 때는 Release 공개 흐름을 사용한다.
+실제 초대 코드는 별도로 등록해야 신규 친구가 입장할 수 있다.
 
 ## 검증 범위
 

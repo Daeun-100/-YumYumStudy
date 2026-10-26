@@ -1,0 +1,44 @@
+name: Publish Friend Release
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: publish-production-web
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.event.release.prerelease == false
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      GH_TOKEN: ${{ github.token }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      SUPABASE_RELEASE_SECRET_KEY: ${{ secrets.SUPABASE_RELEASE_SECRET_KEY }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+      EAS_HOSTING_DOMAIN: ${{ vars.EAS_HOSTING_DOMAIN }}
+      APP_VARIANT: production
+      EXPO_PUBLIC_APP_VARIANT: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Verify published release against successful master build
+        id: candidate
+        run: node scripts/release-candidate.mjs verify
+      - name: Verify Supabase access and prevent publishing older versions
+        run: node scripts/publish-release-info.mjs preflight
+      - name: Promote the verified web without rebuilding
+        env:
+          DEPLOYMENT_ID: ${{ steps.candidate.outputs.deployment_id }}
+        run: npx --yes eas-cli@25.3.0 deploy:alias --id "$DEPLOYMENT_ID" --prod --non-interactive
+      - name: Enable Android and web update notices
+        run: node scripts/publish-release-info.mjs publish
+      - name: Summarize publication
+        run: echo 'Verified web promoted and Supabase update notices enabled. APK is attached to the GitHub Release.' >> "$GITHUB_STEP_SUMMARY"

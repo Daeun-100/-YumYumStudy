@@ -129,15 +129,21 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: results
+      - name: Prepare verified candidate manifest and permanent APK asset
+        run: node scripts/release-candidate.mjs create
       - name: Record version and candidate outputs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG=$(node -p "require('./release.json').tag")
+          if gh release view "$TAG" --json isDraft --jq '.isDraft' > /tmp/release-is-draft; then
+            test "$(cat /tmp/release-is-draft)" = true || { echo 'Published release assets are immutable; create a new version.'; exit 1; }
+          fi
           if ! git rev-parse "$TAG" >/dev/null 2>&1; then
             git tag "$TAG" "$GITHUB_SHA"
             git push origin "$TAG"
           fi
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "$TAG" --notes "Candidate built from $GITHUB_SHA. Verify before sharing. Web production URL is unchanged."
           tar -czf build-results.tgz results
-          gh release upload "$TAG" release.json build-results.tgz --clobber
+          APK=$(node -p "require('./candidate.json').apkName")
+          gh release upload "$TAG" release.json candidate.json "$APK" build-results.tgz --clobber

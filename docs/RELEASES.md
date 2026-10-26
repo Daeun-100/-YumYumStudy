@@ -137,8 +137,8 @@ Supabase 업데이트 안내 활성화
 8. APK와 웹은 같은 릴리스 설정·버전을 사용하고 결과를 하나의 배포 기록에 연결한다.
 9. 친구용 고정 웹 주소 공개와 Supabase 업데이트 알림 활성화는 확인 뒤 수행한다.
 
-클라우드 빌드 연결은 GitHub Actions와 EAS 연동 등을 이용해 구성할 예정이다.
-웹 호스팅 제공자와 실제 워크플로 파일·승인 UI는 아직 확정하지 않았다.
+현재 구현은 GitHub Actions와 EAS Build/Hosting을 사용한다. 실제 활성화 조건과 공개 순서는
+[CLOUD-BUILDS.md](./CLOUD-BUILDS.md)의 친구용 후보와 공개 절을 따른다.
 환경 변수와 사용한 빌드 프로필도 결과에 기록해야 같은 코드의 빌드를 추적할 수 있다.
 비밀값 자체는 기록하지 않는다.
 
@@ -213,9 +213,10 @@ Android APK 생성·설치 확인과 친구용 원격 웹 공개는 이 문서 �
 파일 배포나 APK 설치를 수행하는 테이블이 아니다.
 
 1. 확정한 버전으로 클라우드 산출물을 만들고 배포 후보를 확인한다.
-2. APK 다운로드 링크를 확보하고 친구용 웹 주소에 새 버전을 공개한다.
-3. 실제 설치·접속을 확인한 **뒤에** 대상 플랫폼의
-   `revision`, `version`, `notes`, `download_url`, `enabled`를 갱신한다.
+2. 후보 APK 설치·웹 접속을 확인한 뒤 GitHub Release 초안을 Publish한다.
+3. production 승인 후 `Publish Friend Release`가 같은 웹 후보를 고정 주소에 반영하고,
+   Android·웹의 `revision`, `version`, `notes`, `download_url`, `enabled`를 Supabase에 자동 등록한다.
+   서버용 Secret 등록과 master 병합이 필요하며, 자세한 절차는 CLOUD-BUILDS.md를 따른다.
 4. 이전 앱에서 안내가 뜨고 새 버전에서는 사라지는지 확인한다.
 
 예: Android는 revision `2`, version `1.0.1`, 실제 HTTPS APK 주소,
