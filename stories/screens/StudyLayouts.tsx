@@ -42,7 +42,7 @@ export function StudyLayout({ screen, running = true, seconds: initialSeconds = 
   const [activeScreen, setActiveScreen] = useState(screen);
   const [isRunning, setRunning] = useState(running);
   const [seconds, setSeconds] = useState(initialSeconds);
-  useEffect(() => { setSeconds(initialSeconds); }, [initialSeconds]);
+  useEffect(() => { const timer = setTimeout(() => setSeconds(initialSeconds), 0); return () => clearTimeout(timer); }, [initialSeconds]);
   useEffect(() => {
     if (!isRunning) return;
     let last = Date.now();
