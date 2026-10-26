@@ -22,12 +22,14 @@ export function FriendRecords({ member, onBack }: { member: RoomMember; onBack()
   const changeRange = useCallback((from: string, to: string) => setRange(previous => previous.from === from && previous.to === to ? previous : { from, to }), []);
   useEffect(() => {
     let active = true;
-    setLoading(true); setHistory(null); setError('');
-    getMemberHistory(member.profile.id, range.from, range.to)
-      .then(result => { if (active) setHistory(result); })
-      .catch(failure => { if (active) setError(toStudyError(failure).message); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    const timer = setTimeout(() => {
+      setLoading(true); setHistory(null); setError('');
+      getMemberHistory(member.profile.id, range.from, range.to)
+        .then(result => { if (active) setHistory(result); })
+        .catch(failure => { if (active) setError(toStudyError(failure).message); })
+        .finally(() => { if (active) setLoading(false); });
+    }, 0);
+    return () => { active = false; clearTimeout(timer); };
   }, [member.profile.id, range, study.room, attempt]);
   const records = (history?.data ?? []).map(day => {
     const room = study.room;

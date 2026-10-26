@@ -16,7 +16,8 @@ export function LeaveScreen() {
   const { profile } = useIdentity();
   const leave = useLeave();
   const study = useStudy();
-  const today = study.today?.data.day.studyDate ?? getStudyDate(Date.now());
+  const [initialNow] = useState(() => Date.now());
+  const today = study.today?.data.day.studyDate ?? getStudyDate(initialNow);
   const [month, setMonth] = useState(monthStart(today));
   const [week, setWeek] = useState<DayRecord[] | null>(null);
   const [calendar, setCalendar] = useState<DayRecord[] | null>(null);
@@ -26,19 +27,21 @@ export function LeaveScreen() {
   const changeMonth = useCallback((value: string) => setMonth(value), []);
   useEffect(() => {
     let active = true;
-    setCalendar(null); setWeek(null); setError('');
-    Promise.allSettled([getHistory(weekStart(today), today), getHistory(month, shiftDate(shiftMonth(month, 1), -1))])
-      .then(([weekly, monthly]) => {
-        if (!active) return;
-        if (weekly.status === 'fulfilled') setWeek(weekly.value.data);
-        if (monthly.status === 'fulfilled') setCalendar(monthly.value.data);
-        const failure = [weekly, monthly].find(result => result.status === 'rejected');
-        if (failure?.status === 'rejected') setError(toStudyError(failure.reason).message);
-      });
-    return () => { active = false; };
+    const timer = setTimeout(() => {
+      setCalendar(null); setWeek(null); setError('');
+      Promise.allSettled([getHistory(weekStart(today), today), getHistory(month, shiftDate(shiftMonth(month, 1), -1))])
+        .then(([weekly, monthly]) => {
+          if (!active) return;
+          if (weekly.status === 'fulfilled') setWeek(weekly.value.data);
+          if (monthly.status === 'fulfilled') setCalendar(monthly.value.data);
+          const failure = [weekly, monthly].find(result => result.status === 'rejected');
+          if (failure?.status === 'rejected') setError(toStudyError(failure.reason).message);
+        });
+    }, 0);
+    return () => { active = false; clearTimeout(timer); };
   }, [today, month, study.today, leave.snapshot, attempt]);
   const snapshot = leave.snapshot;
-  const now = Math.max(study.now, Date.parse(snapshot?.serverNow ?? study.today?.serverNow ?? new Date().toISOString()));
+  const now = Math.max(study.now, Date.parse(snapshot?.serverNow ?? study.today?.serverNow ?? new Date(initialNow).toISOString()));
   const grants = snapshot?.data.grants ?? [];
   const liveWeek = week?.map(day => {
     if (day.studyDate !== today || !study.today) return day;

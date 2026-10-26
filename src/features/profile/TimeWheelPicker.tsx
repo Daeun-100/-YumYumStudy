@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ComponentRef } from 'react';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing, typography } from '../../design/theme';
 
@@ -11,7 +11,7 @@ function Wheel({ label, values, value, onChange }: { label: string; values: numb
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const scrolling = useRef(false);
   const change = useRef(onChange);
-  change.current = onChange;
+  useEffect(() => { change.current = onChange; }, [onChange]);
   const index = Math.max(0, values.indexOf(value));
   useEffect(() => {
     if (!scrolling.current) scroll.current?.scrollTo({ y: index * itemHeight, animated: false });
@@ -52,11 +52,11 @@ export function TimeWheelPicker({ value, onChange }: { value: number; onChange(v
   const hour = Math.floor(value / 60);
   const minute = value % 60;
   // Retain legacy minute values for the entire edit; never round an existing goal.
-  const minuteValues = useRef([...minutes]);
-  if (!minuteValues.current.includes(minute)) minuteValues.current = [...minuteValues.current, minute].sort((a, b) => a - b);
+  const [initialMinute] = useState(() => value % 60);
+  const minuteValues = [...new Set([...minutes, initialMinute, minute])].sort((a, b) => a - b);
   return <View style={s.wheels}>
     <Wheel label="시간" values={hours} value={hour} onChange={next => onChange(next * 60 + (next === 24 ? 0 : minute))} />
-    <Wheel label="분" values={hour === 24 ? [0] : minuteValues.current} value={minute} onChange={next => onChange(hour * 60 + next)} />
+    <Wheel label="분" values={hour === 24 ? [0] : minuteValues} value={minute} onChange={next => onChange(hour * 60 + next)} />
   </View>;
 }
 const s = StyleSheet.create({

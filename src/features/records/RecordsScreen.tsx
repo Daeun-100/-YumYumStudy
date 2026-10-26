@@ -14,7 +14,8 @@ import { weekStart, type StudyRecord } from './model';
 
 export function RecordsScreen() {
   const study = useStudy();
-  const today = study.today?.data.day.studyDate ?? getStudyDate(Date.now());
+  const [initialNow] = useState(() => Date.now());
+  const today = study.today?.data.day.studyDate ?? getStudyDate(initialNow);
   const [range, setRange] = useState({ from: weekStart(today), to: today });
   const [history, setHistory] = useState<Snapshot<DayRecord[]> | null>(null);
   const [error, setError] = useState('');
@@ -25,15 +26,17 @@ export function RecordsScreen() {
   }, []);
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setError('');
-    // A failed request must not leave another period's records on screen.
-    setHistory(null);
-    getHistory(range.from, range.to)
-      .then(result => { if (active) setHistory(result); })
-      .catch(failure => { if (active) setError(toStudyError(failure).message); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    const timer = setTimeout(() => {
+      setLoading(true);
+      setError('');
+      // A failed request must not leave another period's records on screen.
+      setHistory(null);
+      getHistory(range.from, range.to)
+        .then(result => { if (active) setHistory(result); })
+        .catch(failure => { if (active) setError(toStudyError(failure).message); })
+        .finally(() => { if (active) setLoading(false); });
+    }, 0);
+    return () => { active = false; clearTimeout(timer); };
   }, [range, study.today, attempt]);
   const records: StudyRecord[] = (history?.data ?? []).map(day => {
     const current = study.today;

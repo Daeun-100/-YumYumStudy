@@ -15,16 +15,20 @@ export function OwnDayDetail({ day, member, room }: { day: StudyRecord; member?:
   const [sessions, setSessions] = useState<StudySession[] | null>(null);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const refreshSnapshot = member ? room : study.today;
+  const [initialNow] = useState(() => Date.now());
   useEffect(() => {
     let active = true;
-    setSessions(null); setError('');
-    getDaySessions(day.date, member?.profile.id).then(result => { if (active) setSessions(result); })
-      .catch(failure => { if (active) setError(toStudyError(failure).message); });
-    return () => { active = false; };
-  }, [day.date, member?.profile.id, member ? room : study.today, attempt]);
+    const timer = setTimeout(() => {
+      setSessions(null); setError('');
+      getDaySessions(day.date, member?.profile.id).then(result => { if (active) setSessions(result); })
+        .catch(failure => { if (active) setError(toStudyError(failure).message); });
+    }, 0);
+    return () => { active = false; clearTimeout(timer); };
+  }, [day.date, member?.profile.id, refreshSnapshot, attempt]);
   const snapshot = member ? room : study.today;
   const stale = member ? study.roomError : study.error;
-  const now = snapshot ? stale ? Date.parse(snapshot.serverNow) : Math.max(study.now, Date.parse(snapshot.serverNow)) : Date.now();
+  const now = snapshot ? stale ? Date.parse(snapshot.serverNow) : Math.max(study.now, Date.parse(snapshot.serverNow)) : initialNow;
   return <View style={{ gap: 12 }}>
     <DayDetail day={{ ...day, sessions: recordSessions(sessions ?? [], day.date, now) }} aggregateOnly={sessions === null} />
     {!sessions && !error && <ActivityIndicator color={colors.primary} accessibilityLabel="상세 공부 기록 불러오는 중" />}
