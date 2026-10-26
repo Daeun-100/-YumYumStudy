@@ -42,7 +42,7 @@ export function AdmissionGate({ children }: PropsWithChildren) {
         <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.container}>
             <Card style={styles.card} accessibilityViewIsModal>
-              <TestRoomSelector />
+              <TestRoomSelector onboarding />
               <Text style={styles.brand}>{isTestRoom ? '테스트 방 · 0번' : 'YUMYUM STUDY'}</Text>
               <Text accessibilityRole="header" style={styles.title}>{nameStep ? '친구들에게 어떤 이름으로 보일까요?' : '얌얌스터디에 초대받았나요?'}</Text>
               <Text style={styles.description}>{nameStep ? '함께 공부할 친구들이 알아볼 수 있는 이름을 입력해 주세요.' : isTestRoom ? '테스트 입장으로 처음 참여하는 과정을 확인해 보세요.' : '친구에게 받은 초대 코드를 입력해 주세요.'}</Text>

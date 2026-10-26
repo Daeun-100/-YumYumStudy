@@ -14,17 +14,19 @@ export function RoomBuildBoundary({ children }: PropsWithChildren) {
   const [room, setRoom] = useState(studyRoomId);
   return <RoomContext.Provider value={(next) => { selectStudyRoom(next); setRoom(next); }}><View key={room} style={{ flex: 1 }}>{children}</View></RoomContext.Provider>;
 }
-export function TestRoomSelector() {
+export function TestRoomSelector({ onboarding = false }: { onboarding?: boolean }) {
   const identity = useIdentity();
   const change = useContext(RoomContext);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lock = useRef(false);
-  if (!isTestBuild) return null;
+  if (!isTestBuild || (!onboarding && !identity.profile && !identity.error)) return null;
   async function switchTo(next: StudyRoomId) {
     if (next === studyRoomId || lock.current || identity.loading) return;
     if (activeRpcCount || activeRoomOperations) { setError('처리 중인 요청이 있어요. 잠시 후 다시 시도해 주세요.'); return; }
     lock.current = true; lockRoomSwitch(true); setBusy(true); setError(null);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     try {
       const client = getSupabase();
       const { data, error: authError } = await client.auth.getSession();
@@ -35,7 +37,7 @@ export function TestRoomSelector() {
           if (await sessionStorage.getItem(key)) throw new Error('처리 결과가 확인되지 않은 기록이 있어요. 현재 방에서 먼저 확인해 주세요.');
         }
         if (identity.profile) {
-          const { data: today, error } = await client.rpc('get_today').abortSignal(AbortSignal.timeout(15000));
+          const { data: today, error } = await client.rpc('get_today').abortSignal(controller.signal);
           if (error) throw new Error('타이머 상태를 확인하지 못했어요. 연결을 확인해 주세요.');
           if (today?.data?.activeSession) throw new Error('진행 중인 공부를 중지한 뒤 방을 바꿔 주세요.');
         }
@@ -43,7 +45,7 @@ export function TestRoomSelector() {
       change?.(next);
       router.replace('/');
     } catch (failure) { setError(failure instanceof Error ? failure.message : '방을 변경하지 못했어요.'); }
-    finally { lockRoomSwitch(false); lock.current = false; setBusy(false); }
+    finally { clearTimeout(timeout); lockRoomSwitch(false); lock.current = false; setBusy(false); }
   }
   return <View style={{ padding: 10, gap: 6, backgroundColor: colors.soft }}>
     <Text style={{ textAlign: 'center', color: colors.primary }}>테스트 버전 · {studyRoomId === 0 ? '0번 테스트 방' : '1번 실제 방 (실제 기록)'}</Text>

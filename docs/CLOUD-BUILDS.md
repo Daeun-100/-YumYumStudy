@@ -2,6 +2,16 @@
 
 2026-10-27 설정 작업 기록. 자동화 파일과 앱 환경 구분은 구현했으며 아래 외부 연결이 끝나야 실제 빌드를 실행할 수 있다.
 
+## 현재 완료 상태
+
+- 로컬 `develop` 브랜치에 앱/빌드 설정을 커밋했다. GitHub push는 컴퓨터의 Git 로그인 부재로 미완료다.
+- GitHub 공개 Variables 3개(Supabase URL/공개 키, EAS_HOSTING_DOMAIN)를 저장했다.
+- Expo preview/production의 Supabase 공개값은 등록했다.
+- EXPO_TOKEN은 아직 발급/등록하지 않았다. GitHub 연결 인증과 함께 승인 후 이어서 처리한다.
+- test/production 웹 export, 코드/타입 검사, 자동 테스트를 통과했다.
+- 릴리스 모드 테스트 웹에서 0번 → 1번 전환 시 실제 초대 코드 모달이 뜨는 것을 확인했다.
+- APK 서명 초기화·실제 클라우드 실행·master 반영·브랜치 보호·공개 승인 환경 설정은 아직 남아 있다.
+
 ## 실행 경로
 
 ```text
