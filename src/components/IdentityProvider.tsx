@@ -5,6 +5,7 @@ import { ensureAuthIdentity, ensureIdentity } from '../lib/identity';
 import { getSupabase } from '../lib/supabase';
 import { toStudyError } from '../lib/contracts';
 import type { Profile, StudyError, UID } from '../lib/contracts';
+import { resumePendingStudyStart } from '../data/study';
 
 type IdentityState = {
   loading: boolean;
@@ -32,6 +33,8 @@ export function IdentityProvider({ children }: PropsWithChildren) {
         if (disposed) return;
         setState({ uid, profile: null, loading: true, error: null });
         const profile = await ensureIdentity();
+        if (disposed) return;
+        await resumePendingStudyStart();
         if (!disposed) setState({ uid, profile, loading: false, error: null });
       } catch (failure) {
         if (!disposed) setState({ uid: verifiedUid, loading: false, profile: null, error: toStudyError(failure) });

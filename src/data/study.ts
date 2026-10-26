@@ -4,6 +4,10 @@ import { getSupabase } from '../lib/supabase';
 import { getStudyDayBounds } from '../lib/study-day';
 import { callRpc } from './rpc';
 import { decodeGoals, decodeGoalSettings, decodeHistory, decodeRoom, decodeSession, decodeSnapshot, decodeToday } from './decode';
+import { randomUUID } from 'expo-crypto';
+import { createStudyStarter } from '../lib/study-start-core';
+import { ensureIdentity } from '../lib/identity';
+import { sessionStorage } from '../lib/session-storage';
 
 function validateUuid(value: string): void {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
@@ -14,10 +18,19 @@ function validateUuid(value: string): void {
 export async function getToday(): Promise<Snapshot<TodayData>> {
   return decodeSnapshot(await callRpc('get_today'), decodeToday);
 }
-export async function startStudy(requestId: string): Promise<Snapshot<StudySession>> {
+async function sendStudyStart(requestId: string): Promise<Snapshot<StudySession>> {
   validateUuid(requestId);
   return decodeSnapshot(await callRpc('start_study', { p_request_id: requestId }), decodeSession);
 }
+const starter = createStudyStarter({
+  getUid: async () => (await ensureIdentity()).id,
+  storage: sessionStorage,
+  newId: randomUUID,
+  send: sendStudyStart,
+});
+// Screens never generate request IDs or bypass persistent retry handling.
+export function startStudy(): Promise<Snapshot<StudySession>> { return starter.start(); }
+export function resumePendingStudyStart(): Promise<Snapshot<StudySession> | null> { return starter.resume(); }
 export async function stopStudy(sessionId: string): Promise<Snapshot<StudySession>> {
   validateUuid(sessionId);
   return decodeSnapshot(await callRpc('stop_study', { p_session_id: sessionId }), decodeSession);

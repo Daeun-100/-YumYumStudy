@@ -1,5 +1,5 @@
 import { StudyError, validateGoalWeek } from '../lib/contracts.ts';
-import type { DayRecord, GoalSettings, GoalWeek, Profile, RoomMember, Snapshot, StudySession, TodayData } from '../lib/contracts.ts';
+import type { DayRecord, GoalSettings, GoalWeek, LeaveStatus, Profile, RoomMember, Snapshot, StudySession, TodayData } from '../lib/contracts.ts';
 import { getStudyDayBounds } from '../lib/study-day.ts';
 
 function invalid(): never { throw new StudyError('UNKNOWN', '서버 기록 형식을 확인하지 못했습니다. 다시 조회해 주세요.'); }
@@ -76,4 +76,24 @@ export function decodeRoom(value: unknown): RoomMember[] {
 export function decodeHistory(value: unknown): DayRecord[] {
   if (!Array.isArray(value)) return invalid();
   return value.map(decodeDay);
+}
+export function decodeLeaveStatus(value: unknown): LeaveStatus {
+  const row = record(value);
+  if (!Array.isArray(row.grants)) return invalid();
+  const weeks = new Set<string>();
+  const grants = row.grants.map((item) => {
+    const grant = record(item);
+    const earningWeek = text(grant.earningWeek);
+    const { startMs } = getStudyDayBounds(earningWeek);
+    const earnedAt = instant(grant.earnedAt);
+    const expiresAt = instant(grant.expiresAt);
+    if (new Date(`${earningWeek}T00:00:00Z`).getUTCDay() !== 1 || weeks.has(earningWeek)
+      || Date.parse(earnedAt) < startMs || Date.parse(earnedAt) > startMs + 7 * 86400000
+      || Date.parse(expiresAt) !== startMs + 21 * 86400000) return invalid();
+    weeks.add(earningWeek);
+    return { id: text(grant.id), earningWeek, earnedAt, expiresAt };
+  });
+  const availableCount = seconds(row.availableCount);
+  if (availableCount > grants.length) return invalid();
+  return { availableCount, grants };
 }

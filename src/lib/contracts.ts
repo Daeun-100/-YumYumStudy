@@ -20,6 +20,9 @@ export type DayRecord = {
   goalAchieved: boolean | null;
 };
 export type GoalSettings = { current: GoalWeek; scheduled: GoalWeek | null; effectiveDate: StudyDate | null };
+export type LeaveGrant = { id: string; earningWeek: StudyDate; earnedAt: string; expiresAt: string };
+// Usage/cancellation is not implemented yet; availableCount counts unexpired grants only.
+export type LeaveStatus = { availableCount: number; grants: LeaveGrant[] };
 export type RoomMember = { profile: Profile; today: DayRecord; activeSession: StudySession | null };
 export type Snapshot<T> = { serverNow: string; data: T };
 export type TodayData = { profile: Profile; day: DayRecord; activeSession: StudySession | null };

@@ -1,4 +1,4 @@
-# 세션 간 공통 계약 v4
+# 세션 간 공통 계약 v6
 
 00이 아래 계약을 `src/lib/contracts.ts`에 타입으로 작성한다. 01~04는 이를 그대로 사용한다. SDK API 문서가 아니라 이 프로젝트의 내부 인터페이스 설계다. 변경이 필요하면 통합 담당자가 계약과 소비자를 함께 변경한다.
 
@@ -11,6 +11,8 @@
 - `GoalWeek`: 월요일부터 일요일까지 7개 원소. 각 원소는 0~1,440분 정수 또는 null(미설정). 0분=휴무. 저장은 다음 공부 날짜부터 적용한다.
 - `DayRecord`: studyDate, closedSeconds, runningSeconds, goalMinutes, attendance(present/absent/pending), isRestDay(boolean), goalAchieved(boolean 또는 null). 진행 중 포함 1초 이상 present, 현재/미래 0초 pending, 종료된 날짜 0초 absent. 휴무는 goalMinutes=0이고 목표 달성은 양수 목표에만 계산한다.
 - `GoalSettings`: current(현재 GoalWeek), scheduled(예약 GoalWeek 또는 null), effectiveDate(예약 적용 공부 날짜 또는 null).
+- `LeaveGrant`: id, earningWeek(월요일 공부 날짜), earnedAt(실제 6번째 달성 시각), expiresAt(획득 주 월요일 06:00+21일).
+- `LeaveStatus`: availableCount(현재는 미만료 지급 건수), grants(만료 포함 지급 내역, 획득 주 내림차순). 사용 기능 추가 시 잔액 계산도 함께 확장한다.
 - `RoomMember`: `profile`, `today`(DayRecord), `activeSession`(null 가능).
 - `Snapshot<T>`: `serverNow`(ISO UTC), `data`(T). snapshot 전체는 한 기준 시각의 일관된 데이터여야 한다.
 
@@ -34,7 +36,8 @@ ensureIdentity(): Promise<Profile>
 
 ```ts
 getToday(): Promise<Snapshot<{ profile: Profile; day: DayRecord; activeSession: StudySession | null }>>
-startStudy(requestId: string): Promise<Snapshot<StudySession>>
+startStudy(): Promise<Snapshot<StudySession>>
+resumePendingStudyStart(): Promise<Snapshot<StudySession> | null>
 stopStudy(sessionId: string): Promise<Snapshot<StudySession>>
 getRoom(): Promise<Snapshot<RoomMember[]>>
 getGoals(): Promise<GoalWeek>
@@ -46,7 +49,11 @@ subscribeStudyChanges(onChange: () => void, onState: (state: 'connecting' | 'con
 
 모든 조회·구독은 인증된 세션을 사용한다. 사용자 인자가 없는 변경 작업은 본인에 한정한다. 구독은 고정 방의 세션 변경 알림을 다룬다.
 
-startStudy는 클라이언트에서 생성한 UUID인 requestId로 중복 요청을 처리하고 재전송에는 원래 세션을 반환한다. 이미 진행 중인 세션이 있으면 새로 만들지 않고 그 세션을 반환한다. stopStudy는 세션 ID로 중복 처리를 막고 최초 DB 승인 종료 시각을 보존한다. 응답 유실 후 재전송으로 종료 시각을 바꾸지 않는다.
+startStudy는 내부에서 UUID를 생성해 UID별 기기 저장 공간에 먼저 보관한 후 전송한다. 화면에서 requestId를 만들거나 직접 RPC를 호출하지 않는다. 실패 시 같은 번호를 보존하고 재시도한다. 한 JS 실행 환경의 동시 호출은 같은 Promise를 공유한다. 성공 응답의 UID를 확인한 뒤 저장된 번호를 정리한다. 저장 실패·손상은 새 번호로 덮어쓰지 않고 오류로 표시한다.
+
+resumePendingStudyStart는 저장된 요청만 재전송하고, 없으면 null을 반환하며 공부를 새로 시작하지 않는다. IdentityProvider가 앱 초기화 및 초기화 재시도 때 호출한다. 화면 복원은 이후 getToday로 최신 상태를 조회한다. 서버가 이미 종료된 원래 세션을 반환할 수도 있으므로 복구 응답만 보고 진행 중이라고 표시하지 않는다. 저장은 네이티브 AsyncStorage, 웹 localStorage를 사용하며 저장 공간 삭제·앱 삭제 이후에는 보존을 보장하지 않는다. 여러 탭 사이의 원자적 잠금은 구현하지 않으며 서버의 사용자별 진행 세션 유일성으로 중복 진행을 막는다.
+
+서버는 requestId 재전송에 원래 세션을 반환한다. 이미 진행 중인 세션이 있으면 새로 만들지 않고 그 세션을 반환한다. stopStudy는 세션 ID로 중복 처리를 막고 최초 DB 승인 종료 시각을 보존한다. 응답 유실 후 재전송으로 종료 시각을 바꾸지 않는다.
 
 각 함수는 실패 시 `StudyError`를 throw한다. `code`는 `NETWORK | UNAUTHORIZED | VALIDATION | POLICY_PENDING | NOT_CONFIGURED | UNKNOWN`, `message`는 사용자에게 표시 가능한 한국어다. 실패를 빈 배열·0초로 숨기지 않는다. 프로필 초기화 RPC 이름과 SQL 매개변수는 01이 확정하고 00의 identity 연결부를 변경해야 할 경우 보고한다. 00은 identity에서 호출하는 초기화 함수를 별도 `src/data/profile.ts`로 선언하고 01이 구현한다.
 
@@ -65,4 +72,6 @@ startStudy는 클라이언트에서 생성한 UUID인 requestId로 중복 요청
 
 화면 타이머가 1초/목표 시간에 도달하거나 6시를 지날 때 표시를 갱신하려면 src/lib/day-status.ts의 deriveDayStatus를 서버 기준 시계와 해당 날짜의 정수 초 합계에 적용한다. snapshot의 runningSeconds와 activeSession 계산을 중복 합산하지 않는다.
 
-연차 지급·사용·만료·취소 및 출석 대체 규칙은 여전히 미정이며 해당 API는 아직 만들지 않는다. 과거 보고서의 POLICY_PENDING은 당시 구현 상태이며 현재 목표 저장에는 적용되지 않는다.
+`src/data/leave.ts`: getLeaveStatus(): Promise<Snapshot<LeaveStatus>>. 본인 UID는 서버 인증에서만 확인하고 인자로 받지 않는다. 조회 시 누락된 획득분을 저장하므로 원시 테이블 조회로 대체하지 않는다. 클라이언트 호출 시각이 아닌 실제 6번째 목표 달성 시각을 보존한다. 목표 달성 중인 세션도 포함하며 0분·미설정은 제외한다. 서버 시각이 expiresAt 정각 이상이면 잔액에서 제외한다. 향후 연차 화면 진입·복귀 및 목표 달성 시 호출해야 하며, 현재 타이머/연차 UI는 없다.
+
+연차 사용·취소 및 출석 대체 규칙은 여전히 미정이며 해당 API는 아직 만들지 않는다. 과거 보고서의 POLICY_PENDING은 당시 구현 상태이며 현재 목표 저장에는 적용되지 않는다.
