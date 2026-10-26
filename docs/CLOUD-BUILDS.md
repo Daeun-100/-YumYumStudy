@@ -1,16 +1,21 @@
 # 클라우드 빌드 실행 안내
 
-2026-10-27 설정 작업 기록. 자동화 파일과 앱 환경 구분은 구현했으며 아래 외부 연결이 끝나야 실제 빌드를 실행할 수 있다.
+2026-10-27 설정 및 첫 클라우드 실행 기록. 현재 완료 상태와 이후 실행 방법을 정리한다.
 
 ## 현재 완료 상태
 
-- 로컬 `develop` 브랜치에 앱/빌드 설정을 커밋했다. GitHub push는 컴퓨터의 Git 로그인 부재로 미완료다.
-- GitHub 공개 Variables 3개(Supabase URL/공개 키, EAS_HOSTING_DOMAIN)를 저장했다.
-- Expo preview/production의 Supabase 공개값은 등록했다.
-- EXPO_TOKEN은 아직 발급/등록하지 않았다. GitHub 연결 인증과 함께 승인 후 이어서 처리한다.
-- test/production 웹 export, 코드/타입 검사, 자동 테스트를 통과했다.
-- 릴리스 모드 테스트 웹에서 0번 → 1번 전환 시 실제 초대 코드 모달이 뜨는 것을 확인했다.
-- APK 서명 초기화·실제 클라우드 실행·master 반영·브랜치 보호·공개 승인 환경 설정은 아직 남아 있다.
+- `develop`을 GitHub에 업로드했고 draft PR #1에 앱·빌드 설정을 모았다.
+- GitHub repository secret `EXPO_TOKEN` 등록을 확인했고 클라우드 웹 배포에서 실제 인증에 성공했다.
+- GitHub 공개 Variables 3개와 Expo preview/production Supabase 공개값 등록 완료.
+- master에는 실행 메뉴용 cloud-build.yml만 최초 등록했다. 친구용 앱 소스 전체는 아직 병합하지 않았다.
+- master 보호(PR 필수·check 성공 필수·직접 push 제한)와 production 공개 시 본인 승인 설정 완료.
+- test / production Android 앱 ID에 각각 서명 키 생성 완료. 키는 EAS에 보관하며 저장소에 넣지 않았다.
+- 첫 클라우드 실행: https://github.com/Daeun-100/-YumYumStudy/actions/runs/40371426268
+- 첫 테스트 웹: https://yumyumstudy-daeun100--test-fe11f120debb-1-1.expo.app
+- 첫 테스트 웹 생성 성공. APK는 Expo에 접수됐으며 마지막 확인 시 무료 대기열에 있다.
+- Expo APK 빌드 ID: `3f20c141-08c0-499c-a0cb-0ac5febefc08`.
+- 로컬 캐시 없는 코드 검사·타입 검사·테스트 61개 통과. 클라우드 prepare 검사도 통과.
+- 실제 APK 설치·실기기 확인·친구용 공개는 아직 남아 있다. 업데이트 안내도 켜지 않았다.
 
 ## 실행 경로
 
@@ -42,7 +47,9 @@ Cloud Build는 공개 웹 고정 주소나 app_releases를 자동 변경하지 �
 - 웹은 `production-커밋앞12자리-실행번호-시도번호` 또는 `test-...` 후보 주소로 생성한다.
 - Android·웹 모두 성공하면 친구용 버전 태그를 만들고 GitHub의 draft release에 결과 기록을 첨부한다.
 
-## 최초 한 번 필요한 외부 설정
+## 최초 한 번 필요한 외부 설정 (재설정 시 참고)
+
+현재 적용 여부는 위 완료 상태를 기준으로 본다. 아래는 처음 연결할 때의 절차다.
 
 1. `develop`에 현재 앱과 설정을 커밋·push한다.
 2. 이 워크플로 파일들을 기본 브랜치 `master`에 PR로 반영해야 Actions의 수동 실행 메뉴가 등록된다.
@@ -54,7 +61,7 @@ Cloud Build는 공개 웹 고정 주소나 app_releases를 자동 변경하지 �
    - `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `EAS_HOSTING_DOMAIN`: 예를 들어 `yumyumstudy-daeun100` (최초 EAS Hosting 생성 시 사용 가능 여부 확인 필요)
 5. Expo preview/production 환경에 같은 Supabase 공개값을 등록한다. 이 항목은 등록 완료했다.
-6. test / production 각 Android 앱 ID에 EAS 서명 키가 준비되어야 한다. 첫 클라우드 빌드에서 대화형으로 초기 설정한다.
+6. test / production 각 Android 앱 ID에 EAS 서명 키 생성 완료. 새 프로젝트를 다시 설정한다면 키가 준비되어야 한다. 첫 클라우드 빌드에서 대화형으로 초기 설정한다.
    서버에서 만드는 EAS 빌드이며 컴퓨터에서 APK를 컴파일하는 뜻이 아니다. production 키는 이후 교체하지 않는다.
 7. GitHub `production` Environment를 만들고 공개 작업에 필요한 승인자를 지정한다.
    승인자가 없으면 수동 Publish Verified Web 실행 자체만으로 공개가 진행된다.

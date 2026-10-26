@@ -18,12 +18,15 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      APP_VARIANT: production
+      EXPO_PUBLIC_APP_VARIANT: production
       DEPLOYMENT_ID: ${{ inputs.deployment_id }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: npm ci
       - name: Promote checked candidate without rebuilding
         run: |
           [[ "$DEPLOYMENT_ID" =~ ^production-[a-f0-9]{12}-[0-9]+-[0-9]+$ ]] || { echo 'Not a production candidate ID'; exit 1; }
