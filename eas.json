@@ -1,8 +1,36 @@
 {
+  "cli": {
+    "version": "25.3.0",
+    "appVersionSource": "local",
+    "requireCommit": true
+  },
   "build": {
-    "preview": {
+    "test": {
       "distribution": "internal",
-      "android": { "buildType": "apk" }
+      "environment": "preview",
+      "env": {
+        "APP_VARIANT": "test",
+        "EXPO_PUBLIC_APP_VARIANT": "test"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "node": "22.22.0"
+    },
+    "production": {
+      "distribution": "internal",
+      "environment": "production",
+      "env": {
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_APP_VARIANT": "production"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "node": "22.22.0"
+    },
+    "preview": {
+      "extends": "test"
     }
   }
 }

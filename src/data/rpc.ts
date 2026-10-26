@@ -1,7 +1,12 @@
+import { roomSwitching } from '../lib/room';
 import { getSupabase } from '../lib/supabase';
 import { StudyError, toStudyError } from '../lib/contracts';
 
+export let activeRpcCount = 0;
+
 export async function callRpc(name: string, args?: Record<string, unknown>): Promise<unknown> {
+  if (roomSwitching) throw new StudyError('VALIDATION', '방을 변경하고 있어요. 잠시 후 다시 시도해 주세요.');
+  activeRpcCount++;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
@@ -9,6 +14,15 @@ export async function callRpc(name: string, args?: Record<string, unknown>): Pro
     if (error) {
       if (error.code === '42501' || error.code === 'PGRST301' || error.code === 'PGRST302') {
         throw new StudyError('UNAUTHORIZED', '요청 권한을 확인하지 못했습니다. 본인 기록인지 확인해 주세요.');
+      }
+      if (name === 'mutate_leave' && error.code === '22023') {
+        const messages: Record<string, string> = {
+          'Leave changed; refresh before making a new request': '연차 예약 상태가 변경되었습니다. 새로 조회한 뒤 다시 요청해 주세요.',
+          'No eligible leave': '선택한 날짜에 사용할 수 있는 연차가 없습니다.',
+          'Date already reserved': '이미 연차가 예약된 날짜입니다.',
+          'Request ID reused with different input': '기존 요청과 내용이 다릅니다. 연차 상태를 다시 확인해 주세요.',
+        };
+        throw new StudyError('VALIDATION', messages[error.message] ?? '예약 날짜와 연차 상태를 확인한 뒤 다시 요청해 주세요.');
       }
       if (error.code === '22023' || error.code === '22P02' || error.code === '22007' || error.code === '22008') {
         throw new StudyError('VALIDATION', '요청한 ID 또는 날짜 형식을 확인해 주세요.');
@@ -25,6 +39,7 @@ export async function callRpc(name: string, args?: Record<string, unknown>): Pro
   } catch (error) {
     throw toStudyError(error);
   } finally {
+    activeRpcCount--;
     clearTimeout(timeout);
   }
 }

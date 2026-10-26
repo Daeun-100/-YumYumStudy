@@ -1,0 +1,142 @@
+name: Cloud Build
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'test: develop / production: master (candidate only)'
+        required: true
+        default: test
+        type: choice
+        options: [test, production]
+permissions:
+  contents: read
+concurrency:
+  group: cloud-build-${{ github.event_name == 'push' && 'production' || inputs.target }}
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      variant: ${{ steps.input.outputs.variant }}
+      sha: ${{ steps.input.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate branch and freeze commit
+        id: input
+        env:
+          TARGET: ${{ github.event_name == 'push' && 'production' || inputs.target }}
+        run: |
+          if [ "$TARGET" = test ]; then EXPECTED=refs/heads/develop; else EXPECTED=refs/heads/master; fi
+          test "$GITHUB_REF" = "$EXPECTED" || { echo "Choose branch $EXPECTED for $TARGET"; exit 1; }
+          echo "variant=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - if: steps.input.outputs.variant == 'production'
+        run: node scripts/check-release.mjs
+  android:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      APP_VARIANT: ${{ needs.prepare.outputs.variant }}
+      EXPO_PUBLIC_APP_VARIANT: ${{ needs.prepare.outputs.variant }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: node --experimental-strip-types scripts/cloud-preflight.mjs
+      - name: Build APK on EAS (wait for the result)
+        run: npx --yes eas-cli@25.3.0 build --platform android --profile "$APP_VARIANT" --non-interactive --wait --json > android-build.json
+      - if: always()
+        run: node scripts/build-record.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ needs.prepare.outputs.variant }}-${{ needs.prepare.outputs.sha }}
+          path: |
+            android-build.json
+            build-record.json
+  web:
+    needs: prepare
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      APP_VARIANT: ${{ needs.prepare.outputs.variant }}
+      EXPO_PUBLIC_APP_VARIANT: ${{ needs.prepare.outputs.variant }}
+      EAS_HOSTING_DOMAIN: ${{ vars.EAS_HOSTING_DOMAIN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: node --experimental-strip-types scripts/cloud-preflight.mjs
+      - run: npm run export:web
+      - name: Publish preview only (never production)
+        run: |
+          test -n "$EAS_HOSTING_DOMAIN" || { echo 'Configure EAS_HOSTING_DOMAIN'; exit 1; }
+          npx --yes eas-cli@25.3.0 deploy --dev-domain "$EAS_HOSTING_DOMAIN" --id "$APP_VARIANT-${GITHUB_SHA:0:12}-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" --json > web-deployment.json
+      - if: always()
+        run: node scripts/build-record.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-${{ needs.prepare.outputs.variant }}-${{ needs.prepare.outputs.sha }}
+          path: |
+            web-deployment.json
+            build-record.json
+            dist/
+  record:
+    needs: [prepare, android, web]
+    if: needs.prepare.outputs.variant == 'production'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/check-release.mjs > release.json
+      - uses: actions/download-artifact@v4
+        with:
+          path: results
+      - name: Record version and candidate outputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=$(node -p "require('./release.json').tag")
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            git tag "$TAG" "$GITHUB_SHA"
+            git push origin "$TAG"
+          fi
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "$TAG" --notes "Candidate built from $GITHUB_SHA. Verify before sharing. Web production URL is unchanged."
+          tar -czf build-results.tgz results
+          gh release upload "$TAG" release.json build-results.tgz --clobber

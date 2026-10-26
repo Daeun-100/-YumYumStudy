@@ -4,18 +4,21 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import { validateSupabaseConfig } from './config';
 import { sessionStorage } from './session-storage';
+import { isTestRoom, studyRoomId } from './room';
 
-let client: SupabaseClient | null = null;
+const clients = new Map<number, SupabaseClient>();
 
 export function getSupabase(): SupabaseClient {
-  if (client) return client;
+  const existing = clients.get(studyRoomId);
+  if (existing) return existing;
   const { url, key } = validateSupabaseConfig(
     process.env.EXPO_PUBLIC_SUPABASE_URL,
     process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   );
-  client = createClient(url, key, {
+  const client = createClient(url, key, {
     auth: {
       storage: sessionStorage,
+      ...(isTestRoom ? { storageKey: `sb-${new URL(url).hostname.split('.')[0]}-auth-token-test-room-0` } : {}),
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,
@@ -23,5 +26,6 @@ export function getSupabase(): SupabaseClient {
       ...(Platform.OS !== 'web' ? { lock: processLock } : {}),
     },
   });
+  clients.set(studyRoomId, client);
   return client;
 }

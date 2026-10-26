@@ -34,3 +34,8 @@ test('duplicate display names stay separate by UID in room data', () => {
   assert.equal(room.length, 2);
   assert.notEqual(room[0].profile.id, room[1].profile.id);
 });
+
+test('leave attendance is accepted without inventing study time', () => {
+  const value = { ...day, attendance: 'leave', closedSeconds: 0, runningSeconds: 0 };
+  assert.deepEqual(decodeDay(value), value);
+});

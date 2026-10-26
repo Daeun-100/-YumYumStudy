@@ -1,0 +1,31 @@
+name: Publish Verified Web
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_id:
+        description: 'Verified production candidate ID from Cloud Build'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: publish-production-web
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/master'
+    environment: production
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Promote checked candidate without rebuilding
+        run: |
+          [[ "$DEPLOYMENT_ID" =~ ^production-[a-f0-9]{12}-[0-9]+-[0-9]+$ ]] || { echo 'Not a production candidate ID'; exit 1; }
+          test -n "$EXPO_TOKEN"
+          npx --yes eas-cli@25.3.0 deploy:alias --id "$DEPLOYMENT_ID" --prod --non-interactive

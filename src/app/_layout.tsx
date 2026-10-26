@@ -1,18 +1,20 @@
+import { RoomBuildBoundary, TestRoomSelector } from '../components/RoomBuildBoundary';
+import { UpdateNotice, UpdateProvider } from '../components/UpdateNotice';
+import { AdmissionGate } from '../components/AdmissionGate';
+import { LeaveProvider } from '../features/leave/LeaveProvider';
+import { colors } from '../design/theme';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { IdentityProvider } from '../components/IdentityProvider';
-import { UpdateNotice } from '../components/UpdateNotice';
+import { StudyProvider } from '../features/study/StudyProvider';
 
 export default function RootLayout() {
-  return <SafeAreaProvider>
-    <IdentityProvider>
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F7F2' }}>
-        <Stack screenOptions={{ headerShown: false }} />
-        <View style={{ paddingHorizontal: 20, paddingBottom: 12, alignItems: 'center' }}><UpdateNotice /></View>
-        <StatusBar style="dark" />
-      </SafeAreaView>
-    </IdentityProvider>
-  </SafeAreaProvider>;
+  return <SafeAreaProvider><RoomBuildBoundary><UpdateProvider><IdentityProvider><TestRoomSelector /><AdmissionGate><StudyProvider><LeaveProvider>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <UpdateNotice variant="global" />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
+      <StatusBar style="dark" />
+    </SafeAreaView>
+  </LeaveProvider></StudyProvider></AdmissionGate></IdentityProvider></UpdateProvider></RoomBuildBoundary></SafeAreaProvider>;
 }
