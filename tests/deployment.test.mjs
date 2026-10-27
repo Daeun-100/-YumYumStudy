@@ -82,3 +82,37 @@ test('only explicit verified native compatibility permits an administrative fing
   assert.equal(deploymentMode({ ...input, runtimeVersion: 'e'.repeat(40), nativeCompatible: true }), 'update');
   assert.equal(deploymentMode({ ...input, nativeCompatible: false }), 'apk');
 });
+
+test('web promotion requires successful OTA and the exact web candidate from this source and run', async () => {
+  const { validateWebPromotion } = await import('../scripts/deployment.mjs');
+  const sha = 'a'.repeat(40);
+  const plan = { mode: 'update', sha, runtimeVersion };
+  const update = { status: 'published', sha, runtimeVersion };
+  const identifier = `production-${sha.slice(0, 12)}-45-1`;
+  const web = { identifier };
+  const context = { sha, deploymentId: identifier, runNumber: '45' };
+  assert.equal(validateWebPromotion(plan, update, web, context), identifier);
+  // The web job can be from attempt 1 while only the approved update job is retried.
+  assert.equal(validateWebPromotion(plan, update, web, { ...context, runAttempt: '2' }), identifier);
+  for (const patch of [{ status: 'failed' }, { sha: 'b'.repeat(40) }, { runtimeVersion: 'd'.repeat(40) }]) {
+    assert.throws(() => validateWebPromotion(plan, { ...update, ...patch }, web, context));
+  }
+  assert.throws(() => validateWebPromotion({ ...plan, mode: 'apk' }, update, web, context));
+  assert.throws(() => validateWebPromotion(plan, update, { identifier: identifier + '-other' }, context));
+  assert.throws(() => validateWebPromotion(plan, update, web, { ...context, runNumber: '46' }));
+  assert.throws(() => validateWebPromotion(plan, update, web, { ...context, sha: 'b'.repeat(40) }));
+});
+
+test('OTA workflow waits for web build and promotes it only after Android publication', () => {
+  const cloud = readFileSync(new URL('../.github/workflows/cloud-build.yml', import.meta.url), 'utf8');
+  const web = cloud.slice(cloud.indexOf('  web:'), cloud.indexOf('  record:'));
+  const update = cloud.slice(cloud.indexOf('  update:'), cloud.indexOf('  history:'));
+  assert.match(web, /mode == 'apk' \|\| needs.prepare.outputs.mode == 'update'/);
+  assert.match(web, /steps.deploy.outputs.deployment_id/);
+  assert.doesNotMatch(web, /deploy:alias|--prod\s/);
+  assert.match(update, /needs: \[prepare, web\]/);
+  assert.match(update, /environment: production/);
+  assert.ok(update.indexOf('deployment.mjs promote-web') > update.indexOf('deployment.mjs publish'));
+  assert.match(update, /WEB_DEPLOYMENT_ID: \$\{\{ needs.web.outputs.deployment_id \}\}/);
+  assert.match(update, /web-promotion-record.json/);
+});
