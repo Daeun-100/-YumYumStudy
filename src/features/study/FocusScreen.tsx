@@ -1,3 +1,4 @@
+import { useScreenNow } from './useScreenNow';
 import { StudyControl } from './StudyControl';
 import { CallFriendDialog } from '../call-friend/CallFriendDialog';
 import { PostitOverlay } from '../postits/PostitOverlay';
@@ -17,17 +18,18 @@ export function FocusScreen() {
   const [allowedAppsOpen, setAllowedAppsOpen] = useState(false);
   useAndroidBack(() => { router.dismissTo('/'); return true; });
   const study = useStudy();
+  const studyNow = useScreenNow();
   const identity = useIdentity();
   const data = study.today?.data;
   const profile = identity.profile;
-  const seconds = data && study.today ? displayedSeconds(data.day, data.activeSession, study.today.serverNow, study.now) : null;
+  const seconds = data && study.today ? displayedSeconds(data.day, data.activeSession, study.today.serverNow, studyNow) : null;
   const sessionSeconds = data?.activeSession && study.today
-    ? Math.max(0, Math.floor((Math.max(study.now, Date.parse(study.today.serverNow)) - Date.parse(data.activeSession.startedAt)) / 1000))
+    ? Math.max(0, Math.floor((Math.max(studyNow, Date.parse(study.today.serverNow)) - Date.parse(data.activeSession.startedAt)) / 1000))
     : null;
   const members: FocusMember[] = profile ? [{ id: profile.id, name: profile.displayName, character: profile.character ?? 'bunny', time: '나', active: !!data?.activeSession, self: true }] : [];
   const friends = study.room?.data.filter(member => member.profile.id !== profile?.id).sort((a, b) => a.profile.id.localeCompare(b.profile.id)) ?? [];
   for (const member of friends) {
-    const elapsed = displayedSeconds(member.today, member.activeSession, study.room!.serverNow, Math.max(study.now, Date.parse(study.room!.serverNow)));
+    const elapsed = displayedSeconds(member.today, member.activeSession, study.room!.serverNow, Math.max(studyNow, Date.parse(study.room!.serverNow)));
     const percent = progress(elapsed, member.today.goalMinutes);
     members.push({ id: member.profile.id, name: member.profile.displayName, character: member.profile.character ?? 'bunny', active: !!member.activeSession, time: duration(elapsed, false), achieved: percent !== null && percent >= 100 });
   }

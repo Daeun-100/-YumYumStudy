@@ -16,7 +16,9 @@ export default function RootLayout() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <CallNotificationLifecycle />
       <UpdateNotice variant="global" />
-      <StartupBoundary><TestRoomSelector /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} /></StartupBoundary>
+      <StartupBoundary><TestRoomSelector /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+        <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
+      </Stack></StartupBoundary>
       <StatusBar style="dark" />
     </SafeAreaView>
   </LeaveProvider></StudyProvider></AdmissionGate></IdentityProvider></UpdateProvider></RoomBuildBoundary></SafeAreaProvider>;

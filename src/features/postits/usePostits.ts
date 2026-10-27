@@ -1,3 +1,4 @@
+import { useIsFocused } from 'expo-router';
 import { measure } from '../../lib/performance';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSupabase } from '../../lib/supabase';
@@ -5,12 +6,13 @@ import { studyRoomId, withRoomOperation } from '../../lib/room';
 import { useIdentity } from '../../components/IdentityProvider';
 import { useRefreshOnResume } from '../../hooks/useRefreshOnResume';
 import { getStudyDate } from '../../lib/study-day';
-import { useStudy } from '../study/StudyProvider';
+import { useScreenNow } from '../study/useScreenNow';
 import { decodePostit, mergePostit, type Postit } from './model';
 
 export function usePostits() {
+  const focused = useIsFocused();
   const { uid, profile } = useIdentity();
-  const { now } = useStudy();
+  const now = useScreenNow(true, 60000);
   const [notes, setNotes] = useState<Postit[]>([]);
   const [date, setDate] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +22,7 @@ export function usePostits() {
   const events = useRef<{ sequence: number; note: Postit }[]>([]);
   const room = studyRoomId;
   const refresh = useCallback(async () => {
-    if (!profile) return;
+    if (!profile || !focused) return;
     const version = generation.current;
     const seen = changes.current;
     const request = ++latestRequest.current;
@@ -44,11 +46,11 @@ export function usePostits() {
     } catch {
       if (version === generation.current && request === latestRequest.current) setError('포스트잇을 불러오지 못했어요. 잠시 후 다시 연결할게요.');
     }
-  }, [profile, room]);
-  const resume = useRefreshOnResume(refresh, !!profile);
+  }, [profile, room, focused]);
+  const resume = useRefreshOnResume(refresh, !!profile && focused);
   useEffect(() => {
     const version = ++generation.current;
-    if (!uid || !profile) return;
+    if (!uid || !profile || !focused) return;
     const client = getSupabase();
     let disposed = false;
     let channel: ReturnType<typeof client.channel> | undefined;
@@ -76,7 +78,7 @@ export function usePostits() {
     // Recover missed events and cross the 6am day boundary without reopening.
     const timer = setInterval(resume, 15000);
     return () => { disposed = true; generation.current = version + 1; clearTimeout(initial); clearInterval(timer); if (channel) void client.removeChannel(channel); };
-  }, [uid, profile, room, refresh, resume]);
+  }, [uid, profile, room, refresh, resume, focused]);
   const mutate = async (name: string, args: Record<string, unknown>) => {
     const version = generation.current;
     return measure(`postit.${name}`, () => withRoomOperation(async () => {

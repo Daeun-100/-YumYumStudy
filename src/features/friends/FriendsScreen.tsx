@@ -1,3 +1,4 @@
+import { useScreenNow } from '../study/useScreenNow';
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AchievementBadge, Button } from '../../design/components';
@@ -22,8 +23,9 @@ export function FriendsScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const members = study.room?.data ?? [];
   const selected = members.find(member => member.profile.id === selectedId);
+  const studyNow = useScreenNow(!selected);
   if (selected) return <FriendRecords key={selected.profile.id} member={selected} onBack={() => setSelectedId(null)} />;
-  const stale = !!study.roomError || !!study.room && study.now - Date.parse(study.room.serverNow) > 90000;
+  const stale = !!study.roomError || !!study.room && studyNow - Date.parse(study.room.serverNow) > 90000;
   return <Page current="friends"><View style={s.content}>
     <View style={s.header}><Text accessibilityRole="header" style={s.heading}>친구들</Text></View>
     <View style={s.toolbar}><Text style={s.label}>{study.room ? `구성원 ${members.length}명` : '구성원 확인 중'}</Text>{study.room && <Text style={s.caption}>공부 중 {members.filter(member => member.activeSession).length}명</Text>}</View>
@@ -31,7 +33,7 @@ export function FriendsScreen() {
     {study.roomError && <View style={{ gap: spacing.sm, paddingVertical: spacing.md }}><Text accessibilityRole="alert" style={ui.error}>{study.roomError}</Text><Button variant="secondary" size="compact" label="다시 불러오기" disabled={study.roomLoading} onPress={() => void study.refreshRoom()} /></View>}
     {!study.room && !study.roomError && [0, 1, 2].map(id => <View key={id} accessibilityLabel="친구 정보 불러오는 중" style={s.placeholder}><View style={s.skeleton} /><View style={[s.skeleton, { width: '60%' }]} /></View>)}
     {members.map(member => {
-      const seconds = displayedSeconds(member.today, member.activeSession, study.room!.serverNow, stale ? Date.parse(study.room!.serverNow) : Math.max(study.now, Date.parse(study.room!.serverNow)));
+      const seconds = displayedSeconds(member.today, member.activeSession, study.room!.serverNow, stale ? Date.parse(study.room!.serverNow) : Math.max(studyNow, Date.parse(study.room!.serverNow)));
       const percent = progress(seconds, member.today.goalMinutes);
       const goal = member.today.goalMinutes;
       return <Pressable key={member.profile.id} accessibilityRole="button" accessibilityLabel={`${member.profile.displayName} 공부 기록 보기`} onPress={() => setSelectedId(member.profile.id)} style={({ pressed }) => [s.member, pressed && { backgroundColor: colors.surfacePressed }]}>

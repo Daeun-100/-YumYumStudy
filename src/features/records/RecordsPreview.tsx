@@ -6,7 +6,7 @@ import { colors, spacing, typography } from '../../design/theme';
 import { DayDetail, MonthlyCalendar, PeriodHeader, RecordLegend, WeeklyChart } from './RecordComponents';
 import { achieved, duration, monthStart, parseDate, previewRecord, previewToday, shiftDate, shiftMonth, weekStart } from './model';
 
-export type RecordsPreviewProps = { initialPeriod?: 'week' | 'month'; initialDate?: string; empty?: boolean; profile?: { id: string; name: string; goal: number | null; todayMinutes: number }; onBack?(): void; records?: import('./model').StudyRecord[]; today?: string; onRangeChange?(from: string, to: string): void; refreshControl?: React.ReactElement; notice?: React.ReactNode; loading?: boolean; renderDayDetail?(day: import('./model').StudyRecord): React.ReactNode };
+export type RecordsPreviewProps = { initialPeriod?: 'week' | 'month'; initialDate?: string; empty?: boolean; profile?: { id: string; name: string; goal: number | null; todayMinutes: number }; onBack?(): void; records?: import('./model').StudyRecord[]; today?: string; onRangeChange?(from: string, to: string): void; refreshControl?: React.ReactElement; notice?: React.ReactNode; loading?: boolean; renderDayDetail?(day: import('./model').StudyRecord, summaryLoading: boolean): React.ReactNode };
 export function RecordsPreview({ initialPeriod = 'week', initialDate = '2026-10-16', empty = false, profile, onBack, records, today = previewToday, onRangeChange, refreshControl, notice, loading = false, renderDayDetail }: RecordsPreviewProps) {
   const [legendOpen, setLegendOpen] = useState(false);
   const [period, setPeriod] = useState(initialPeriod);
@@ -24,7 +24,7 @@ export function RecordsPreview({ initialPeriod = 'week', initialDate = '2026-10-
   const end = shiftDate(start, count - 1) > today ? today : shiftDate(start, count - 1);
   useEffect(() => { onRangeChange?.(start, end); }, [start, end, onRangeChange]);
   const move = (direction: number) => { const target = period === 'week' ? shiftDate(start, direction * 7) : shiftMonth(start, direction); setSelected(target > today ? today : earliest && target < earliest ? earliest : target); };
-  const selectDay = (value: string) => { if (!loading && value <= today && (!earliest || value >= earliest)) { setSelected(value); } };
+  const selectDay = (value: string) => { if (value <= today && (!earliest || value >= earliest)) { setSelected(value); } };
   return <View style={{ flex: 1 }}>
     <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content} showsVerticalScrollIndicator={false} refreshControl={refreshControl}>
     <View style={s.header}>{onBack && <Button label="←" variant="ghost" size="icon" accessibilityLabel="친구 목록으로 돌아가기" onPress={onBack} />}<Text accessibilityRole="header" numberOfLines={2} style={[profile ? typography.title : typography.heading, s.heading]}>{profile ? `${profile.name}의 기록` : '기록'}</Text><View style={s.switch}><SegmentedControl<'week' | 'month'> variant="soft" accessibilityLabel="기록 기간" value={period} onChange={setPeriod} options={[{ value: 'week', label: '주간' }, { value: 'month', label: '월간' }]} /></View></View>
@@ -35,7 +35,7 @@ export function RecordsPreview({ initialPeriod = 'week', initialDate = '2026-10-
     <View style={s.legendRow}><Text style={s.hint}>날짜를 누르면 아래에서 상세 기록을 볼 수 있어요</Text><InfoButton accessibilityLabel="기록 표시 안내" onPress={() => setLegendOpen(true)} /></View>
     <View style={s.detail}>
       <Text accessibilityRole="header" style={[typography.title, { color: colors.text }]}>상세 기록</Text>
-      {loading ? <DetailSkeleton /> : renderDayDetail ? renderDayDetail(day) : <DayDetail day={day} aggregateOnly={!!records} />}
+      {renderDayDetail ? renderDayDetail(day, loading) : loading ? <DetailSkeleton /> : <DayDetail day={day} aggregateOnly={!!records} />}
     </View>
     </ScrollView>
     <Modal visible={legendOpen} transparent animationType="slide" onRequestClose={() => setLegendOpen(false)}>

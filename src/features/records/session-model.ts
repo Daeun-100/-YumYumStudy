@@ -11,3 +11,10 @@ export function recordSessions(sessions: StudySession[], date: string, now: numb
       return { start: clock(start), end: !session.endedAt && now < endMs ? '공부 중' : clock(end), minutes: secondsInStudyDay(session.startedAt, session.endedAt ?? now, date) / 60 };
     });
 }
+
+/** Advance a minute-resolution summary only for its live detail, capped at 06:00 KST. */
+export function liveRecordMinutes(day: { date: string; minutes: number; asOf?: number }, now: number, running: boolean) {
+  if (!running || day.asOf === undefined) return day.minutes;
+  const { endMs } = getStudyDayBounds(day.date);
+  return day.minutes + Math.max(0, Math.min(now, endMs) - day.asOf) / 60000;
+}
