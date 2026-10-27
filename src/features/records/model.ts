@@ -1,6 +1,6 @@
 import { timer } from '../study/presentation';
 export type RecordSession = { start: string; end: string; minutes: number };
-export type StudyRecord = { date: string; minutes: number; goal: number | null; status: 'study' | 'empty' | 'rest' | 'leave'; sessions: RecordSession[] };
+export type StudyRecord = { asOf?: number; date: string; minutes: number; goal: number | null; status: 'study' | 'empty' | 'rest' | 'leave'; sessions: RecordSession[] };
 export const previewToday = '2026-10-26';
 export const dateKey = (date: Date) => date.toISOString().slice(0, 10);
 export const parseDate = (key: string) => new Date(`${key}T00:00:00Z`);

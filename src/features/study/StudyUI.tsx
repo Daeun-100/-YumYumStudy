@@ -1,12 +1,9 @@
-import { useAndroidBack } from '../navigation/useAndroidBack';
-import { BottomTabs } from '../navigation/BottomTabs';
 import { characters } from '../profile/CharacterPicker';
 import type { CharacterId } from '../../lib/characters';
 import { colors, typography, radius, layout } from '../../design/theme';
 import { AchievementBadge, Button } from '../../design/components';
 import type { PropsWithChildren } from 'react';
-import { ActivityIndicator, BackHandler, Image, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useIdentity } from '../../components/IdentityProvider';
 import { useStudy } from './StudyProvider';
 import { progress } from './presentation';
@@ -27,29 +24,9 @@ export function RoomArt({ tall = false }: { tall?: boolean }) {
   return <View style={{ height: tall ? 410 : 300, overflow: 'hidden', backgroundColor: colors.artFallback }}><Image source={require('../../../assets/illustrations/study-room-illustration.png')} resizeMode="cover" style={{ width: '100%', height: '100%' }} accessibilityLabel="따뜻한 공부방에서 함께 공부하는 동물 친구들" /></View>;
 }
 type TabKey = 'home' | 'records' | 'friends' | 'leave' | 'profile';
-export function Nav({ current }: { current: TabKey }) {
-  useAndroidBack(() => {
-    // Leave owns its calendar and dialog state in LeaveScreen.
-    if (current === 'leave') return false;
-    if (current === 'home') BackHandler.exitApp();
-    else router.dismissTo('/');
-    return true;
-  });
-  const tabs = [
-    { key: 'home', label: '홈', route: '/' },
-    { key: 'records', label: '기록', route: '/records' },
-    { key: 'friends', label: '친구', route: '/friends' },
-    { key: 'leave', label: '연차', route: '/leave' },
-    { key: 'profile', label: '나', route: '/profile' },
-  ] as const;
-  return <BottomTabs selected={tabs.find(tab => tab.key === current)?.label} onSelect={label => {
-    const tab = tabs.find(item => item.label === label);
-    if (tab && tab.key !== current) router.navigate(tab.route);
-  }} />;
-}
 export function Page({ children, current }: PropsWithChildren<{ current?: TabKey }>) {
   const study = useStudy();
-  return <View style={ui.outer}><View style={ui.page}><ScrollView contentContainerStyle={{ paddingBottom: 22 }} refreshControl={<RefreshControl refreshing={current === 'friends' ? study.roomLoading : study.loading} onRefresh={() => void study.refresh()} tintColor={colors.primary} />}><>{children}</></ScrollView>{current && <Nav current={current} />}</View></View>;
+  return <View style={ui.outer}><View style={ui.page}><ScrollView contentContainerStyle={{ paddingBottom: 22 }} refreshControl={<RefreshControl refreshing={current === 'friends' ? study.roomLoading : study.loading} onRefresh={() => void study.refresh()} tintColor={colors.primary} />}><>{children}</></ScrollView></View></View>;
 }
 export function Status({ showLoading = true }: { showLoading?: boolean } = {}) {
   const identity = useIdentity(); const study = useStudy();

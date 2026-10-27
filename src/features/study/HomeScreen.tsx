@@ -1,3 +1,4 @@
+import { useScreenNow } from './useScreenNow';
 import { useState } from 'react';
 import { AllowedAppsLauncher } from '../allowed-apps/AllowedAppsLauncher';
 import { characters } from '../profile/CharacterPicker';
@@ -8,7 +9,6 @@ import { useIdentity } from '../../components/IdentityProvider';
 import { AchievementBadge, Button } from '../../design/components';
 import { colors, layout, radius, typography } from '../../design/theme';
 import { useStudy } from './StudyProvider';
-import { Nav } from './StudyUI';
 import { StudyControl } from './StudyControl';
 import { displayedSeconds, goalLabel, progress, timer } from './presentation';
 
@@ -18,13 +18,14 @@ export function HomeScreen() {
   const [allowedAppsOpen, setAllowedAppsOpen] = useState(false);
   const identity = useIdentity();
   const study = useStudy();
+  const studyNow = useScreenNow();
   const frame = useMeasuredLayout('home-frame');
   const height = frame.size?.height ?? null;
   const compact = height !== null && height < 620;
   const artwork = useMeasuredLayout('home-art', String(compact));
   const scene = artwork.size;
   const data = study.today?.data;
-  const seconds = data && study.today ? displayedSeconds(data.day, data.activeSession, study.today.serverNow, study.now) : 0;
+  const seconds = data && study.today ? displayedSeconds(data.day, data.activeSession, study.today.serverNow, studyNow) : 0;
   const todayLeave = data?.day.attendance === 'leave';
   const percent = progress(seconds, data?.day.goalMinutes ?? null);
   const activeFriends = study.room?.data.filter(member => member.profile.id !== identity.profile?.id && member.activeSession) ?? [];
@@ -50,7 +51,6 @@ export function HomeScreen() {
       <View style={s.actions}><Button label="공부방 입장하기" onPress={() => router.navigate('/focus')} style={{ minHeight: 60 }} /></View>
     </View>
     <AllowedAppsLauncher visible={allowedAppsOpen} onClose={() => setAllowedAppsOpen(false)} />
-    <Nav current="home" />
   </View></View>;
 }
 

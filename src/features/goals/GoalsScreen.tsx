@@ -1,3 +1,5 @@
+import { studyRoomId } from '../../lib/room';
+import { invalidateRecordQueries } from '../../data/query-cache';
 import { useAndroidBack } from '../navigation/useAndroidBack';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
@@ -75,6 +77,7 @@ export default function GoalsScreen() {
       const fresh = await getGoalSettings();
       const goals = mergeGoalDraft(fresh.data, submitted.base, submitted.draft);
       const result = await saveGoals(goals);
+      invalidateRecordQueries(studyRoomId);
       if (!alive.current) return;
       const immediate = result.data.effectiveDate === getStudyDate(result.serverNow);
       commit({ snapshot: { serverNow: result.serverNow, data: immediate
