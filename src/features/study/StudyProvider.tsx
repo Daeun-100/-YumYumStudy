@@ -15,7 +15,7 @@ import { createServerClock } from '../../lib/clock';
 import { getStudyDate } from '../../lib/study-day';
 import { toStudyError, type RoomMember, type Snapshot, type TodayData } from '../../lib/contracts';
 
-type State = { today: Snapshot<TodayData> | null; room: Snapshot<RoomMember[]> | null; now: number; loading: boolean; busy: boolean; error: string | null; roomError: string | null; actionFailed: boolean; refresh(): Promise<void>; toggle(): Promise<boolean> };
+type State = { today: Snapshot<TodayData> | null; room: Snapshot<RoomMember[]> | null; now: number; loading: boolean; busy: boolean; error: string | null; roomError: string | null; actionFailed: boolean; startupReady: boolean; startupError: string | null; retryStartup(): Promise<void>; refresh(): Promise<void>; toggle(): Promise<boolean> };
 const Context = createContext<State | null>(null);
 export function StudyProvider({ children }: PropsWithChildren) {
   const identity = useIdentity();
@@ -27,6 +27,8 @@ export function StudyProvider({ children }: PropsWithChildren) {
   const [error, setError] = useState<string | null>(null);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [actionFailed, setActionFailed] = useState(false);
+  const [startupReady, setStartupReady] = useState(false);
+  const [startupError, setStartupError] = useState<string | null>(null);
   const latestSnapshot = useRef<State['today']>(null);
   useEffect(() => { latestSnapshot.current = today; }, [today]);
   const clock = useRef<(() => number) | null>(null);
@@ -79,16 +81,16 @@ export function StudyProvider({ children }: PropsWithChildren) {
     setLoading(false);
   }, [identity.profile, identity.loading]);
   const onResume = useRefreshOnResume(refresh, !!identity.profile && !identity.loading);
-  useEffect(() => {
+  const retryStartup = useCallback(async () => {
     if (!identity.profile || identity.loading) return;
-    let disposed = false;
-    // Recover durable requests after entry; a stale request must not lock users
-    // out of the entire app. The starter retains and coalesces its request ID.
-    void withTimeout(resumePendingStudyStart(), 20000, '이전 공부 요청 확인이 지연되고 있어요. 공부 기록을 다시 확인해 주세요.')
-      .then(() => { if (!disposed) void refresh(); })
-      .catch(failure => { if (!disposed) setError(toStudyError(failure).message); });
-    return () => { disposed = true; };
+    setStartupReady(false); setStartupError(null);
+    try {
+      await withTimeout(resumePendingStudyStart(), 20000, '이전 공부 기록을 확인하지 못했어요. 다시 시도해 주세요.');
+      await refresh();
+      if (alive.current) setStartupReady(true);
+    } catch (failure) { if (alive.current) setStartupError(toStudyError(failure).message); }
   }, [identity.profile, identity.loading, refresh]);
+  useEffect(() => { const initial = setTimeout(() => { void retryStartup(); }, 0); return () => clearTimeout(initial); }, [retryStartup]);
   useEffect(() => {
     if (!identity.profile || identity.loading) return;
     const initial = setTimeout(() => { void refresh(); }, 0);
@@ -186,6 +188,6 @@ export function StudyProvider({ children }: PropsWithChildren) {
     }
     finally { lock.current = false; if (alive.current) { setBusy(false); void refresh(); } }
   }, [today, identity.loading, identity.error, identity.profile, refresh]);
-  return <Context.Provider value={{ today, room, now, loading, busy, error, roomError, actionFailed, refresh, toggle }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ today, room, now, loading, busy, error, roomError, actionFailed, startupReady, startupError, retryStartup, refresh, toggle }}>{children}</Context.Provider>;
 }
 export function useStudy() { const state = useContext(Context); if (!state) throw new Error('StudyProvider required'); return state; }

@@ -22,7 +22,7 @@ export function HomeArtwork({ character, width, height }: { character: Character
   const top = (height - 1024 * scale) / 2;
   const placement = placements[character];
   return <>
-    <Image source={background} resizeMode="contain" style={{ position: 'absolute', left, top, width: 1536 * scale, height: 1024 * scale }} accessibilityLabel="햇살이 드는 공부방" />
-    <Image source={characters[character].image} resizeMode="contain" style={{ position: 'absolute', left: left + (800 - placement.x * placement.scale) * scale, top: top + (785 - placement.y * placement.scale) * scale - 2, width: 1536 * placement.scale * scale, height: 1024 * placement.scale * scale }} accessibilityLabel={`${characters[character].label} 홈 캐릭터`} />
+    <Image fadeDuration={0} source={background} resizeMode="contain" style={{ position: 'absolute', left, top, width: 1536 * scale, height: 1024 * scale }} accessibilityLabel="햇살이 드는 공부방" />
+    <Image fadeDuration={0} source={characters[character].image} resizeMode="contain" style={{ position: 'absolute', left: left + (800 - placement.x * placement.scale) * scale, top: top + (785 - placement.y * placement.scale) * scale - 2, width: 1536 * placement.scale * scale, height: 1024 * placement.scale * scale }} accessibilityLabel={`${characters[character].label} 홈 캐릭터`} />
   </>;
 }

@@ -44,7 +44,7 @@ export function HomeScreen() {
         {height !== null && scene && <HomeArtwork character={identity.profile?.character ?? 'bunny'} width={scene.width} height={scene.height} />}
         <View style={{ flex: 1, minHeight: 0 }} />
         <PressableCard accessibilityLabel={`${friendMessage}, 집중 화면으로 이동`} onPress={() => router.navigate('/focus')} style={s.friends}>
-          {!!activeFriends.length && <View style={s.avatars}>{activeFriends.slice(0, 3).map(member => <View key={member.profile.id} style={s.avatar}><Image source={characters[member.profile.character ?? 'bunny'].image} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${member.profile.displayName} 캐릭터`} /></View>)}</View>}
+          {!!activeFriends.length && <View style={s.avatars}>{activeFriends.slice(0, 3).map(member => <View key={member.profile.id} style={s.avatar}><Image fadeDuration={0} source={characters[member.profile.character ?? 'bunny'].image} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${member.profile.displayName} 캐릭터`} /></View>)}</View>}
           <Text style={[s.secondary, { flex: 1, color: colors.text }]}>{friendMessage}</Text><ChevronRight size={20} color={colors.secondary} style={{ flexShrink: 0 }} />
         </PressableCard>
       </View>

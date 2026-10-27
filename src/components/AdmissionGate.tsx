@@ -33,8 +33,8 @@ export function AdmissionGate({ children }: PropsWithChildren) {
     } catch (failure) { setError(toStudyError(failure).message); }
     finally { lock.current = false; setBusy(false); }
   }
-  // Render the app shell immediately. Only a confirmed invitation/name step
-  // needs a gate; login and network failures belong in the screen's status UI.
+  // Mount navigation immediately behind StartupBoundary so layout and images
+  // can prepare. Confirmed invitation/name steps use their own entry form.
   if (identity.loading || identity.error || (identity.profile && identity.step === 'ready')) return <View style={{ flex: 1 }}>{children}</View>;
   return <View style={styles.background}>
     <Text style={styles.brand}>YUMYUM STUDY</Text>

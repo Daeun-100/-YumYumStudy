@@ -32,6 +32,7 @@ class StudyGuardModule : Module() {
         else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}"))
       requireNotNull(appContext.currentActivity).startActivity(intent)
     }.runOnQueue(Queues.MAIN)
+    // Keep package queries and label loading off the UI thread so the launcher can appear immediately.
     AsyncFunction("apps") {
       val ctx = context(); val pm = ctx.packageManager
       val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
@@ -39,7 +40,7 @@ class StudyGuardModule : Module() {
         .distinctBy { it.activityInfo.packageName }.map {
           mapOf("packageName" to it.activityInfo.packageName, "label" to it.loadLabel(pm).toString())
         }.sortedBy { it["label"] }
-    }.runOnQueue(Queues.MAIN)
+    }.runOnQueue(Queues.DEFAULT)
     AsyncFunction("select") { packages: List<String> ->
       check(!GuardStore.state(context()).running) { "일시정지 후 허용앱을 변경해 주세요" }
       GuardStore.prefs(context()).edit().putStringSet("allowed", packages.toSet()).apply()
