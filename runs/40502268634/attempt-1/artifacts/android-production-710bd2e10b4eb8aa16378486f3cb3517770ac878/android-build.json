@@ -1,0 +1,58 @@
+[
+  {
+    "id": "d51d8be5-d5a1-4f8e-897e-71fd22381369",
+    "status": "FINISHED",
+    "platform": "ANDROID",
+    "artifacts": {
+      "buildUrl": "https://expo.dev/artifacts/eas/QKK3-dD3lIea6ost21V-E6J7USkk95d_EQXr5rweqXM.apk",
+      "applicationArchiveUrl": "https://expo.dev/artifacts/eas/QKK3-dD3lIea6ost21V-E6J7USkk95d_EQXr5rweqXM.apk"
+    },
+    "fingerprint": {
+      "id": "01a17d4b-378e-70e4-99a5-c5ce8c763aed",
+      "hash": "4a7adc844a392bfaead47665719d0291b9f3da58"
+    },
+    "initiatingActor": {
+      "id": "54fd26be-270a-465c-af0a-976151244801",
+      "displayName": "daeun-100"
+    },
+    "logFiles": [
+      "https://storage.googleapis.com/eas-workflows-production/logs/973ad697-739b-49cc-bd6f-fbef67a1059e/d51d8be5-d5a1-4f8e-897e-71fd22381369/2026-10-27T12%3A17%3A30Z-3d1fd10b-5f09-4d9c-9d7c-4103eb45c4b4.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20261027%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20261027T123157Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=208ce32d34a24c539d9732bbf2ffd9a6c56e4812bd239fd106c013ab6049af2d339bf742992ab44b137287b09e64ec8237a04591bace429a795d3f25e159d54d88e3780145f2a12840a76875c7f8130f81914b6bc429f2521196dfac0389a1c1a134c0858a5cd6725fe405d2fe806cf4ca00e60e4367ffe4f0b2983a9ecc995aab27a44b6a3795dec822d65c00bb7001a4d610f578de05e4739c3975fd85e2bb9b9afe27f3641f2772584cee66d0880d97fc1dd5c360c18fed6d06ce2627b2d82f5f11ab02075bef9b7eb1930d8025e0abe42db092c5c8b0984dd70b00da6df5ba73444ccda6a1763bc6531a4d7a7fc2793c6a2f86acad1f88c618aa41ce0876"
+    ],
+    "app": {
+      "id": "973ad697-739b-49cc-bd6f-fbef67a1059e",
+      "name": "YumYumStudy",
+      "slug": "yumyumstudy",
+      "ownerAccount": {
+        "id": "40c9b677-8c27-4a9f-904c-4524588c1797",
+        "name": "daeun-100s-team"
+      }
+    },
+    "updateChannel": {
+      "id": "01a17c41-c6e6-7327-9966-c30b0a7aa889",
+      "name": "production"
+    },
+    "distribution": "INTERNAL",
+    "buildProfile": "production",
+    "appIdentifier": "com.yumyumstudy.app",
+    "sdkVersion": "58.0.0",
+    "appVersion": "1.0.2",
+    "appBuildVersion": "3",
+    "runtime": {
+      "id": "01a17d4b-3780-7475-8391-644353864dd9",
+      "version": "4a7adc844a392bfaead47665719d0291b9f3da58"
+    },
+    "gitCommitHash": "710bd2e10b4eb8aa16378486f3cb3517770ac878",
+    "gitCommitMessage": "Merge pull request #14 from Daeun-100/develop\n\n배포 1.0.2: 허용 앱 개선·목표 달성 효과·iPhone 입력창 수정",
+    "priority": "NORMAL",
+    "createdAt": "2026-10-27T12:17:23.760Z",
+    "updatedAt": "2026-10-27T12:34:31.853Z",
+    "completedAt": "2026-10-27T12:34:31.581Z",
+    "expirationDate": "2026-11-10T12:17:23.837Z",
+    "isForIosSimulator": false,
+    "metrics": {
+      "buildWaitTime": 4412,
+      "buildQueueTime": 7267,
+      "buildDuration": 1016142
+    }
+  }
+]

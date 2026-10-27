@@ -1,0 +1,16 @@
+{
+  "compatible": false,
+  "exemptions": [
+    "ignore-additions:.easignore",
+    "ignore-additions:.gitignore",
+    "package-script:update:production"
+  ],
+  "reasons": [
+    "Package metadata, dependencies, or non-deployment scripts changed",
+    "Native/build input changed: modules/study-guard/android/src/main/java/expo/modules/studyguard/StudyAppIcons.kt",
+    "Native/build input changed: modules/study-guard/android/src/main/java/expo/modules/studyguard/StudyGuardModule.kt",
+    "Native/build input changed: package-lock.json",
+    "Native/build input changed: scripts/iphone-web.mjs"
+  ],
+  "normalizedRuntime": null
+}
