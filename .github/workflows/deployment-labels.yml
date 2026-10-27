@@ -1,0 +1,60 @@
+name: Deployment PR labels
+on:
+  pull_request_target:
+    branches: [master]
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      # Do not checkout or execute PR code in a pull_request_target job.
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { createHash } = require('node:crypto');
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const routes = {
+              update: ['deploy:eas-update', '2da44e', 'Reviewed EAS Update candidate; compatibility checks must pass'],
+              apk: ['deploy:apk', '0969da', 'Reviewed new APK candidate; version checks must pass'],
+              skip: ['deploy:skip', '6e7781', 'Review recommends no mobile deployment'],
+              'needs-review': ['deploy:needs-review', 'd73a4a', 'Deployment review is missing, stale, blocked or invalid'],
+            };
+            let route = 'needs-review';
+            try {
+              const response = await github.rest.repos.getContent({ owner, repo, path: '.github/deployment-review.json', ref: pr.head.sha });
+              if (Array.isArray(response.data) || response.data.size > 128 * 1024) throw Error('Invalid review file');
+              const review = JSON.parse(Buffer.from(response.data.content, 'base64').toString('utf8'));
+              const commit = await github.rest.git.getCommit({ owner, repo, commit_sha: pr.head.sha });
+              const tree = await github.rest.git.getTree({ owner, repo, tree_sha: commit.data.tree.sha, recursive: '1' });
+              if (tree.data.truncated) throw Error('Cannot verify truncated source tree');
+              const entries = tree.data.tree.filter(e => e.type !== 'tree' && e.path !== '.github/deployment-review.json')
+                .map(e => ({ path: e.path, mode: e.mode, type: e.type, object: e.sha }))
+                .sort((a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
+              const digest = createHash('sha256').update(JSON.stringify(entries)).digest('hex');
+              if (review.schema === 1 && review.reviewer?.kind === 'interactive-codex' && review.sourceTreeDigest === digest
+                && Array.isArray(review.blockers) && review.blockers.length === 0
+                && Array.isArray(review.evidence) && review.evidence.length > 0
+                && typeof review.rationale === 'string' && review.rationale.trim()
+                && Object.hasOwn(routes, review.recommendation)) route = review.recommendation;
+            } catch (error) {
+              core.info(`Deployment label requires review: ${error.message}`);
+            }
+            const [name, color, description] = routes[route];
+            try { await github.rest.issues.getLabel({ owner, repo, name }); }
+            catch (error) {
+              if (error.status !== 404) throw error;
+              try { await github.rest.issues.createLabel({ owner, repo, name, color, description }); }
+              catch (createError) { if (createError.status !== 422) throw createError; }
+            }
+            const current = await github.paginate(github.rest.issues.listLabelsOnIssue, { owner, repo, issue_number: pr.number });
+            const managed = Object.values(routes).map(value => value[0]);
+            for (const label of current) {
+              if (managed.includes(label.name) && label.name !== name) await github.rest.issues.removeLabel({ owner, repo, issue_number: pr.number, name: label.name });
+            }
+            await github.rest.issues.addLabels({ owner, repo, issue_number: pr.number, labels: [name] });
+            await core.summary.addHeading('Deployment review label').addRaw(`${name}: informational; Check and production validation remain authoritative.`).write();

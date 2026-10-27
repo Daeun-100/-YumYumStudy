@@ -2,19 +2,19 @@ name: Cloud Build
 on:
   push:
     branches: [master]
-    paths: [app.json, package.json]
   workflow_dispatch:
     inputs:
       target:
-        description: 'test: develop / production: master (candidate only)'
+        description: 'test: develop APK / production: master auto APK or OTA'
         required: true
         default: test
         type: choice
         options: [test, production]
 permissions:
   contents: read
+  actions: read
 concurrency:
-  group: cloud-build-${{ github.event_name == 'push' && 'production' || inputs.target }}
+  group: deploy-${{ github.event_name == 'push' && 'production' || inputs.target }}
   cancel-in-progress: false
 jobs:
   prepare:
@@ -22,6 +22,7 @@ jobs:
     outputs:
       variant: ${{ steps.input.outputs.variant }}
       sha: ${{ steps.input.outputs.sha }}
+      mode: ${{ steps.plan.outputs.mode || 'apk' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,9 +44,39 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - if: steps.input.outputs.variant == 'production'
+      - name: Choose production deployment from the published APK runtime
+        if: steps.input.outputs.variant == 'production'
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          APP_VARIANT: production
+          EXPO_PUBLIC_APP_VARIANT: production
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          EXPO_NO_DOTENV: '1'
+        run: npx --yes eas-cli@25.3.0 env:exec production 'node scripts/deployment.mjs plan' --non-interactive
+      - if: steps.plan.outputs.mode == 'apk'
         run: node scripts/check-release.mjs
+      - name: Save production deployment plan
+        if: always() && steps.input.outputs.variant == 'production'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-plan-${{ github.sha }}
+          path: |
+            deployment-plan.json
+            deployment-review.json
+            deployment-review-validation.json
+            native-compatibility.json
+          retention-days: 90
+          if-no-files-found: ignore
+      - name: Summarize production plan
+        if: always() && steps.input.outputs.variant == 'production'
+        env:
+          DEPLOY_JOB_STATUS: ${{ job.status }}
+        run: node scripts/deployment.mjs summary
   android:
+    if: needs.prepare.outputs.mode == 'apk'
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -73,10 +104,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-${{ needs.prepare.outputs.variant }}-${{ needs.prepare.outputs.sha }}
+          retention-days: 90
           path: |
             android-build.json
             build-record.json
   web:
+    if: needs.prepare.outputs.mode == 'apk'
     needs: prepare
     runs-on: ubuntu-latest
     env:
@@ -107,13 +140,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: web-${{ needs.prepare.outputs.variant }}-${{ needs.prepare.outputs.sha }}
+          retention-days: 90
           path: |
             web-deployment.json
             build-record.json
             dist/
   record:
     needs: [prepare, android, web]
-    if: needs.prepare.outputs.variant == 'production'
+    if: needs.prepare.outputs.variant == 'production' && needs.prepare.outputs.mode == 'apk'
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -147,3 +181,89 @@ jobs:
           tar -czf build-results.tgz results
           APK=$(node -p "require('./candidate.json').apkName")
           gh release upload "$TAG" release.json candidate.json "$APK" build-results.tgz --clobber
+
+      - name: Save APK candidate metadata for deployment history
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-metadata-${{ github.sha }}
+          retention-days: 90
+          if-no-files-found: ignore
+          path: |
+            candidate.json
+            release.json
+
+  update:
+    needs: prepare
+    if: needs.prepare.outputs.mode == 'update'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      APP_VARIANT: production
+      EXPO_PUBLIC_APP_VARIANT: production
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      EXPO_NO_DOTENV: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: deployment-plan-${{ github.sha }}
+      - name: Publish checked master code to the production channel
+        run: npx --yes eas-cli@25.3.0 env:exec production 'node scripts/deployment.mjs publish' --non-interactive
+      - name: Record update result
+        if: always()
+        env:
+          DEPLOY_JOB_STATUS: ${{ job.status }}
+        run: node scripts/deployment.mjs summary
+      - name: Retain deployment and EAS response
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-update-${{ github.sha }}-${{ github.run_attempt }}
+          retention-days: 90
+          path: |
+            deployment-plan.json
+            eas-update.json
+            update-record.json
+            deployment-review.json
+            deployment-review-validation.json
+            native-compatibility.json
+
+  history:
+    needs: [prepare, android, web, record, update]
+    if: always() && github.ref == 'refs/heads/master' && (github.event_name == 'push' || inputs.target == 'production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        id: history-checkout
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Gather this run's deployment JSON (including failed routes)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*${{ github.sha }}*'
+          path: history-input
+      - name: Append immutable JSON records to deployment-history
+        if: always() && steps.history-checkout.outcome == 'success'
+        env:
+          DEPLOYMENT_JOB_RESULTS: ${{ toJSON(needs) }}
+        run: node scripts/deployment-history.mjs

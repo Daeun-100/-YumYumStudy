@@ -64,3 +64,15 @@ build-results.tgz
 
 # Never include Firebase server credentials in source or APK uploads.
 *firebase-adminsdk*.json
+
+# Deployment records (CI artifacts, not app source)
+deployment-plan.json
+eas-update.json
+update-record.json
+candidate.json
+publication/
+results/
+history-input/
+deployment-review.json
+deployment-review-validation.json
+native-compatibility.json

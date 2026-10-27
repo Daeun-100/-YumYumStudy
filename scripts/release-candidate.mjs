@@ -6,6 +6,10 @@ import { pathToFileURL } from 'node:url';
 
 export function validateCandidate(candidate, app, tag, repository) {
   assert.equal(candidate.schema, 1);
+  if (candidate.runtimeVersion !== undefined) {
+    assert.match(candidate.runtimeVersion, /^[a-f0-9]{40,64}$/i);
+    assert.match(candidate.buildId, /^[a-f0-9-]{36}$/i);
+  }
   assert.match(candidate.sha, /^[a-f0-9]{40}$/);
   assert.equal(candidate.version, app.version);
   assert.equal(candidate.revision, app.android.versionCode);
@@ -40,9 +44,13 @@ export function candidateFromBuilds({ android, web, records, app, sha, repositor
   assert.equal(build.gitCommitHash, sha);
   assert.equal(build.appVersion, app.version);
   assert.equal(String(build.appBuildVersion), String(app.android.versionCode));
+  assert.equal(build.updateChannel?.name, 'production', 'APK must receive production updates');
+  assert.match(build.runtime?.version, /^[a-f0-9]{40,64}$/i, 'APK must have a fingerprint runtime');
+  assert.match(build.id, /^[a-f0-9-]{36}$/i);
   const tag = `v${app.version}`;
   return validateCandidate({ schema: 1, repository, runId: Number(runId), sha,
     version: app.version, revision: app.android.versionCode,
+    runtimeVersion: build.runtime.version, buildId: build.id,
     deploymentId: web.identifier, apkName: `yumyumstudy-${tag}.apk`,
     apkSha256: createHash('sha256').update(apk).digest('hex'),
   }, app, tag, repository);

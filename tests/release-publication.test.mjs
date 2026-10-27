@@ -6,7 +6,7 @@ const sha = 'a'.repeat(40);
 const app = { version: '1.0.1', android: { versionCode: 2, package: 'com.yumyumstudy.app' } };
 function fixture() {
   return { app, sha, repository: 'owner/repo', runId: '12', apk: Buffer.from('apk'),
-    android: [{ status: 'FINISHED', platform: 'ANDROID', buildProfile: 'production', appIdentifier: app.android.package,
+    android: [{ id: '11111111-1111-4111-8111-111111111111', updateChannel: { name: 'production' }, runtime: { version: 'c'.repeat(40) }, status: 'FINISHED', platform: 'ANDROID', buildProfile: 'production', appIdentifier: app.android.package,
       gitCommitHash: sha, appVersion: app.version, appBuildVersion: '2' }],
     web: { identifier: `production-${sha.slice(0, 12)}-8-1` },
     records: Array.from({ length: 2 }, () => ({ variant: 'production', commit: sha, version: app.version,
@@ -21,7 +21,7 @@ test('completed matching builds produce a candidate bound to tag, SHA and APK di
 });
 test('reject test, failed, mismatched-code and mismatched-version APKs', () => {
   for (const patch of [{ buildProfile: 'test' }, { status: 'ERRORED' }, { gitCommitHash: 'b'.repeat(40) },
-    { appBuildVersion: '1' }, { appIdentifier: 'com.yumyumstudy.app.test' }]) {
+    { appBuildVersion: '1' }, { updateChannel: { name: 'test' } }, { runtime: null }, { appIdentifier: 'com.yumyumstudy.app.test' }]) {
     const input = fixture(); Object.assign(input.android[0], patch);
     assert.throws(() => candidateFromBuilds(input));
   }

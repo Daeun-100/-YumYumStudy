@@ -4,9 +4,18 @@ module.exports = () => {
   if (!['test', 'production'].includes(variant)) throw new Error('Unknown APP_VARIANT');
   if (process.env.EXPO_PUBLIC_APP_VARIANT && process.env.EXPO_PUBLIC_APP_VARIANT !== variant) throw new Error('App variant mismatch');
   const test = variant === 'test';
+  // Set only by the verified OTA publisher; native builds keep fingerprint policy.
+  const otaRuntime = process.env.YUMYUM_OTA_RUNTIME;
+  if (otaRuntime && (test || process.env.GITHUB_ACTIONS !== 'true'
+    || process.env.GITHUB_REF !== 'refs/heads/master' || process.env.EAS_BUILD === 'true'
+    || !/^[a-f0-9]{40,64}$/i.test(otaRuntime)
+    || process.env.YUMYUM_OTA_SOURCE !== process.env.GITHUB_SHA
+    || !/^[a-f0-9]{40}$/.test(process.env.YUMYUM_OTA_SOURCE ?? ''))) {
+    throw new Error('OTA runtime override requires a verified production master publish');
+  }
   return {
     ...base,
-    runtimeVersion: { policy: 'fingerprint' },
+    runtimeVersion: otaRuntime || { policy: 'fingerprint' },
     updates: {
       url: `https://u.expo.dev/${base.extra.eas.projectId}`,
       requestHeaders: { 'expo-channel-name': variant },
