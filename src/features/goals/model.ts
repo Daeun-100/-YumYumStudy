@@ -9,7 +9,7 @@ export function goalText(value: number | null): string {
 export function parseGoal(hours: string, minutes: string): number {
   if (!/^\d{1,2}$/.test(hours) || !/^\d{1,2}$/.test(minutes)) throw new StudyError('VALIDATION', '시간과 분을 숫자로 입력해 주세요.');
   const h = Number(hours), m = Number(minutes);
-  if (m > 59 || h * 60 + m > 1440 || h * 60 + m === 0) throw new StudyError('VALIDATION', '1분부터 24시간까지 설정할 수 있어요. 휴무는 쉬는 날을 선택해 주세요.');
+  if (m > 59 || h * 60 + m > 1440 || h * 60 + m === 0) throw new StudyError('VALIDATION', '1분부터 24시간까지 설정할 수 있어요.');
   return h * 60 + m;
 }
 export function changeWeekday(settings: GoalSettings, index: number, minutes: number | null): GoalWeek {
