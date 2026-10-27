@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import type { StorybookConfig } from '@storybook/react-native-web-vite';
 
 const config: StorybookConfig = {
-  stories: [...['Overview', 'Foundations', 'Button', 'Card', 'PressableCard', 'SegmentedControl', 'AchievementBadge', 'BottomTabs', 'ProfileComponents', 'LeaveComponents', 'RecordComponents', 'AllowedApps', 'FocusGoal', 'WakeAlarm', 'RefreshPreview'].map(name => `../stories/${name}.stories.tsx`), '../stories/assets/*.stories.tsx', '../stories/screens/HomeEntry.stories.tsx', '../stories/screens/SharedPostits.stories.tsx', '../stories/screens/LeaveLayout.stories.tsx', '../stories/screens/LeaveStatusPreview.stories.tsx'],
+  stories: [...['Overview', 'Foundations', 'Button', 'Card', 'PressableCard', 'SegmentedControl', 'AchievementBadge', 'BottomTabs', 'ProfileComponents', 'LeaveComponents', 'RecordComponents', 'AllowedApps', 'AllowedAppsProposal', 'FocusGoal', 'WakeAlarm', 'RefreshPreview'].map(name => `../stories/${name}.stories.tsx`), '../stories/assets/*.stories.tsx', '../stories/screens/HomeEntry.stories.tsx', '../stories/screens/SharedPostits.stories.tsx', '../stories/screens/LeaveLayout.stories.tsx', '../stories/screens/LeaveStatusPreview.stories.tsx'],
   addons: ['@storybook/addon-docs'],
   framework: '@storybook/react-native-web-vite',
   core: { disableTelemetry: true },

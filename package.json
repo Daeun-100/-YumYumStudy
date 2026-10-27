@@ -1,6 +1,6 @@
 {
   "name": "yumyumstudy",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "index.ts",
   "dependencies": {
     "@expo/metro-runtime": "~58.0.15",
@@ -44,6 +44,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "web:iphone": "node scripts/iphone-web.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",

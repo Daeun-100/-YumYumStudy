@@ -13,6 +13,7 @@
 - Node.js 22 LTS, npm 사용 (`.nvmrc` 참고)
 - `npm ci` — 잠금 파일 기준 설치
 - `npm run web` — 웹 개발 서버
+- `npm run web:iphone` — 웹 서버와 iPhone 시뮬레이터 Safari를 한 번에 실행 (Xcode·iOS 런타임 설치 후)
 - `npm run android` — Android 개발 실행 (에뮬레이터 또는 연결된 기기 필요)
 - `npm run typecheck` — TypeScript 검사
 - `npm run lint` — Expo ESLint 검사
@@ -47,6 +48,7 @@ iPhone에는 HTTPS 웹 주소를 전달한다. 홈 화면 추가용 manifest·�
 - [결정이 필요한 항목](docs/DECISIONS.md)
 - [여러 Codex 세션용 실행 문서](docs/execution/README.md)
 - [버전 및 업데이트 운영](docs/RELEASES.md)
+- [Xcode로 iPhone 웹앱 테스트하기](docs/IPHONE-WEB-TESTING.md)
 
 ## 공식 참고
 

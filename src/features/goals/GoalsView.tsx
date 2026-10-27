@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Modal, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, SegmentedControl } from '../../design/components';
 import { colors, layout, spacing, typography } from '../../design/theme';
@@ -20,7 +20,6 @@ export function GoalsView({ isFirstSetup = false, goals, saved, current, loading
   const [preview, setPreview] = useState(initialPreview);
   const [day, setDay] = useState<number | undefined>(initialDay);
   const initialValue = initialDay === undefined ? 120 : goals?.[initialDay];
-  const [mode, setMode] = useState<'time' | 'rest'>(initialValue === 0 ? 'rest' : 'time');
   const [time, setTime] = useState(initialValue || 120);
   const [fieldError, setFieldError] = useState('');
   const dirty = !!goals && !!saved && !sameGoals(goals, saved);
@@ -28,14 +27,13 @@ export function GoalsView({ isFirstSetup = false, goals, saved, current, loading
   function edit(index: number) {
     if (!goals || saving) return;
     const value = goals[index];
-    setMode(value === 0 ? 'rest' : 'time');
     setTime(value || 120); setFieldError(''); setDay(index);
   }
   function confirm() {
     if (!goals || day === undefined) return;
-    if (mode === 'time' && (time <= 0 || time > 1440 || !Number.isInteger(time))) { setFieldError('시간을 선택하거나 쉬는 날로 설정해 주세요.'); return; }
+    if (time <= 0 || time > 1440 || !Number.isInteger(time)) { setFieldError('1분부터 24시간까지 설정할 수 있어요.'); return; }
     const next = [...goals] as GoalWeek;
-    next[day] = mode === 'rest' ? 0 : time;
+    next[day] = time;
     onChange(next); setDay(undefined);
   }
   return <View style={{ flex: 1 }}>
@@ -45,13 +43,13 @@ export function GoalsView({ isFirstSetup = false, goals, saved, current, loading
       {!!error && <View style={{ gap: spacing.sm }}><Text accessibilityRole="alert" style={s.error}>{error}</Text><Button label="다시 불러오기" variant="secondary" disabled={saving || loading} onPress={onRetry} /></View>}
       {goals && <>
         <SegmentedControl accessibilityLabel="목표 설정 보기" value={preview ? 'preview' : 'days'} onChange={value => setPreview(value === 'preview')} options={[{ value: 'days', label: '요일별 설정' }, { value: 'preview', label: '미리보기' }]} />
-        <Text style={s.caption}>{preview ? '일주일의 공부와 휴식, 균형을 살펴보세요.' : '요일별로 공부와 휴식의 리듬을 정해보세요.'}</Text>
+        <Text style={s.caption}>{preview ? '일주일의 공부 목표를 살펴보세요.' : '요일별로 공부 목표 시간을 정해보세요.'}</Text>
         {preview ? <View style={s.openSection}>
           <Text style={s.label}>일주일 목표</Text><Text style={s.metric}>{total ? goalText(total) : goals.every(value => value === 0) ? '이번 주는 쉬어가요' : '목표 미설정'}</Text>
           <Text style={s.caption}>공부 {goals.filter(value => value !== null && value > 0).length}일 · 휴무 {goals.filter(value => value === 0).length}일</Text>
           {weekdays.map((label, index) => <View key={label} style={s.chartRow}><Text style={s.caption}>{label.slice(0, 1)}</Text><View style={s.track}><View style={{ height: '100%', width: `${(goals[index] ?? 0) / Math.max(...goals.map(value => value ?? 0), 60) * 100}%`, backgroundColor: colors.study, borderRadius: 8 }} /></View><Text style={[s.caption, { width: 80, textAlign: 'right' }]}>{goalText(goals[index])}</Text></View>)}
         </View> : <View style={{ gap: spacing.sm }}>{weekdays.map((label, index) => <SettingsRow key={label} label={label} value={goalText(goals[index])} description={goals[index] !== saved?.[index] ? '저장 전 · 아래 저장하기를 눌러주세요' : current && current[index] !== goals[index] && effectiveDate ? `${effectiveDate} 오전 6시 적용 예정` : undefined} selected={goals[index] !== saved?.[index]} onPress={() => edit(index)} />)}</View>}
-        <InfoNotice title="변경한 목표는 언제 적용되나요?">{isFirstSetup ? '처음 저장하는 목표는 오늘부터 바로 적용돼요. 오늘 이미 공부한 시간도 포함돼요. 이후 변경은 다음 공부 날짜 오전 6시부터 적용돼요.' : '변경한 목표는 다음 공부 날짜 오전 6시부터 적용돼요. 오늘의 목표와 과거 기록은 그대로 유지돼요. 쉬는 날은 연차 획득 일수에 포함되지 않아요.'}</InfoNotice>
+        <InfoNotice title="변경한 목표는 언제 적용되나요?">{isFirstSetup ? '처음 저장하는 목표는 오늘부터 바로 적용돼요. 오늘 이미 공부한 시간도 포함돼요. 이후 변경은 다음 공부 날짜 오전 6시부터 적용돼요.' : '변경한 목표는 다음 공부 날짜 오전 6시부터 적용돼요. 오늘의 목표와 과거 기록은 그대로 유지돼요. 기존에 설정한 쉬는 날은 연차 획득 일수에 포함되지 않아요.'}</InfoNotice>
         {!!effectiveDate && <Text style={s.caption}>예약한 목표는 {effectiveDate} 오전 6시부터 적용돼요.</Text>}
       </>}
     </ScrollView>
@@ -60,9 +58,8 @@ export function GoalsView({ isFirstSetup = false, goals, saved, current, loading
       <View style={s.overlay}><SafeAreaView edges={['bottom']} style={s.sheet}>
         <View style={s.sheetHeader}><Text accessibilityRole="header" style={[s.title, { flex: 1 }]}>{day === undefined ? '' : weekdays[day]} 목표 시간</Text><Button label="×" accessibilityLabel="목표 시간 설정 닫기" size="icon" variant="raised" onPress={() => setDay(undefined)} /></View>
         <ScrollView contentContainerStyle={{ gap: spacing.xl }} keyboardShouldPersistTaps="handled">
-          {mode === 'time' && <TimeWheelPicker value={time} onChange={value => { setTime(value); setFieldError(''); }} />}
-          <View style={s.restRow}><Text style={s.body}>쉬는 날로 설정</Text><Switch accessibilityLabel="쉬는 날로 설정" value={mode === 'rest'} onValueChange={value => { setMode(value ? 'rest' : 'time'); setFieldError(''); }} trackColor={{ false: colors.track, true: colors.primary }} /></View>
-          <Text style={s.caption}>{mode === 'rest' ? '목표 달성과 연차 획득 일수에서 제외돼요.' : '위아래로 스크롤해서 시간을 선택해요.'}</Text>
+          <TimeWheelPicker value={time} onChange={value => { setTime(value); setFieldError(''); }} />
+          <Text style={s.caption}>위아래로 스크롤해서 시간을 선택해요.</Text>
           {!!fieldError && <Text accessibilityRole="alert" style={s.error}>{fieldError}</Text>}<Button label="확인" onPress={confirm} />
         </ScrollView>
       </SafeAreaView></View>
@@ -90,6 +87,6 @@ const s = StyleSheet.create({
   footer: { padding: spacing.xl, gap: spacing.sm, backgroundColor: colors.background },
   overlay: { flex: 1, backgroundColor: colors.canvas, justifyContent: 'flex-end', alignItems: 'center' },
   sheet: { width: '100%', maxWidth: layout.maxWidth, maxHeight: '90%', backgroundColor: colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: spacing.xxl, gap: spacing.xl },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, restRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.lg },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   error: { ...typography.secondary, color: colors.error },
 });
