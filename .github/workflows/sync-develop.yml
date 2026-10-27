@@ -1,0 +1,40 @@
+name: Sync master to develop
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-master-to-develop
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Merge master into develop
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin master develop
+          git merge --ff-only origin/develop
+          if ! git merge --no-edit origin/master; then
+            git merge --abort || true
+            echo '::error::master could not be merged into develop. Resolve the conflict manually.'
+            exit 1
+          fi
+          # Never force-push: concurrent develop changes and branch protection stay intact.
+          git push origin HEAD:refs/heads/develop
+          echo '### master → develop synchronized' >> "$GITHUB_STEP_SUMMARY"
