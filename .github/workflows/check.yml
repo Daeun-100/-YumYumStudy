@@ -30,10 +30,10 @@ jobs:
       - name: Check production version
         if: github.event_name == 'pull_request' && github.base_ref == 'master'
         run: |
-          # Workflow-only repairs reuse the already verified release artifacts.
+          # Workflow and standalone download-site changes do not change the app release.
           # Any application or other source change still requires version validation.
-          if git diff --quiet origin/master...HEAD -- . ':!.github/workflows'; then
-            echo 'Workflow-only change; existing application version is unchanged.'
+          if git diff --quiet origin/master...HEAD -- . ':!.github/workflows' ':!download-site'; then
+            echo 'Only workflow/download-site changes; application version is unchanged.'
           else
             node scripts/check-release.mjs
           fi
