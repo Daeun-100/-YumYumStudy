@@ -72,6 +72,6 @@ candidate.json
 publication/
 results/
 history-input/
-deployment-review.json
+/deployment-review.json
 deployment-review-validation.json
 native-compatibility.json

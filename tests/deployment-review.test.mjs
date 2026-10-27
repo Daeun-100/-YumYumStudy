@@ -69,3 +69,14 @@ test('report-only commit preserves reviewed digest; a later source edit invalida
     assert.notEqual(sourceSnapshot(directory).sourceTreeDigest, first.sourceTreeDigest);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+
+test('the committed review is not hidden by generated-record ignore patterns', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const result = spawnSync('git', ['check-ignore', '--no-index', '.github/deployment-review.json'], {
+    cwd: new URL('..', import.meta.url), encoding: 'utf8',
+  });
+  assert.equal(result.status, 1, 'The release review must be trackable without git add --force');
+  assert.equal(safeIgnoreAdditions('node_modules/\n', 'node_modules/\n/deployment-review.json\n'), true);
+  assert.equal(safeIgnoreAdditions('node_modules/\n', 'node_modules/\n/plugins/\n'), false);
+});

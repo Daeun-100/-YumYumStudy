@@ -77,7 +77,7 @@ export function safeIgnoreAdditions(before, after) {
   let index = 0;
   for (const rule of next) {
     if (rule === old[index]) { index++; continue; }
-    if (!temporaryPaths.has(rule)) return false;
+    if (!temporaryPaths.has(rule.replace(/^\//, ''))) return false;
   }
   return index === old.length;
 }
