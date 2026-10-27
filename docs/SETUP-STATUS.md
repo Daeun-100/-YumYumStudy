@@ -50,3 +50,40 @@
 ## 연차 지급·만료 기반 — 2026-10-26
 
 200을 원격 적용했다. 주당 6일 목표 달성(진행 중 포함)·1개 지급·획득 주 시작+21일 만료, UID/주 중복 방지, 본인 지급 내역·잔액 RPC를 구현했다. 조회 때 기록하지만 실제 달성 시각을 보존한다. 실제 SQL 경계·RLS 검증과 자동 테스트 29개·타입 검사·린트 통과. 사용·취소·차감·출석 대체·UI는 미구현이며 execution/reports/leave-foundation.md에 범위를 기록했다.
+
+## 연차 4상태·예약/취소 — 2026-10-26
+
+210을 SQL Editor로 원격 적용했다(CLI 이력 미등록, 재실행 금지). 상태/잔액/예약/취소 및 실제 DB 롤백 테스트 완료. 자동 테스트 34개·타입 검사·린트 통과. 사용일 기준은 한국시간 06:00, 미래 날짜 및 만료 전만 예약 가능하다. 사용자 요청에 따라 연차 UI는 보류한다. 상세 검증과 제한은 execution/reports/leave-states.md에 기록했다.
+
+연차 동시성 추가 검증: 두 독립 DB 연결에서 예약 트랜잭션 유지 중 같은 계정의 예약·취소·조회가 프로필 잠금에 대기함을 확인했다. 잠금 해제 후 재조회 성공, 두 트랜잭션 모두 롤백. 재현 SQL은 supabase/tests/leave_concurrency_holder.sql 및 leave_concurrency_contender.sql이다.
+
+## 연차 출석·지급 제외·하루 1개 — 2026-10-26
+
+220을 원격 SQL Editor로 적용했다(CLI 이력 미등록). 연차일 attendance=leave, 연차일은 주 6일 지급 계산에서 제외, 사용자당 날짜별 1개 제한을 구현했다. 실제 공부 시간은 보존한다. DB 경계·중복·취소 후 재예약 롤백 테스트 및 자동 테스트 36개·타입 검사·린트 통과. 연차 UI는 보류한다.
+
+## 연차 갱신·요청 보호·자동 선택 — 2026-10-26
+
+230 원격 적용 완료(CLI 이력 미등록). LeaveProvider의 시작/복귀/목표·날짜·연차 경계 갱신, 요청 ID·예약 버전 및 기기 저장을 통한 재전송 보호, 만료 임박 자동 선택 구현. 실제 DB 롤백 테스트와 자동 테스트 42개·타입 검사·린트·웹 export 통과. 연차 화면은 보류.
+
+
+## DB 적용 이력 정리·복구·목표 화면 — 2026-10-26
+
+- 이전 항목의 “CLI 이력 미등록” 상태를 해소했다. 운영 프로젝트 hxwwhgxxvyzqqnxlgqde에서 함수 20개 본문(공백/주석 정규화), 테이블 8개 컬럼/RLS/권한, 제약·인덱스·정책·Realtime publication을 저장소와 대조했다.
+- supabase_migrations.schema_migrations에 010/100/110/111/200/210/220/230과 파일 이름을 등록했다. 앱 테이블과 업무 함수는 재실행하지 않았다. 등록 결과 8행을 확인했다. 실행 SQL: supabase/maintenance/reconcile-history-20261026.sql. 이미 적용된 운영 정리용이며 새 DB 마이그레이션 목록에 넣지 않는다.
+- statements는 NULL이며 원본 SQL은 저장소의 supabase/migrations가 기준이다. 향후 CLI를 연결한 뒤 migration list와 db push --dry-run으로 미적용 목록을 먼저 확인한다. 기존 파일을 다시 실행하거나 등록된 파일을 수정하지 않는다. 이번 검증은 SQL Editor로 수행했으며 CLI 실행 자체는 검증하지 않았다.
+- StudyProvider는 Realtime 준비 완료/재연결 및 웹 online 시 즉시 재조회한다. 중지 실패 시 서버 승인까지 시간이 포함됨을 안내한다.
+- LeaveProvider는 실패를 기억하고 다음 정상 공부 조회 시 재시도한다. 취소된 예약 타이머가 경계 갱신을 이미 처리했다고 표시하지 않도록 수정했다.
+- 홈 → 공부 목표 설정(/goals), 요일별 현재/예약 목표, 하단 시간·쉬는 날·미설정 편집, 저장 중 중복 방지, 실패 시 입력 보존을 구현했다. 다음 공부 날짜 오전 6시부터 적용하며 저장 응답의 실제 적용 날짜를 안내한다. 재시도 시 최신 주간 설정을 조회해 선택한 요일만 병합한다. 분 단위 기존 값도 보존한다.
+- 타입 검사·린트·웹 export·자동 테스트 44개 통과(Node 24 번들 런타임). 브라우저 모바일 390×844에서 화면/편집/범위 초과 거절을 확인했다. Android/iPhone 실기기 및 장애 주입 E2E는 미검증이다.
+- 실제 DB의 기존 테스트 프로필로 다음 공부 날짜 적용, 현재 목표 보존, 45분/휴무/미설정 값 보존, 반복 저장 시 단일 예약 버전을 검증했다. 테스트 변경은 전체 롤백했다.
+
+## Supabase CLI 연결 (2026-10-27)
+
+- Homebrew Supabase CLI 2.122.0 및 libpq 18.6 설치 완료.
+- 기존 프로젝트 `hxwwhgxxvyzqqnxlgqde` 연결 완료. CLI 인증은 사용자 로컬 설정에서 관리하며 저장소에 토큰을 넣지 않는다.
+- `supabase/config.toml`은 CLI 초기화 설정이고 `.temp/`의 로컬 연결 메타데이터는 Git에서 제외한다.
+- 연결 검증: CLI 읽기 전용 조회에서 DB `postgres`, 방 개수 `2`를 확인했다. 마이그레이션이나 앱 데이터는 이 연결 검증으로 변경하지 않았다.
+- 일반 SQL 실행: `/opt/homebrew/bin/supabase db query --linked 'select current_database();'`
+- SQL 파일 실행: `/opt/homebrew/bin/supabase db query --linked --file <파일경로>`
+- `psql`은 `/opt/homebrew/opt/libpq/bin/psql`에 설치했다. 현재 SQL 실행은 별도 DB 비밀번호 없이 CLI의 Management API 연결을 사용한다.
+- 기존 SQL Editor 반영분과 로컬 마이그레이션의 이력 정합성을 먼저 확인한 뒤 마이그레이션을 배포한다.

@@ -42,3 +42,25 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Storybook
+storybook-static/
+.pnpm-store/
+debug-storybook.log
+
+# Cloud build result files (contain deployment metadata, not source)
+android-build.json
+web-deployment.json
+build-record.json
+release.json
+build-results.tgz
+
+# Local APK outputs
+/builds/
+
+# Supabase local connection metadata
+/supabase/.temp/
+/supabase/.branches/
+
+# Never include Firebase server credentials in source or APK uploads.
+*firebase-adminsdk*.json

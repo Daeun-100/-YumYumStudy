@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "640422674639",
+    "project_id": "yumyumstudy-116e0",
+    "storage_bucket": "yumyumstudy-116e0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:640422674639:android:b13253032e413b5a89f7ba",
+        "android_client_info": {
+          "package_name": "com.yumyumstudy.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDdxntKyZJIgxMjcTFlk-4DS1rKWna1-L8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:640422674639:android:4477414e65fe77c589f7ba",
+        "android_client_info": {
+          "package_name": "com.yumyumstudy.app.test"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDdxntKyZJIgxMjcTFlk-4DS1rKWna1-L8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

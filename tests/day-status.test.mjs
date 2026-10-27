@@ -41,3 +41,10 @@ test('goal settings preserve current versus scheduled and require a matching eff
   assert.throws(() => decodeGoalSettings({ current, scheduled, effectiveDate: null }));
   assert.throws(() => decodeGoalSettings({ current, scheduled: null, effectiveDate: '2026-10-27' }));
 });
+
+test('leave replaces attendance at 06:00 but retains actual study goal completion', () => {
+  assert.equal(deriveDayStatus('2026-10-26', 60, 0, 0, Date.parse('2026-10-26T05:59:59+09:00'), true).attendance, 'pending');
+  assert.equal(deriveDayStatus('2026-10-26', 60, 0, 0, Date.parse('2026-10-26T06:00:00+09:00'), true).attendance, 'leave');
+  assert.deepEqual(deriveDayStatus('2026-10-26', 60, 3600, 0, now, true), { attendance: 'leave', isRestDay: false, goalAchieved: true });
+  assert.equal(deriveDayStatus('2026-10-25', 60, 0, 0, now, true).attendance, 'leave');
+});

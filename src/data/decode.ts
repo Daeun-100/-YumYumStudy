@@ -1,5 +1,6 @@
+import { decodeCharacter } from '../lib/characters.ts';
 import { StudyError, validateGoalWeek } from '../lib/contracts.ts';
-import type { DayRecord, GoalSettings, GoalWeek, LeaveStatus, Profile, RoomMember, Snapshot, StudySession, TodayData } from '../lib/contracts.ts';
+import type { DayRecord, GoalSettings, GoalWeek, LeaveState, LeaveStatus, Profile, RoomMember, Snapshot, StudySession, TodayData } from '../lib/contracts.ts';
 import { getStudyDayBounds } from '../lib/study-day.ts';
 
 function invalid(): never { throw new StudyError('UNKNOWN', '서버 기록 형식을 확인하지 못했습니다. 다시 조회해 주세요.'); }
@@ -19,7 +20,7 @@ function seconds(value: unknown): number {
 }
 export function decodeProfile(value: unknown): Profile {
   const row = record(value);
-  return { id: text(row.id), displayName: text(row.displayName) };
+  return { id: text(row.id), displayName: text(row.displayName), character: decodeCharacter(row.character) };
 }
 export function decodeSession(value: unknown): StudySession {
   const row = record(value);
@@ -32,7 +33,7 @@ export function decodeDay(value: unknown): DayRecord {
   const row = record(value);
   const studyDate = text(row.studyDate);
   getStudyDayBounds(studyDate);
-  if (!['pending', 'present', 'absent'].includes(String(row.attendance))
+  if (!['pending', 'present', 'absent', 'leave'].includes(String(row.attendance))
     || typeof row.isRestDay !== 'boolean'
     || (row.goalAchieved !== null && typeof row.goalAchieved !== 'boolean')) return invalid();
   const goalMinutes = row.goalMinutes === null ? null : seconds(row.goalMinutes);
@@ -52,7 +53,8 @@ export function decodeGoalSettings(value: unknown): GoalSettings {
   const effectiveDate = row.effectiveDate === null ? null : text(row.effectiveDate);
   if (effectiveDate !== null) getStudyDayBounds(effectiveDate);
   if ((row.scheduled === null) !== (effectiveDate === null)) return invalid();
-  return { current: decodeGoals(row.current), scheduled: row.scheduled === null ? null : decodeGoals(row.scheduled), effectiveDate };
+  if (row.isFirstSetup !== undefined && typeof row.isFirstSetup !== 'boolean') return invalid();
+  return { ...(row.isFirstSetup === undefined ? {} : { isFirstSetup: row.isFirstSetup }), current: decodeGoals(row.current), scheduled: row.scheduled === null ? null : decodeGoals(row.scheduled), effectiveDate };
 }
 export function decodeSnapshot<T>(value: unknown, decode: (value: unknown) => T): Snapshot<T> {
   const row = record(value);
@@ -91,9 +93,18 @@ export function decodeLeaveStatus(value: unknown): LeaveStatus {
       || Date.parse(earnedAt) < startMs || Date.parse(earnedAt) > startMs + 7 * 86400000
       || Date.parse(expiresAt) !== startMs + 21 * 86400000) return invalid();
     weeks.add(earningWeek);
-    return { id: text(grant.id), earningWeek, earnedAt, expiresAt };
+    const status = text(grant.status) as LeaveState;
+    if (!['AVAILABLE', 'SCHEDULED', 'USED', 'EXPIRED'].includes(status)) return invalid();
+    const scheduledDate = grant.scheduledDate === null ? null : text(grant.scheduledDate);
+    if ((status === 'SCHEDULED' || status === 'USED') !== (scheduledDate !== null)) return invalid();
+    if (scheduledDate !== null) {
+      const scheduledMs = getStudyDayBounds(scheduledDate).startMs;
+      if (scheduledMs < Date.parse(earnedAt) || scheduledMs >= Date.parse(expiresAt)) return invalid();
+    }
+    return { id: text(grant.id), earningWeek, earnedAt, expiresAt, status, scheduledDate };
   });
   const availableCount = seconds(row.availableCount);
-  if (availableCount > grants.length) return invalid();
-  return { availableCount, grants };
+  if (new Set(grants.map(g => g.id)).size !== grants.length
+    || availableCount !== grants.filter(g => g.status === 'AVAILABLE').length) return invalid();
+  return { revision: seconds(row.revision), availableCount, grants };
 }

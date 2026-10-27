@@ -3,5 +3,13 @@
   "compilerOptions": {
     "strict": true,
     "allowImportingTsExtensions": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "builds",
+    "storybook-static",
+    ".pnpm-store",
+    "supabase/functions"
+  ]
 }

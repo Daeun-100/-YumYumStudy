@@ -1,13 +1,18 @@
 name: Check
 on:
   push:
+    branches: [develop, master]
   pull_request:
-
+    branches: [master, develop]
+permissions:
+  contents: read
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -17,3 +22,11 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run export:web
+        env:
+          APP_VARIANT: test
+          EXPO_PUBLIC_APP_VARIANT: test
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      - name: Check production version
+        if: github.event_name == 'pull_request' && github.base_ref == 'master'
+        run: node scripts/check-release.mjs

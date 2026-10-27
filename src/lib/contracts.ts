@@ -1,7 +1,8 @@
+import type { CharacterId } from './characters.ts';
 export type UID = string;
 export type StudyDate = string;
 
-export type Profile = { id: UID; displayName: string };
+export type Profile = { id: UID; displayName: string; character?: CharacterId };
 export type StudySession = {
   id: string;
   userId: UID;
@@ -15,14 +16,15 @@ export type DayRecord = {
   // Snapshot-only portion of an unclosed session; never include in closedSeconds.
   runningSeconds: number;
   goalMinutes: number | null;
-  attendance: 'present' | 'absent' | 'pending';
+  attendance: 'present' | 'absent' | 'pending' | 'leave';
   isRestDay: boolean;
   goalAchieved: boolean | null;
 };
-export type GoalSettings = { current: GoalWeek; scheduled: GoalWeek | null; effectiveDate: StudyDate | null };
-export type LeaveGrant = { id: string; earningWeek: StudyDate; earnedAt: string; expiresAt: string };
-// Usage/cancellation is not implemented yet; availableCount counts unexpired grants only.
-export type LeaveStatus = { availableCount: number; grants: LeaveGrant[] };
+export type GoalSettings = { isFirstSetup?: boolean; current: GoalWeek; scheduled: GoalWeek | null; effectiveDate: StudyDate | null };
+export type LeaveState = 'AVAILABLE' | 'SCHEDULED' | 'USED' | 'EXPIRED';
+export type LeaveGrant = { status: LeaveState; scheduledDate: StudyDate | null; id: string; earningWeek: StudyDate; earnedAt: string; expiresAt: string };
+// Each grant belongs to exactly one state; only AVAILABLE contributes to the balance.
+export type LeaveStatus = { revision: number; availableCount: number; grants: LeaveGrant[] };
 export type RoomMember = { profile: Profile; today: DayRecord; activeSession: StudySession | null };
 export type Snapshot<T> = { serverNow: string; data: T };
 export type TodayData = { profile: Profile; day: DayRecord; activeSession: StudySession | null };

@@ -1,19 +1,27 @@
-import { useEffect, useState } from 'react';
-import { AppState, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { colors, layout, spacing, typography } from '../design/theme';
+import { Button, Card } from '../design/components';
+import { createContext, useContext, useEffect, useState, type PropsWithChildren } from 'react';
+import { AppState, Linking, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { usePathname } from 'expo-router';
 import config from '../../app.json';
 import { fetchRelease, needsUpdate } from '../lib/releases';
+import { isTestBuild } from '../lib/room';
 import type { AppRelease, ReleasePlatform } from '../lib/releases';
 
 const currentRevision = config.expo.android.versionCode;
 
-export function UpdateNotice() {
+type UpdateState = { release: AppRelease | null; error: string | null; dismissed: number | null; retry(): void; dismiss(): void; update(): Promise<void> };
+const UpdateContext = createContext<UpdateState | null>(null);
+
+export function UpdateProvider({ children }: PropsWithChildren) {
   const [release, setRelease] = useState<AppRelease | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<number | null>(null);
   const [retry, setRetry] = useState(0);
 
   useEffect(() => {
-    if (Platform.OS !== 'web' && Platform.OS !== 'android') return;
+    if (isTestBuild || (Platform.OS !== 'web' && Platform.OS !== 'android')) return;
     const platform: ReleasePlatform = Platform.OS;
     let disposed = false;
     let request: AbortController | null = null;
@@ -74,34 +82,48 @@ export function UpdateNotice() {
     }
   }
 
+  return <UpdateContext.Provider value={{ release, error, dismissed, retry: () => setRetry(value => value + 1), dismiss: () => setDismissed(release?.revision ?? null), update }}>{children}</UpdateContext.Provider>;
+}
+
+export function UpdateNotice({ variant = 'inline' }: { variant?: 'inline' | 'global' }) {
+  const context = useContext(UpdateContext);
+  const pathname = usePathname();
+  if (!context) throw new Error('UpdateProvider required');
+  const { release, error, dismissed, retry, dismiss, update } = context;
+  if (variant === 'global' && (pathname === '/profile-info' || !release || release.revision === dismissed)) return null;
   if (!release || release.revision === dismissed) {
     return <View style={styles.version}>
       <Text style={styles.caption}>v{config.expo.version} · 빌드 {currentRevision}</Text>
       {error && <>
         <Text style={styles.caption}>{error}</Text>
-        <Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={styles.link}>다시 확인</Text></Pressable>
+        <Button label="다시 확인" variant="secondary" size="compact" onPress={retry} />
       </>}
     </View>;
   }
-  return <View style={styles.notice} accessibilityLiveRegion="polite">
-    <Text style={styles.title}>새 버전 {release.version}이 나왔어요</Text>
+  const content = <Card variant="compact" style={styles.notice} accessibilityViewIsModal accessibilityLiveRegion="polite">
+    <Text accessibilityRole="header" style={styles.title}>새 버전 {release.version}이 나왔어요</Text>
     {!!release.notes && <Text style={styles.body}>{release.notes}</Text>}
-    <Text style={styles.body}>{Platform.OS === 'web' ? '새로고침하면 최신 웹앱을 불러옵니다.' : '새 APK를 내려받아 설치해 주세요.'}</Text>
+    <Text style={styles.body}>{Platform.OS === 'web' ? '새로고침하면 최신 웹앱을 불러옵니다.' : '새 APK를 내려받은 뒤 파일을 열고 설치해 주세요.'}</Text>
     {error && <Text style={styles.body}>{error}</Text>}
-    <Pressable accessibilityRole="button" style={styles.button} onPress={() => { void update(); }}>
-      <Text style={styles.buttonText}>{Platform.OS === 'web' ? '새로고침' : '업데이트 다운로드'}</Text>
-    </Pressable>
-    <Pressable accessibilityRole="button" onPress={() => setDismissed(release.revision)}><Text style={styles.link}>나중에</Text></Pressable>
-  </View>;
+    <Button label={Platform.OS === 'web' ? '새로고침' : '업데이트 다운로드'} onPress={() => { void update(); }} />
+    <Button label="나중에" variant="secondary" onPress={dismiss} />
+  </Card>;
+  return <Modal visible transparent animationType="fade" onRequestClose={dismiss}>
+    <SafeAreaView style={styles.backdrop}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.modalContent}>
+        {content}
+      </ScrollView>
+    </SafeAreaView>
+  </Modal>;
 }
 
 const styles = StyleSheet.create({
-  version: { alignItems: 'center', marginTop: 20, gap: 8 },
-  caption: { color: '#52635A', fontSize: 12, textAlign: 'center' },
-  notice: { marginTop: 20, padding: 20, borderRadius: 16, backgroundColor: '#E0EEDF', width: '100%', maxWidth: 480, gap: 12 },
-  title: { color: '#182D22', fontSize: 18, fontWeight: '700' },
-  body: { color: '#344A3C', fontSize: 14, lineHeight: 22 },
-  button: { backgroundColor: '#426447', padding: 12, borderRadius: 10, alignItems: 'center' },
-  buttonText: { color: '#FFFFFF', fontWeight: '600' },
-  link: { color: '#305E3C', padding: 8, textAlign: 'center', textDecorationLine: 'underline' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(31,40,32,0.35)' },
+  scroll: { flex: 1 },
+  modalContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
+  version: { alignItems: 'center', marginTop: spacing.xl, gap: spacing.sm },
+  caption: { ...typography.caption, color: colors.secondary, textAlign: 'center' },
+  notice: { backgroundColor: colors.soft, width: '100%', maxWidth: layout.contentWidth },
+  title: { ...typography.title, color: colors.text },
+  body: { ...typography.secondary, color: colors.text },
 });
