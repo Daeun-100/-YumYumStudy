@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "repository": "Daeun-100/-YumYumStudy",
+  "sha": "727065c4ba3e83916be157c71801f5195baa04ab",
+  "runId": "40488444004",
+  "attempt": "1",
+  "workflow": "Cloud Build",
+  "run": "https://github.com/Daeun-100/-YumYumStudy/actions/runs/40488444004/attempts/1",
+  "jobs": {
+    "prepare": {
+      "result": "success",
+      "mode": "skip"
+    },
+    "android": {
+      "result": "skipped"
+    },
+    "web": {
+      "result": "skipped"
+    },
+    "record": {
+      "result": "skipped"
+    },
+    "update": {
+      "result": "skipped"
+    }
+  },
+  "files": [
+    {
+      "path": "artifacts/deployment-plan-727065c4ba3e83916be157c71801f5195baa04ab/deployment-review.json",
+      "sha256": "212b2cd4fc8d1baba7775e36a4a738f7b371aa08489247c2905fdb561118ff31",
+      "bytes": 3412
+    },
+    {
+      "path": "artifacts/deployment-plan-727065c4ba3e83916be157c71801f5195baa04ab/deployment-review-validation.json",
+      "sha256": "4650533a8dcd8d349ffe0aba4fac9800fc86059bb103df5a3fd929b0a1af96e8",
+      "bytes": 350
+    },
+    {
+      "path": "artifacts/deployment-plan-727065c4ba3e83916be157c71801f5195baa04ab/native-compatibility.json",
+      "sha256": "d7fe6c3c94d2750b0ff0e3cce41069a2b537275feb9758ae2ba3f627d62a9a13",
+      "bytes": 241
+    },
+    {
+      "path": "artifacts/deployment-plan-727065c4ba3e83916be157c71801f5195baa04ab/deployment-plan.json",
+      "sha256": "4a11e7cc8ce48c0423f350b9e786a46ef8b7591f6d5910e8061d2d00790460e9",
+      "bytes": 4664
+    }
+  ]
+}

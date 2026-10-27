@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "mode": "skip",
+  "sha": "727065c4ba3e83916be157c71801f5195baa04ab",
+  "observedRuntimeVersion": null,
+  "runtimeVersion": null,
+  "baseline": {
+    "schema": 1,
+    "repository": "Daeun-100/-YumYumStudy",
+    "runId": 40467053075,
+    "sha": "9edf9d1f989b61aae7db96d54e23fe8be2ba7bf8",
+    "version": "1.0.1",
+    "revision": 2,
+    "deploymentId": "production-9edf9d1f989b-3-1",
+    "apkName": "yumyumstudy-v1.0.1.apk",
+    "apkSha256": "63a067eab606f380d9d91a33991045969e5699578a70465837f926cd38d1c9df",
+    "runtimeVersion": "7e3df9398006bc04f4400ac26189dd6c3b36ef9a",
+    "buildId": "9657a8ed-a390-4e62-a2a2-de3b950cf1ce",
+    "tag": "v1.0.1"
+  },
+  "native": {
+    "compatible": true,
+    "normalizedRuntime": "7e3df9398006bc04f4400ac26189dd6c3b36ef9a",
+    "exemptions": [
+      "ignore-additions:.easignore",
+      "ignore-additions:.gitignore",
+      "package-script:update:production"
+    ],
+    "reasons": []
+  },
+  "review": {
+    "schema": 1,
+    "sourceCommit": "f8f21a9550d2b4c05c5245bce5c01f2aeb393b49",
+    "sourceTreeDigest": "1d2f9fe1313a07a2d67ee4956f3d3b8d556b1cd9c5e739b9ce4a55a230d2a027",
+    "baseline": {
+      "tag": "v1.0.1",
+      "sha": "9edf9d1f989b61aae7db96d54e23fe8be2ba7bf8",
+      "runtimeVersion": "7e3df9398006bc04f4400ac26189dd6c3b36ef9a"
+    },
+    "reviewer": {
+      "kind": "interactive-codex"
+    },
+    "recommendation": "skip",
+    "rationale": "This PR only records an already-active Supabase log monitor, its server-only configuration and scheduling migration, mocked tests and operational documentation. It contains no mobile application, native dependency or app runtime changes. Merging must skip APK and EAS Update publication and does not redeploy the server or replay the scheduling migration.",
+    "evidence": [
+      "The complete master-to-branch change list consists only of seven files under supabase/, tests/ and docs/.",
+      "The two function source files match the deployed log-monitor version 3 source exactly; the live function is ACTIVE.",
+      "Read-only SQL confirmed discord-log-monitor is active with UTC schedule 10 6,7,8,10,11,12,13 * * *.",
+      "The scheduling migration is an already-applied initial-deployment record and deliberately starts paused. It must not be replayed on the active production project.",
+      "No function invocation, Discord notification, secret update, cron activation/deactivation or database mutation was performed while preparing this PR.",
+      "No .env, real credentials or webhook values are included. The endpoint authenticates its scheduler secret before querying logs; test credentials and outbound HTTP are mocked.",
+      "Production APK version/runtime and all app/native build inputs remain unchanged. Existing master administrative exclusions reproduce the published APK runtime 7e3df9398006bc04f4400ac26189dd6c3b36ef9a.",
+      "Lint, typecheck and all 168 committed unit tests passed, including authentication, seven KST slots, ten-minute windows, traffic/error thresholds, dry-run silence and monitoring-failure handling."
+    ],
+    "exemptions": [
+      "ignore-additions:.easignore",
+      "ignore-additions:.gitignore",
+      "package-script:update:production"
+    ],
+    "blockers": [],
+    "changedFiles": [
+      "docs/execution/reports/supabase-log-monitor.md",
+      "supabase/config.toml",
+      "supabase/functions/log-monitor/deno.json",
+      "supabase/functions/log-monitor/index.ts",
+      "supabase/functions/log-monitor/policy.ts",
+      "supabase/migrations/20261027075804_scheduled_discord_log_monitor.sql",
+      "tests/log-monitor.test.mjs"
+    ],
+    "actualWorkflowRoute": {
+      "mode": "skip",
+      "apkBuild": false,
+      "easUpdate": false,
+      "serverDeployment": false,
+      "notes": "Check validates this report; Cloud Build preparation and durable history recording may run, but no app build or publication runs."
+    },
+    "checks": {
+      "lint": "passed",
+      "typecheck": "passed",
+      "unitTests": {
+        "passed": 168,
+        "failed": 0
+      },
+      "liveSourceComparison": "exact match for index.ts and policy.ts",
+      "liveFunction": {
+        "status": "ACTIVE",
+        "version": 3
+      },
+      "liveCron": {
+        "active": true,
+        "schedule": "10 6,7,8,10,11,12,13 * * *"
+      }
+    },
+    "limitations": [
+      "Seven sampled ten-minute windows per day cover 70 minutes, not continuous monitoring.",
+      "Empty log windows are unassessed and do not prove service health."
+    ]
+  },
+  "version": "1.0.1",
+  "revision": 2,
+  "repository": "Daeun-100/-YumYumStudy",
+  "run": "https://github.com/Daeun-100/-YumYumStudy/actions/runs/40488444004"
+}

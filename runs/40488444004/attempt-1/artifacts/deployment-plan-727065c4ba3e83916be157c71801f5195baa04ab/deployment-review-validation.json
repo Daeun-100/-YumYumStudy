@@ -1,0 +1,11 @@
+{
+  "status": "verified",
+  "mode": "skip",
+  "sha": "727065c4ba3e83916be157c71801f5195baa04ab",
+  "sourceTreeDigest": "1d2f9fe1313a07a2d67ee4956f3d3b8d556b1cd9c5e739b9ce4a55a230d2a027",
+  "baseline": {
+    "tag": "v1.0.1",
+    "sha": "9edf9d1f989b61aae7db96d54e23fe8be2ba7bf8",
+    "runtimeVersion": "7e3df9398006bc04f4400ac26189dd6c3b36ef9a"
+  }
+}
