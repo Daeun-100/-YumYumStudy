@@ -92,7 +92,7 @@ export function StudyLayout({ screen, running = true, seconds: initialSeconds = 
           <Button label={isRunning ? 'Ⅱ  일시정지' : '▶  공부 시작'} accessibilityLabel={isRunning ? '공부 일시정지' : '공부 시작'} onPress={() => { if (isRunning) setRunning(false); else { setRunning(true); move('focus'); } }} style={{ flex: 1 }} />
         </View>
       </> : <>
-        <FocusView members={[{ id: 'self', name, time: '나', active: isRunning, character: 'bunny', self: true }, ...friends.map((friend, index) => ({ id: String(index), name: friend.name, time: friend.time, active: index < friendCount, character: (['bear', 'cat', 'puppy'] as const)[index] }))]} memberCount={4} seconds={seconds} goalMinutes={goalMinutes} running={isRunning} onBack={() => move('home')} onFriends={() => feedback('친구')} onToggle={() => setRunning(!isRunning)} />
+        <FocusView members={[{ id: 'self', name, time: '나', active: isRunning, character: 'bunny', self: true }, ...friends.map((friend, index) => ({ id: String(index), name: friend.name, time: friend.time, active: index < friendCount, character: (['bear', 'cat', 'puppy'] as const)[index] }))]} memberCount={4} seconds={seconds} sessionSeconds={28 * 60} goalMinutes={goalMinutes} running={isRunning} onBack={() => move('home')} onFriends={() => feedback('친구')} onToggle={() => setRunning(!isRunning)} />
       </>}
       {!!notice && <Pressable accessibilityRole="button" accessibilityLabel="미리보기 안내 닫기" onPress={() => setNotice('')} style={s.notice}><Text accessibilityLiveRegion="polite" style={s.caption}>{notice}  ×</Text></Pressable>}
     </ScrollView>

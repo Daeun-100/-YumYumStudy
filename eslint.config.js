@@ -3,5 +3,5 @@ const expoConfig = require('eslint-config-expo/flat');
 
 module.exports = defineConfig([
   expoConfig,
-  { ignores: ['dist/**', 'storybook-static/**', '.pnpm-store/**'] },
+  { ignores: ['supabase/functions/**', 'public/call-worker.js', 'dist/**', 'storybook-static/**', '.pnpm-store/**'] },
 ]);

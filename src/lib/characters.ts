@@ -1,6 +1,6 @@
 import { StudyError } from './contracts.ts';
 
-export const characterIds = ['bunny', 'bear', 'cat', 'puppy', 'maltese', 'pomeranian'] as const;
+export const characterIds = ['bunny', 'bear', 'cat', 'puppy', 'maltese', 'pomeranian', 'blackcat'] as const;
 export type CharacterId = typeof characterIds[number];
 export function decodeCharacter(value: unknown): CharacterId {
   if (value === undefined) return 'bunny';

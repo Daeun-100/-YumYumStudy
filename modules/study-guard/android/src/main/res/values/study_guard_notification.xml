@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="study_guard_logo">얌얌스터디 로고</string>
+    <string name="study_guard_pause">일시정지</string>
+    <color name="study_guard_text">#252D28</color>
+    <color name="study_guard_action">#108363</color>
+</resources>

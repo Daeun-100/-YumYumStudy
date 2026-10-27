@@ -14,6 +14,7 @@ const focusImages = {
   puppy: require('../../../assets/characters/puppy/puppy-focus.png'),
   maltese: require('../../../assets/characters/maltese/maltese-focus.png'),
   pomeranian: require('../../../assets/characters/pomeranian/pomeranian-focus.png'),
+  blackcat: require('../../../assets/characters/black-cat/black-cat-focus.png'),
 };
 
 export function FriendsScreen() {

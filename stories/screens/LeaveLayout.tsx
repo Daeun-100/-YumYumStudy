@@ -34,7 +34,7 @@ export function LeaveLayout({ width = 390, height = 844, weeklyDays = 4, state =
   });
   return <View style={{ width, maxWidth: '100%', height, borderRadius: 32, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background }}>
     <View style={{ height: 44, paddingHorizontal: spacing.xxxl, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Text style={[typography.label, { color: colors.text }]}>9:41</Text><Text style={{ color: colors.secondary }}>● ● ▰</Text></View>
-    <LeaveView {...props} state={loadState} weeklyDays={weeklyDays} grants={grants} today={today} calendarDays={days} notice={notice}
+    <LeaveView {...props} embedded state={loadState} weeklyDays={weeklyDays} grants={grants} today={today} calendarDays={days} notice={notice}
       onMonthChange={setMonth} onClearNotice={() => setNotice('')}
       navigation={<BottomTabs selected="연차" onSelect={() => {}} />}
       onRefresh={async () => setLoadState('ready')}

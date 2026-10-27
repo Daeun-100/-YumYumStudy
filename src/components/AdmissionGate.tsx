@@ -3,7 +3,7 @@ import { CharacterPicker } from '../features/profile/CharacterPicker';
 import type { CharacterId } from '../lib/characters';
 import { saveProfile } from '../data/profile';
 import { useRef, useState, type PropsWithChildren } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useIdentity } from './IdentityProvider';
 import { Button, Card } from '../design/components';
 import { colors, typography } from '../design/theme';
@@ -33,12 +33,12 @@ export function AdmissionGate({ children }: PropsWithChildren) {
     } catch (failure) { setError(toStudyError(failure).message); }
     finally { lock.current = false; setBusy(false); }
   }
-  if (identity.profile && identity.step === 'ready' && !identity.loading) return <View style={{ flex: 1 }}>{isTestRoom && <Text style={{ ...styles.brand, textAlign: 'center', padding: 6, backgroundColor: colors.soft }}>테스트 방 · 0번</Text>}{children}</View>;
+  // Render the app shell immediately. Only a confirmed invitation/name step
+  // needs a gate; login and network failures belong in the screen's status UI.
+  if (identity.loading || identity.error || (identity.profile && identity.step === 'ready')) return <View style={{ flex: 1 }}>{children}</View>;
   return <View style={styles.background}>
     <Text style={styles.brand}>YUMYUM STUDY</Text>
-    {identity.loading ? <ActivityIndicator accessibilityLabel="입장 상태 확인 중" color={colors.primary} /> : identity.error ?
-      <Card style={styles.card}><Text accessibilityRole="alert">{identity.error.message}</Text><Button label="다시 확인" onPress={identity.retry} /></Card> :
-      <Modal visible transparent animationType="fade" onRequestClose={() => {}}>
+    {<Modal visible transparent animationType="fade" onRequestClose={() => {}}>
         <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.container}>
             <Card style={styles.card} accessibilityViewIsModal>

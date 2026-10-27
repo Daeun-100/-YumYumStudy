@@ -57,3 +57,9 @@ docs/
 tests/
 supabase/
 .github/
+
+# Local APK outputs
+/builds/
+
+# Never include Firebase server credentials in source or APK uploads.
+*firebase-adminsdk*.json

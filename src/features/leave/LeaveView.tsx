@@ -1,5 +1,8 @@
-import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dialog, DialogCloseButton } from '../../design/Dialog';
+import { SkeletonRegion } from '../../design/Skeleton';
+import { useImperativeHandle, useState, type ReactNode, type Ref } from 'react';
+import { leaveBackTarget } from '../navigation/back-policy';
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AchievementIcon, Button, Card, InfoButton, InfoIcon } from '../../design/components';
 import { colors, interaction, radius, spacing, typography } from '../../design/theme';
 import { characterArtwork } from '../../design/character-artwork';
@@ -11,6 +14,7 @@ type LeaveState = 'available' | 'scheduled' | 'used' | 'expired';
 type Screen = 'home' | 'calendar';
 type Grant = { id: string; state: LeaveState; earned: string; expires: string; date?: string };
 export type LeaveLayoutProps = {
+  embedded?: boolean;
   character?: CharacterId;
   initialScreen?: Screen;
   initialDate?: string;
@@ -47,6 +51,8 @@ export function LeaveInfo({ children }: { children: string }) {
   return <View style={s.info}><InfoIcon /><Text style={[s.secondary, { flex: 1 }]}>{children}</Text></View>;
 }
 export type LeaveViewProps = LeaveLayoutProps & {
+  backRef?: Ref<{ back(): boolean }>;
+  backBlocked?: boolean;
   grants: Grant[]; today: string; busy?: boolean; error?: string | null; notice?: string;
   calendarDays: StudyRecord[]; calendarLoading?: boolean; weeklyLoading?: boolean;
   navigation: ReactNode; onClearNotice(): void; onRefresh(): Promise<void>; onMonthChange(month: string): void;
@@ -54,15 +60,15 @@ export type LeaveViewProps = LeaveLayoutProps & {
   onApply(date: string, changingId: string | null): Promise<boolean>;
   onCancel(id: string, date: string): Promise<boolean>;
 };
-export function LeaveView({ character = 'bunny', initialScreen = 'home', initialDate, initialChanging = false, state = 'ready', weeklyDays = 0, initialConfirmation = false,
-  grants, today, busy = false, error, notice = '', calendarDays, calendarLoading = false, weeklyLoading = false, navigation, onClearNotice, onRefresh, onMonthChange, unavailable, onApply, onCancel }: LeaveViewProps) {
+export function LeaveView({ embedded = false, character = 'bunny', initialScreen = 'home', initialDate, initialChanging = false, state = 'ready', weeklyDays = 0, initialConfirmation = false,
+  grants, today, busy = false, error, notice = '', calendarDays, calendarLoading = false, weeklyLoading = false, navigation, onClearNotice, onRefresh, onMonthChange, unavailable, onApply, onCancel, backRef, backBlocked = false }: LeaveViewProps) {
   const [screen, setScreen] = useState<Screen>(initialScreen);
   const [month, setMonth] = useState(`${(initialDate ?? today).slice(0, 7)}-01`);
   const [selectedDate, setSelectedDate] = useState<string | null>(initialDate ?? null);
   const [changingId, setChangingId] = useState<string | null>(initialChanging ? 'c' : null);
   const [confirmation, setConfirmation] = useState<false | 'cancel' | 'use' | 'change'>(initialConfirmation === true ? 'cancel' : initialConfirmation || false);
   const [refreshing, setRefreshing] = useState(false);
-  const [details, setDetails] = useState<'rules' | 'expiry' | null>(null);
+  const [details, setDetails] = useState<'rules' | null>(null);
   const loadState = state;
   const refresh = async () => { setRefreshing(true); try { await onRefresh(); } finally { setRefreshing(false); } };
   const ready = loadState === 'ready' || loadState === 'empty';
@@ -87,51 +93,69 @@ export function LeaveView({ character = 'bunny', initialScreen = 'home', initial
     await onCancel(selectedGrant.id, selectedDate); setConfirmation(false);
   };
   const back = () => { setScreen('home'); setChangingId(null); setConfirmation(false); onClearNotice(); };
+  useImperativeHandle(backRef, () => ({ back() {
+    const target = leaveBackTarget({ confirmation: confirming, details: details !== null, calendar: screen === 'calendar', busy: backBlocked });
+    if (target === 'parent') return false;
+    if (target === 'details') setDetails(null);
+    if (target === 'confirmation') setConfirmation(false);
+    if (target === 'home') back();
+    return true;
+  } }));
   return <View style={{ flex: 1 }}>
     <View style={{ flex: 1 }} aria-hidden={overlayOpen} accessibilityElementsHidden={overlayOpen} importantForAccessibility={overlayOpen ? 'no-hide-descendants' : 'auto'}>
-      <View style={[s.header, screen === 'calendar' && { justifyContent: 'flex-start' }]}>{screen === 'calendar' && <Button label="←" variant="ghost" size="icon" accessibilityLabel="연차 메인으로 돌아가기" onPress={back} />}<Text accessibilityRole="header" style={s.heading}>{screen === 'home' ? '연차' : '연차 달력'}</Text>{screen === 'home' && <InfoButton accessibilityLabel="연차 이용 안내" onPress={() => setDetails('rules')} />}</View>
-      <Content key={screen} style={{ flex: 1 }} contentContainerStyle={[s.content, s.calendarContent]} showsVerticalScrollIndicator={false}
+      <View style={[s.header, screen === 'calendar' && { justifyContent: 'flex-start' }]}>{screen === 'calendar' && <Button label="←" variant="ghost" size="icon" accessibilityLabel="연차 메인으로 돌아가기" disabled={backBlocked} onPress={back} />}<Text accessibilityRole="header" style={s.heading}>{screen === 'home' ? '연차' : '연차 달력'}</Text>{screen === 'home' && <InfoButton accessibilityLabel="연차 이용 안내" onPress={() => setDetails('rules')} />}</View>
+      <Content key={screen} style={{ flex: 1 }} contentContainerStyle={[s.content, s.calendarContent, screen === 'home' && { paddingTop: 44 }]} showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={colors.primary} />}>
         {!!error && <View style={{ gap: spacing.sm }}><Text accessibilityRole="alert" style={[s.secondary, { color: colors.error }]}>{error}</Text><Button label="다시 불러오기" variant="secondary" disabled={refreshing} onPress={() => void refresh()} /></View>}
-        {!ready ? <View style={s.empty}>{loadState === 'loading' ? <><ActivityIndicator color={colors.primary} /><Text style={s.secondary}>연차를 불러오고 있어요</Text></> : <><Text accessibilityRole="alert" style={s.cardTitle}>연차 정보를 불러오지 못했어요</Text><Text style={s.secondary}>연결을 확인하고 다시 시도해 주세요.</Text><Button label="다시 시도" onPress={() => void refresh()} /></>}</View> : screen === 'home' ? <>
+        <SkeletonRegion gap={spacing.lg} loading={loadState === 'loading'} label="연차 불러오는 중">{!ready && loadState !== 'loading' ? <View style={s.empty}><Text accessibilityRole="alert" style={s.cardTitle}>연차 정보를 불러오지 못했어요</Text><Text style={s.secondary}>연결을 확인하고 다시 시도해 주세요.</Text><Button label="다시 시도" onPress={() => void refresh()} /></View> : screen === 'home' ? <>
           <Card style={s.balance}>
             <View style={s.balanceSummary}><Text style={s.cardTitle}>사용 가능한 연차</Text><View accessible accessibilityLabel={`${available.length}개`} style={s.balanceValue}><Text style={s.balanceNumber}>{available.length}</Text><Text style={s.balanceUnit}>개</Text></View></View>
-            <Image source={characterArtwork[character].leave} resizeMode="contain" accessibilityLabel={`휴가를 즐기는 ${characterArtwork[character].label}`} pointerEvents="none" style={s.heroArt} />
-            {available.length ? <Pressable accessibilityRole="button" accessibilityLabel="전체 연차 만료 내역 보기" onPress={() => setDetails('expiry')} style={s.expiryRow}><Text style={[s.caption, { flex: 1 }]}>가장 빠른 만료 · {dateText(available[0].expires)} 오전 6시</Text><Text style={s.secondary}>›</Text></Pressable> : <Text style={s.caption}>목표를 달성하고 첫 연차를 모아보세요.</Text>}
+            <Image source={characterArtwork[character].leave} resizeMode="contain" accessibilityLabel={`휴가를 즐기는 ${characterArtwork[character].label}`} pointerEvents="none" style={[s.heroArt, ['bunny', 'bear', 'cat', 'puppy'].includes(character) && s.heroArtLarge]} />
+            {available.length ? <View style={s.expiryRow}><Text style={s.caption}>가장 빠른 만료 · {dateText(available[0].expires)} 오전 6시</Text></View> : <Text style={s.caption}>목표를 달성하고 첫 연차를 모아보세요.</Text>}
           </Card>
-          {weeklyLoading ? <ActivityIndicator color={colors.primary} accessibilityLabel="주간 달성 불러오는 중" /> : weeklyDays === null ? <Text style={s.secondary}>이번 주 달성 현황을 확인하지 못했어요.</Text> : <WeeklyLeaveProgress days={weeklyDays} />}
+          <SkeletonRegion loading={weeklyLoading} label="주간 달성 불러오는 중"><WeeklyLeaveProgress days={weeklyDays ?? 0} /></SkeletonRegion>{!weeklyLoading && weeklyDays === null && <Text style={s.secondary}>이번 주 달성 현황을 확인하지 못했어요.</Text>}
           {scheduled.length ? <Pressable accessibilityRole="button" accessibilityLabel="다가오는 연차, 달력에서 확인" onPress={() => openCalendar(scheduled[0].date)} style={({ pressed }) => [s.upcoming, pressed && { backgroundColor: colors.surfacePressed }]}><Text style={s.cardTitle}>다가오는 연차</Text><View style={s.row}><LeaveIcon state="scheduled" size={32} /><Text style={[s.title, { flex: 1 }]}>{dateText(scheduled[0].date!, true)}</Text><Text style={s.chevron}>›</Text></View></Pressable> : <View style={s.upcoming}><Text style={s.cardTitle}>다가오는 연차</Text><Text style={s.secondary}>아직 예약한 연차가 없어요.</Text></View>}
         </> : <>
+          <View style={s.calendarBalance}>
+            <View style={s.calendarSummary}>
+              <Text style={s.availableCount}>사용 가능 {available.length}개</Text>
+              {available.length > 0 && <Text style={s.caption}>만료  {Object.keys(expiryGroups).map(expires => `${parse(expires).getUTCMonth() + 1}.${parse(expires).getUTCDate()}`).join(' · ')}  / 오전 6시</Text>}
+            </View>
+          </View>
           <PeriodHeader title={`${parse(month).getUTCFullYear()}년 ${parse(month).getUTCMonth() + 1}월`} onPrevious={() => { setMonth(monthShift(month, -1)); onMonthChange(monthShift(month, -1)); setSelectedDate(null); onClearNotice(); }} onNext={() => { setMonth(monthShift(month, 1)); onMonthChange(monthShift(month, 1)); setSelectedDate(null); onClearNotice(); }} />
-          {calendarLoading && <ActivityIndicator color={colors.primary} accessibilityLabel="연차 달력 불러오는 중" />}
-          <MonthlyCalendar days={calendarDays} selected={selectedDate ?? ''} onSelect={date => { setSelectedDate(date); onClearNotice(); }} today={today} allowFutureSelection variant="leave" />
+          <SkeletonRegion loading={calendarLoading} label="연차 달력 불러오는 중"><MonthlyCalendar days={calendarDays} selected={selectedDate ?? ''} onSelect={date => { setSelectedDate(date); onClearNotice(); }} today={today} allowFutureSelection variant="leave" /></SkeletonRegion>
+          <Text style={s.caption}>만료가 빠른 연차부터 사용해요.</Text>
           <View style={s.dateActions}>
-            <View style={s.between}><Text style={s.cardTitle}>{selectedDate ? dateText(selectedDate, true) : '날짜를 선택해 주세요'}</Text>{selectedGrant && <LeaveBadge state={selectedGrant.state} />}</View>
-            {changingGrant ? <>{selectedDate && selectedDate !== changingGrant.date && reason && <Text style={s.secondary}>{reason}</Text>}<Button label={selectedDate && canApply ? `${dateText(selectedDate)}로 변경` : '날짜 변경'} disabled={!canApply || busy || calendarLoading} onPress={() => setConfirmation('change')} /><Button label="변경 그만두기" variant="secondary" onPress={() => { setSelectedDate(changingGrant.date!); setMonth(`${changingGrant.date!.slice(0, 7)}-01`); onMonthChange(`${changingGrant.date!.slice(0, 7)}-01`); setChangingId(null); }} /></> : selectedGrant?.state === 'scheduled' ? <View style={s.row}><Button label="날짜 변경" disabled={busy} style={{ flex: 1 }} onPress={() => { setChangingId(selectedGrant.id); onClearNotice(); }} /><Button label="예약 취소" disabled={busy} variant="secondary" style={{ flex: 1 }} onPress={() => setConfirmation('cancel')} /></View> : selectedGrant?.state === 'used' ? null : <>{selectedDate && reason && <Text style={s.secondary}>{reason}</Text>}<Button label={selectedDate && canApply ? `${dateText(selectedDate)} 연차 사용` : '연차 사용하기'} disabled={!canApply || busy || calendarLoading} onPress={() => setConfirmation('use')} /></>}
+            <View style={[s.between, { minHeight: 32 }]}><Text style={s.cardTitle}>{selectedDate ? dateText(selectedDate, true) : '날짜를 선택해 주세요'}</Text>{selectedGrant && <LeaveBadge state={selectedGrant.state} />}</View>
+            {changingGrant ? <><Button label={selectedDate && canApply ? `${dateText(selectedDate)}로 변경` : '날짜 변경'} disabled={!canApply || busy || calendarLoading} onPress={() => setConfirmation('change')} /><Button label="변경 그만두기" variant="secondary" onPress={() => { setSelectedDate(changingGrant.date!); setMonth(`${changingGrant.date!.slice(0, 7)}-01`); onMonthChange(`${changingGrant.date!.slice(0, 7)}-01`); setChangingId(null); }} /></> : selectedGrant?.state === 'scheduled' ? <View style={s.row}><Button label="날짜 변경" disabled={busy} style={{ flex: 1 }} onPress={() => { setChangingId(selectedGrant.id); onClearNotice(); }} /><Button label="예약 취소" disabled={busy} variant="secondary" style={{ flex: 1 }} onPress={() => setConfirmation('cancel')} /></View> : selectedGrant?.state === 'used' ? null : <><Button label={selectedDate && canApply ? `${dateText(selectedDate)} 연차 사용` : '연차 사용하기'} disabled={!canApply || busy || calendarLoading} onPress={() => setConfirmation('use')} /></>}
+            {selectedDate && reason && !selectedGrant && (!changingGrant || selectedDate !== changingGrant.date) && <Text style={s.secondary}>{reason}</Text>}
 
           </View>
-        </>}
+        </>}</SkeletonRegion>
         {!!notice && <View accessibilityLiveRegion="polite">{screen === 'calendar' ? <Text style={s.calendarNotice}>{notice}</Text> : <LeaveInfo>{notice}</LeaveInfo>}</View>}
         
       </Content>
       {screen === 'home' && <><View style={s.fixedAction}><Button label="연차 사용하기" disabled={!ready || busy} onPress={() => openCalendar()} /></View>{navigation}</>}
     </View>
-    {details && <View accessibilityViewIsModal role="dialog" aria-modal={true} accessibilityLabel={details === 'rules' ? '연차 이용 안내' : '연차 만료 내역'} style={s.confirmation}><Card style={{ gap: spacing.lg, maxHeight: '90%' }}><Text accessibilityRole="header" style={s.title}>{details === 'rules' ? '연차 이용 안내' : '연차 만료 내역'}</Text><ScrollView>{details === 'rules' ? <Text style={s.secondary}>한 주에 6일 목표를 달성하면 연차 1개를 받아요. 휴무·미설정·연차 사용일은 달성 일수에서 제외돼요. 획득 주 시작일로부터 21일 뒤 오전 6시에 만료돼요. 사용일 오전 6시 전까지 예약을 변경하거나 취소할 수 있어요.</Text> : Object.entries(expiryGroups).map(([expires, count]) => <Text key={expires} style={[s.secondary, { paddingVertical: spacing.sm }]}>{count}개 · {dateText(expires)} 오전 6시까지</Text>)}</ScrollView><Button label="닫기" variant="secondary" onPress={() => setDetails(null)} /></Card></View>}
-    {confirming && <View accessibilityViewIsModal role="dialog" aria-modal={true} accessibilityLabel={confirmation === 'cancel' ? '연차 취소 확인' : confirmation === 'change' ? '날짜 변경 확인' : '연차 사용 확인'} style={s.confirmation}><Card style={{ width: '100%', gap: spacing.lg }}>
+    <Dialog visible={details !== null} label="연차 이용 안내" embedded={embedded} onClose={() => setDetails(null)}><Card style={{ gap: spacing.lg, maxHeight: '90%' }}><Text accessibilityRole="header" style={s.title}>연차 이용 안내</Text><ScrollView><Text style={s.secondary}>한 주에 6일 목표를 달성하면 연차 1개를 받아요. 휴무·미설정·연차 사용일은 달성 일수에서 제외돼요. 획득 주 시작일로부터 21일 뒤 오전 6시에 만료돼요. 사용일 오전 6시 전까지 예약을 변경하거나 취소할 수 있어요.</Text></ScrollView><DialogCloseButton label="닫기" variant="secondary" /></Card></Dialog>
+    <Dialog visible={confirming} label={confirmation === 'cancel' ? '연차 취소 확인' : confirmation === 'change' ? '날짜 변경 확인' : '연차 사용 확인'} busy={backBlocked} embedded={embedded} onClose={() => setConfirmation(false)}><Card style={{ width: '100%', gap: spacing.lg }}>
       <Text accessibilityRole="header" style={s.title}>{confirmation === 'cancel' ? '예약을 취소할까요?' : confirmation === 'change' ? '날짜를 변경할까요?' : '연차를 사용할까요?'}</Text>
       <Text style={s.cardTitle}>{confirmation === 'change' && changingGrant ? `${dateText(changingGrant.date!, true)} → ` : ''}{selectedDate ? dateText(selectedDate, true) : ''}</Text>
       {confirmation === 'cancel' && <Text style={s.secondary}>연차 1개가 돌아오며, 만료일은 그대로예요.</Text>}
       {!!error && <Text accessibilityRole="alert" style={[s.secondary, { color: colors.error }]}>{error}</Text>}
       <Button label={confirmation === 'cancel' ? '예약 취소' : confirmation === 'change' ? '변경' : '사용'} loading={busy} disabled={busy} onPress={() => void (confirmation === 'cancel' ? cancel() : apply())} />
-      <Button label={confirmation === 'cancel' ? '예약 유지' : '닫기'} variant="secondary" disabled={busy} onPress={() => setConfirmation(false)} />
-    </Card></View>}
+      <DialogCloseButton label={confirmation === 'cancel' ? '예약 유지' : '닫기'} variant="secondary" disabled={backBlocked} />
+    </Card></Dialog>
 
   </View>;
 }
 const s = StyleSheet.create({
   phone: { maxWidth: '100%', borderRadius: 32, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
   statusBar: { height: 44, paddingHorizontal: spacing.xxxl, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, statusTime: { ...typography.label, fontSize: 14, color: colors.text },
-  header: { minHeight: 68, paddingHorizontal: spacing.xxl, flexDirection: 'row', gap: spacing.sm, alignItems: 'center', justifyContent: 'space-between' }, heroArt: { position: 'absolute', width: 204, height: 204, top: -46, right: -28 }, heroArtCompact: { width: 168, height: 168, top: -36, right: -26 },
+  header: { minHeight: 68, paddingHorizontal: spacing.xxl, flexDirection: 'row', gap: spacing.sm, alignItems: 'center', justifyContent: 'space-between' }, heroArt: { position: 'absolute', width: 184, height: 184, top: -36, right: -16 }, heroArtLarge: { width: 232, height: 232, top: -56, right: -34 }, heroArtCompact: { width: 168, height: 168, top: -36, right: -26 },
+  availableCount: { ...typography.body, fontWeight: '700', color: colors.primary },
+  calendarBalance: { paddingVertical: spacing.xs, gap: spacing.sm },
+  calendarSummary: { alignItems: 'flex-start', gap: spacing.sm },
   calendarContent: { paddingHorizontal: spacing.xxl },
   dateActions: { borderTopWidth: 1, borderColor: colors.track, paddingTop: spacing.xl, gap: spacing.md },
   calendarNotice: { ...typography.secondary, color: colors.primary, paddingVertical: spacing.sm },

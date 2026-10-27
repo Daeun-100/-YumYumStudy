@@ -1,10 +1,11 @@
+import { useAndroidBack } from '../navigation/useAndroidBack';
 import { BottomTabs } from '../navigation/BottomTabs';
 import { characters } from '../profile/CharacterPicker';
 import type { CharacterId } from '../../lib/characters';
 import { colors, typography, radius, layout } from '../../design/theme';
 import { AchievementBadge, Button } from '../../design/components';
 import type { PropsWithChildren } from 'react';
-import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Image, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useIdentity } from '../../components/IdentityProvider';
 import { useStudy } from './StudyProvider';
@@ -27,6 +28,13 @@ export function RoomArt({ tall = false }: { tall?: boolean }) {
 }
 type TabKey = 'home' | 'records' | 'friends' | 'leave' | 'profile';
 export function Nav({ current }: { current: TabKey }) {
+  useAndroidBack(() => {
+    // Leave owns its calendar and dialog state in LeaveScreen.
+    if (current === 'leave') return false;
+    if (current === 'home') BackHandler.exitApp();
+    else router.dismissTo('/');
+    return true;
+  });
   const tabs = [
     { key: 'home', label: '홈', route: '/' },
     { key: 'records', label: '기록', route: '/records' },
@@ -43,10 +51,10 @@ export function Page({ children, current }: PropsWithChildren<{ current?: TabKey
   const study = useStudy();
   return <View style={ui.outer}><View style={ui.page}><ScrollView contentContainerStyle={{ paddingBottom: 22 }} refreshControl={<RefreshControl refreshing={study.loading} onRefresh={() => void study.refresh()} tintColor={colors.primary} />}><>{children}</></ScrollView>{current && <Nav current={current} />}</View></View>;
 }
-export function Status() {
+export function Status({ showLoading = true }: { showLoading?: boolean } = {}) {
   const identity = useIdentity(); const study = useStudy();
   const error = identity.error?.message ?? study.error;
-  if (identity.loading || (!study.today && study.loading)) return <View style={ui.status}><ActivityIndicator color={colors.primary} /><Text style={ui.muted}>공부방을 불러오고 있어요</Text></View>;
+  if (identity.loading || (!study.today && study.loading)) return !showLoading ? null : <View style={ui.status}><ActivityIndicator color={colors.primary} /><Text style={ui.muted}>공부방을 불러오고 있어요</Text></View>;
   if (!error) return null;
   return <View style={ui.status}><Text accessibilityRole="alert" style={ui.error}>{error}{study.actionFailed ? '\n처리 결과를 확인하지 못했어요. 같은 요청으로 다시 시도해 주세요.' : ''}</Text><Button label="다시 시도" variant="secondary" size="compact" disabled={study.busy} onPress={() => identity.error ? identity.retry() : study.actionFailed ? void study.toggle() : void study.refresh()} /></View>;
 }

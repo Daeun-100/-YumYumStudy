@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, SegmentedControl } from '../../design/components';
 import { colors, layout, spacing, typography } from '../../design/theme';
@@ -9,13 +9,13 @@ import { TimeWheelPicker } from '../profile/TimeWheelPicker';
 import { goalText, sameGoals, weekdays } from './model';
 
 type Props = {
-  goals: GoalWeek | null; saved: GoalWeek | null; current?: GoalWeek; loading?: boolean; saving?: boolean;
+  isFirstSetup?: boolean; goals: GoalWeek | null; saved: GoalWeek | null; current?: GoalWeek; loading?: boolean; saving?: boolean;
   error?: string | null; notice?: string | null; effectiveDate?: string | null; status?: ReactNode;
   initialPreview?: boolean; initialDay?: number; embedded?: boolean; discard?: boolean;
   onChange(goals: GoalWeek): void; onSave(): void; onRetry(): void; onBack(): void;
   onKeepEditing(): void; onDiscard(): void;
 };
-export function GoalsView({ goals, saved, current, loading = false, saving = false, error, notice, effectiveDate, status,
+export function GoalsView({ isFirstSetup = false, goals, saved, current, loading = false, saving = false, error, notice, effectiveDate, status,
   initialPreview = false, initialDay, embedded = false, discard = false, onChange, onSave, onRetry, onBack, onKeepEditing, onDiscard }: Props) {
   const [preview, setPreview] = useState(initialPreview);
   const [day, setDay] = useState<number | undefined>(initialDay);
@@ -42,7 +42,6 @@ export function GoalsView({ goals, saved, current, loading = false, saving = fal
     <View style={s.header}><Button label="←" size="icon" variant="ghost" accessibilityLabel="이전 화면으로 돌아가기" disabled={saving} onPress={onBack} /><Text accessibilityRole="header" style={s.heading}>공부 목표 설정</Text></View>
     <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       {status}
-      {loading && !goals && <ActivityIndicator color={colors.primary} accessibilityLabel="목표 불러오는 중" />}
       {!!error && <View style={{ gap: spacing.sm }}><Text accessibilityRole="alert" style={s.error}>{error}</Text><Button label="다시 불러오기" variant="secondary" disabled={saving || loading} onPress={onRetry} /></View>}
       {goals && <>
         <SegmentedControl accessibilityLabel="목표 설정 보기" value={preview ? 'preview' : 'days'} onChange={value => setPreview(value === 'preview')} options={[{ value: 'days', label: '요일별 설정' }, { value: 'preview', label: '미리보기' }]} />
@@ -51,8 +50,8 @@ export function GoalsView({ goals, saved, current, loading = false, saving = fal
           <Text style={s.label}>일주일 목표</Text><Text style={s.metric}>{total ? goalText(total) : goals.every(value => value === 0) ? '이번 주는 쉬어가요' : '목표 미설정'}</Text>
           <Text style={s.caption}>공부 {goals.filter(value => value !== null && value > 0).length}일 · 휴무 {goals.filter(value => value === 0).length}일</Text>
           {weekdays.map((label, index) => <View key={label} style={s.chartRow}><Text style={s.caption}>{label.slice(0, 1)}</Text><View style={s.track}><View style={{ height: '100%', width: `${(goals[index] ?? 0) / Math.max(...goals.map(value => value ?? 0), 60) * 100}%`, backgroundColor: colors.study, borderRadius: 8 }} /></View><Text style={[s.caption, { width: 80, textAlign: 'right' }]}>{goalText(goals[index])}</Text></View>)}
-        </View> : <View style={{ gap: spacing.sm }}>{weekdays.map((label, index) => <SettingsRow key={label} label={label} value={goalText(goals[index])} description={current && current[index] !== goals[index] ? `현재 ${goalText(current[index])}` : undefined} selected={goals[index] !== saved?.[index]} onPress={() => edit(index)} />)}</View>}
-        <InfoNotice title="변경한 목표는 언제 적용되나요?">다음 공부 날짜 오전 6시부터 적용돼요. 오늘의 목표와 과거 기록은 그대로 유지돼요. 쉬는 날은 연차 획득 일수에 포함되지 않아요.</InfoNotice>
+        </View> : <View style={{ gap: spacing.sm }}>{weekdays.map((label, index) => <SettingsRow key={label} label={label} value={goalText(goals[index])} description={goals[index] !== saved?.[index] ? '저장 전 · 아래 저장하기를 눌러주세요' : current && current[index] !== goals[index] && effectiveDate ? `${effectiveDate} 오전 6시 적용 예정` : undefined} selected={goals[index] !== saved?.[index]} onPress={() => edit(index)} />)}</View>}
+        <InfoNotice title="변경한 목표는 언제 적용되나요?">{isFirstSetup ? '처음 저장하는 목표는 오늘부터 바로 적용돼요. 오늘 이미 공부한 시간도 포함돼요. 이후 변경은 다음 공부 날짜 오전 6시부터 적용돼요.' : '변경한 목표는 다음 공부 날짜 오전 6시부터 적용돼요. 오늘의 목표와 과거 기록은 그대로 유지돼요. 쉬는 날은 연차 획득 일수에 포함되지 않아요.'}</InfoNotice>
         {!!effectiveDate && <Text style={s.caption}>예약한 목표는 {effectiveDate} 오전 6시부터 적용돼요.</Text>}
       </>}
     </ScrollView>

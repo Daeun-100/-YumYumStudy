@@ -10,7 +10,7 @@ set local role authenticated;
 do $$
 declare p jsonb; c text;
 begin
- foreach c in array array['bunny','bear','cat','puppy','maltese','pomeranian'] loop
+ foreach c in array array['bunny','bear','cat','puppy','maltese','pomeranian','blackcat'] loop
   p:=public.set_profile('캐릭터검사',c);
   if p->>'character'<>c or p->>'id'<>auth.uid()::text then raise exception 'Save mismatch'; end if;
   if public.ensure_profile(0::smallint)->>'character'<>c then raise exception 'Read mismatch'; end if;
@@ -30,4 +30,4 @@ begin
  if public.ensure_profile(0::smallint)->>'displayName'<>'캐릭터검사' then raise exception 'Invalid save changed profile'; end if;
 end $$;
 rollback;
-select 'PASS: six characters, admission/profile/today/room reads, invalid input, rollback' as result;
+select 'PASS: seven characters, admission/profile/today/room reads, invalid input, rollback' as result;

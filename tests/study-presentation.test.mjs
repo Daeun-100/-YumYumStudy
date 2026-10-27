@@ -30,3 +30,17 @@ test('recorded durations show ticking seconds and goal labels stay in minutes', 
   assert.equal(goalLabel(180), '오늘 목표 3시간 0분');
   assert.equal(duration(10800, false), '3시간 0분');
 });
+
+test('web time includes a background interval even when no display ticks run, without double counting on refresh', async () => {
+  const { createServerClock } = await import('../src/lib/clock.ts');
+  let monotonicMs = 0;
+  const serverNow = '2026-10-26T10:00:30+09:00';
+  const clock = createServerClock(serverNow, () => monotonicMs);
+  assert.equal(displayedSeconds(day, session, serverNow, clock()), 130);
+  // Simulate a suspended browser tab: no timer callbacks or renders for an hour.
+  monotonicMs = 3600000;
+  assert.equal(displayedSeconds(day, session, serverNow, clock()), 3730);
+  const resumedServerNow = new Date(clock()).toISOString();
+  assert.equal(displayedSeconds({ ...day, runningSeconds: 3630 }, session, resumedServerNow, clock()), 3730);
+  assert.equal(displayedSeconds(day, null, serverNow, clock()), 130, 'explicitly stopped sessions remain stopped');
+});

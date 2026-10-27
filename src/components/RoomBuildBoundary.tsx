@@ -18,6 +18,7 @@ export function TestRoomSelector({ onboarding = false }: { onboarding?: boolean 
   const identity = useIdentity();
   const change = useContext(RoomContext);
   const [busy, setBusy] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lock = useRef(false);
   if (!isTestBuild || (!onboarding && !identity.profile && !identity.error)) return null;
@@ -47,9 +48,12 @@ export function TestRoomSelector({ onboarding = false }: { onboarding?: boolean 
     } catch (failure) { setError(failure instanceof Error ? failure.message : '방을 변경하지 못했어요.'); }
     finally { clearTimeout(timeout); lockRoomSwitch(false); lock.current = false; setBusy(false); }
   }
-  return <View style={{ padding: 10, gap: 6, backgroundColor: colors.soft }}>
+  return <View pointerEvents="box-none" style={onboarding ? { alignSelf: 'flex-end', gap: 8 } : { position: 'absolute', right: 12, bottom: 92, zIndex: 100, elevation: 10, alignItems: 'flex-end', maxWidth: '94%', gap: 8 }}>
+    {expanded && <View style={{ padding: 16, gap: 12, backgroundColor: colors.surface, borderRadius: 18, borderWidth: 1, borderColor: colors.track }}>
     <Text style={{ textAlign: 'center', color: colors.primary }}>테스트 버전 · {studyRoomId === 0 ? '0번 테스트 방' : '1번 실제 방 (실제 기록)'}</Text>
     <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>{([0, 1] as const).map(room => <Button key={room} label={room === 0 ? '0번 테스트 방' : '1번 실제 방'} size="compact" variant="secondary" disabled={busy || identity.loading || room === studyRoomId} onPress={() => { void switchTo(room); }} />)}</View>
     {error && <Text accessibilityRole="alert" style={{ color: colors.error }}>{error}</Text>}
+    </View>}
+    <Button label={expanded ? '테스트 설정 닫기' : '테스트 설정'} accessibilityLabel={expanded ? '테스트 설정 닫기' : '테스트 설정 열기'} size="compact" variant="secondary" onPress={() => setExpanded(value => !value)} />
   </View>;
 }

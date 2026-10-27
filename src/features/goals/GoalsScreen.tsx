@@ -1,6 +1,9 @@
+import { useAndroidBack } from '../navigation/useAndroidBack';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Platform, View } from 'react-native';
+import { View } from 'react-native';
+import { useRefreshOnResume } from '../../hooks/useRefreshOnResume';
 import { router, useFocusEffect, usePreventRemove } from 'expo-router';
+import { getStudyDate } from '../../lib/study-day';
 import { getGoalSettings, saveGoals } from '../../data/study';
 import { useIdentity } from '../../components/IdentityProvider';
 import { toStudyError, type GoalSettings, type GoalWeek, type Snapshot } from '../../lib/contracts';
@@ -49,14 +52,14 @@ export default function GoalsScreen() {
     finally { if (alive.current && request === sequence.current) setLoading(false); }
   }, [uid, commit]);
   useFocusEffect(useCallback(() => { void load(); return () => { sequence.current++; }; }, [load]));
-  useEffect(() => {
-    const resume = () => { if (Platform.OS === 'web' ? document.visibilityState === 'visible' : AppState.currentState === 'active') void load(); };
-    const sub = AppState.addEventListener('change', resume);
-    if (Platform.OS === 'web') { document.addEventListener('visibilitychange', resume); window.addEventListener('online', resume); }
-    return () => { sub.remove(); if (Platform.OS === 'web') { document.removeEventListener('visibilitychange', resume); window.removeEventListener('online', resume); } };
-  }, [load]);
+  useRefreshOnResume(load);
   const studyDate = study.today?.data.day.studyDate;
   useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [studyDate, load]);
+  const back = () => {
+    if (busy.current) return;
+    if (router.canGoBack()) router.back(); else router.replace('/profile');
+  };
+  useAndroidBack(() => { back(); return true; });
   const dirty = !!editor && !sameGoals(editor.base, editor.draft);
   usePreventRemove(dirty || saving, ({ repeat }) => {
     if (busy.current) return;
@@ -72,9 +75,12 @@ export default function GoalsScreen() {
       const goals = mergeGoalDraft(fresh.data, submitted.base, submitted.draft);
       const result = await saveGoals(goals);
       if (!alive.current) return;
-      commit({ snapshot: { serverNow: result.serverNow, data: { ...fresh.data, scheduled: result.data.goals, effectiveDate: result.data.effectiveDate } }, base: result.data.goals, draft: [...result.data.goals] as GoalWeek });
+      const immediate = result.data.effectiveDate === getStudyDate(result.serverNow);
+      commit({ snapshot: { serverNow: result.serverNow, data: immediate
+        ? { isFirstSetup: false, current: result.data.goals, scheduled: null, effectiveDate: null }
+        : { ...fresh.data, isFirstSetup: false, scheduled: result.data.goals, effectiveDate: result.data.effectiveDate } }, base: result.data.goals, draft: [...result.data.goals] as GoalWeek });
       uncertainSave.current = false;
-      setNotice(`저장했어요. ${result.data.effectiveDate} 오전 6시부터 적용돼요.`);
+      setNotice(immediate ? '저장했어요. 오늘 목표에 바로 적용했어요. 오늘 이미 공부한 시간도 포함돼요.' : `저장했어요. ${result.data.effectiveDate} 오전 6시부터 적용돼요.`);
       void study.refresh();
     } catch (failure) {
       if (alive.current) { uncertainSave.current = true; setSaveError(`${toStudyError(failure).message}\n입력한 목표는 유지했어요. 저장하기를 누르면 최신 설정을 확인하고 다시 반영해요.`); }
@@ -84,11 +90,11 @@ export default function GoalsScreen() {
     }
   }
   return <View style={ui.outer}><View style={ui.page}>
-    <GoalsView goals={editor?.draft ?? null} saved={editor?.base ?? null} current={editor?.snapshot.data.current} loading={loading} saving={saving}
-      effectiveDate={editor?.snapshot.data.effectiveDate} error={saveError ?? error} notice={notice} status={<Status />} discard={discard}
+    <GoalsView isFirstSetup={editor?.snapshot.data.isFirstSetup} goals={editor?.draft ?? null} saved={editor?.base ?? null} current={editor?.snapshot.data.current} loading={loading} saving={saving}
+      effectiveDate={editor?.snapshot.data.effectiveDate} error={saveError ?? error} notice={notice} status={<Status showLoading={false} />} discard={discard}
       onChange={draft => { if (!editorRef.current || busy.current) return; commit({ ...editorRef.current, draft }); setNotice(null); }}
       onSave={() => void save()} onRetry={() => void load()}
-      onBack={() => { if (router.canGoBack()) router.back(); else router.replace('/profile'); }}
+      onBack={back}
       onKeepEditing={() => { setDiscard(false); blockedNavigation.current = null; }}
       onDiscard={() => { if (editorRef.current) commit({ ...editorRef.current, draft: [...editorRef.current.base] as GoalWeek }); setDiscard(false); blockedNavigation.current?.(); blockedNavigation.current = null; }} />
   </View></View>;

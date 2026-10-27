@@ -1,3 +1,4 @@
+import { useAndroidBack } from '../navigation/useAndroidBack';
 import { useRef, useState, type PropsWithChildren } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
@@ -16,6 +17,7 @@ import config from '../../../app.json';
 
 function back() { if (router.canGoBack()) router.back(); else router.replace('/profile'); }
 function Detail({ title, children, busy = false }: PropsWithChildren<{ title: string; busy?: boolean }>) {
+  useAndroidBack(() => { if (!busy) back(); return true; });
   return <View style={ui.outer}><View style={ui.page}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.xl }}><Button label="←" size="icon" variant="ghost" accessibilityLabel="마이페이지로 돌아가기" disabled={busy} onPress={back} /><Text accessibilityRole="header" style={ui.heading}>{title}</Text></View>
     {children}

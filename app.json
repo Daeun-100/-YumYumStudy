@@ -14,7 +14,7 @@
       "versionCode": 1,
       "package": "com.yumyumstudy.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#028669",
         "foregroundImage": "./assets/app/android-icon-foreground.png",
         "backgroundImage": "./assets/app/android-icon-background.png",
         "monochromeImage": "./assets/app/android-icon-monochrome.png"
@@ -25,7 +25,25 @@
       "favicon": "./assets/app/web-favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/app/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#028669"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/app/android-icon-monochrome.png",
+          "color": "#108363",
+          "defaultChannel": "friend-calls",
+          "largeIcon": "./assets/app/logo-transparent.png"
+        }
+      ]
     ],
     "extra": {
       "router": {

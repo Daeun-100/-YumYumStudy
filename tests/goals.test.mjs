@@ -41,3 +41,12 @@ test('refresh and response-loss retry preserve rest, unset and legacy minute goa
   const afterBoundary = { current: draft, scheduled: null, effectiveDate: null };
   assert.deepEqual(mergeGoalDraft(afterBoundary, base, draft), draft);
 });
+
+test('goal settings preserve the server first-setup flag and reject malformed flags', async () => {
+  const { decodeGoalSettings } = await import('../src/data/decode.ts');
+  const settings = { current: [null,null,null,null,null,null,null], scheduled: null, effectiveDate: null };
+  assert.equal(decodeGoalSettings({ ...settings, isFirstSetup: true }).isFirstSetup, true);
+  assert.equal(decodeGoalSettings({ ...settings, isFirstSetup: false }).isFirstSetup, false);
+  assert.equal(decodeGoalSettings(settings).isFirstSetup, undefined);
+  assert.throws(() => decodeGoalSettings({ ...settings, isFirstSetup: 'true' }));
+});

@@ -1,3 +1,4 @@
+import { withTimeout } from '../lib/with-timeout';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { PropsWithChildren } from 'react';
 import { AppState, Platform } from 'react-native';
@@ -7,7 +8,6 @@ import { toStudyError } from '../lib/contracts';
 import type { Profile, StudyError, UID } from '../lib/contracts';
 import { getOnboarding } from '../data/onboarding';
 import type { Onboarding } from '../lib/onboarding';
-import { resumePendingStudyStart } from '../data/study';
 
 type IdentityState = {
   loading: boolean;
@@ -31,19 +31,18 @@ export function IdentityProvider({ children }: PropsWithChildren) {
     async function initialize() {
       let verifiedUid: UID | null = null;
       try {
-        const uid = await ensureAuthIdentity();
+        const uid = await withTimeout(ensureAuthIdentity(), 15000, '로그인 확인이 지연되고 있어요. 인터넷 연결을 확인한 뒤 다시 확인을 눌러 주세요.');
         verifiedUid = uid;
         if (disposed) return;
         setState({ uid, profile: null, step: null, loading: true, error: null });
-        const admission = await getOnboarding();
+        const admission = await withTimeout(getOnboarding(), 15000, '입장 상태를 불러오지 못했어요. 다시 확인해 주세요.');
         if (disposed) return;
         if (admission.step !== 'ready') {
           setState({ uid, profile: null, step: admission.step, loading: false, error: null });
           return;
         }
-        const profile = await ensureIdentity();
+        const profile = await withTimeout(ensureIdentity(), 15000, '내 정보를 불러오지 못했어요. 다시 확인해 주세요.');
         if (disposed) return;
-        await resumePendingStudyStart();
         if (!disposed) setState({ uid, profile, step: 'ready', loading: false, error: null });
       } catch (failure) {
         if (!disposed) setState({ uid: verifiedUid, loading: false, profile: null, step: null, error: toStudyError(failure) });

@@ -6,9 +6,10 @@ module.exports = () => {
   const test = variant === 'test';
   return {
     ...base,
+    plugins: [...base.plugins, ['expo-secure-store', { configureAndroidBackup: true }]],
     name: test ? '얌얌스터디 테스트' : base.name,
     scheme: test ? 'yumyumstudy-test' : base.scheme,
-    android: { ...base.android, package: test ? `${base.android.package}.test` : base.android.package },
+    android: { ...base.android, googleServicesFile: './config/firebase/google-services.json', package: test ? `${base.android.package}.test` : base.android.package },
     web: { ...base.web, output: 'single' },
     extra: { ...base.extra, appVariant: variant },
   };

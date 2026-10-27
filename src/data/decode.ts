@@ -53,7 +53,8 @@ export function decodeGoalSettings(value: unknown): GoalSettings {
   const effectiveDate = row.effectiveDate === null ? null : text(row.effectiveDate);
   if (effectiveDate !== null) getStudyDayBounds(effectiveDate);
   if ((row.scheduled === null) !== (effectiveDate === null)) return invalid();
-  return { current: decodeGoals(row.current), scheduled: row.scheduled === null ? null : decodeGoals(row.scheduled), effectiveDate };
+  if (row.isFirstSetup !== undefined && typeof row.isFirstSetup !== 'boolean') return invalid();
+  return { ...(row.isFirstSetup === undefined ? {} : { isFirstSetup: row.isFirstSetup }), current: decodeGoals(row.current), scheduled: row.scheduled === null ? null : decodeGoals(row.scheduled), effectiveDate };
 }
 export function decodeSnapshot<T>(value: unknown, decode: (value: unknown) => T): Snapshot<T> {
   const row = record(value);

@@ -1,12 +1,11 @@
 import { colors, layout, spacing } from '../design/theme';
 import type { PropsWithChildren } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { isTestRoom } from '../lib/room';
 
 export function Screen({ children }: PropsWithChildren) {
   return <ScrollView style={styles.background} contentContainerStyle={styles.content}>
-    <View style={styles.body}>{isTestRoom && <Text accessibilityRole="header" style={{ color: colors.secondary, textAlign: 'center' }}>테스트 방 · 0번</Text>}{children}</View>
+    <View style={styles.body}>{children}</View>
   </ScrollView>;
 }
 

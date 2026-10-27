@@ -1,7 +1,8 @@
 import { colors, layout, spacing, typography } from '../design/theme';
 import { Button, Card } from '../design/components';
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from 'react';
-import { AppState, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Linking, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePathname } from 'expo-router';
 import config from '../../app.json';
 import { fetchRelease, needsUpdate } from '../lib/releases';
@@ -99,22 +100,30 @@ export function UpdateNotice({ variant = 'inline' }: { variant?: 'inline' | 'glo
       </>}
     </View>;
   }
-  const content = <Card variant="compact" style={[styles.notice, variant === 'global' && { marginTop: 0 }]} accessibilityLiveRegion="polite">
-    <Text style={styles.title}>새 버전 {release.version}이 나왔어요</Text>
+  const content = <Card variant="compact" style={styles.notice} accessibilityViewIsModal accessibilityLiveRegion="polite">
+    <Text accessibilityRole="header" style={styles.title}>새 버전 {release.version}이 나왔어요</Text>
     {!!release.notes && <Text style={styles.body}>{release.notes}</Text>}
-    <Text style={styles.body}>{Platform.OS === 'web' ? '새로고침하면 최신 웹앱을 불러옵니다.' : '새 APK를 내려받아 설치해 주세요.'}</Text>
+    <Text style={styles.body}>{Platform.OS === 'web' ? '새로고침하면 최신 웹앱을 불러옵니다.' : '새 APK를 내려받은 뒤 파일을 열고 설치해 주세요.'}</Text>
     {error && <Text style={styles.body}>{error}</Text>}
     <Button label={Platform.OS === 'web' ? '새로고침' : '업데이트 다운로드'} onPress={() => { void update(); }} />
     <Button label="나중에" variant="secondary" onPress={dismiss} />
   </Card>;
-  return variant === 'global' ? <View style={styles.global}><ScrollView style={{ width: '100%' }} contentContainerStyle={{ alignItems: 'center' }}>{content}</ScrollView></View> : content;
+  return <Modal visible transparent animationType="fade" onRequestClose={dismiss}>
+    <SafeAreaView style={styles.backdrop}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.modalContent}>
+        {content}
+      </ScrollView>
+    </SafeAreaView>
+  </Modal>;
 }
 
 const styles = StyleSheet.create({
-  global: { width: '100%', maxHeight: '45%', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, alignItems: 'center', backgroundColor: colors.background },
+  backdrop: { flex: 1, backgroundColor: 'rgba(31,40,32,0.35)' },
+  scroll: { flex: 1 },
+  modalContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
   version: { alignItems: 'center', marginTop: spacing.xl, gap: spacing.sm },
   caption: { ...typography.caption, color: colors.secondary, textAlign: 'center' },
-  notice: { marginTop: spacing.xl, backgroundColor: colors.soft, width: '100%', maxWidth: layout.contentWidth },
+  notice: { backgroundColor: colors.soft, width: '100%', maxWidth: layout.contentWidth },
   title: { ...typography.title, color: colors.text },
   body: { ...typography.secondary, color: colors.text },
 });

@@ -1,3 +1,4 @@
+import { SkeletonRegion, DetailSkeleton } from '../../design/Skeleton';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, InfoButton, SegmentedControl } from '../../design/components';
@@ -29,13 +30,13 @@ export function RecordsPreview({ initialPeriod = 'week', initialDate = '2026-10-
     <View style={s.header}>{onBack && <Button label="←" variant="ghost" size="icon" accessibilityLabel="친구 목록으로 돌아가기" onPress={onBack} />}<Text accessibilityRole="header" numberOfLines={2} style={[profile ? typography.title : typography.heading, s.heading]}>{profile ? `${profile.name}의 기록` : '기록'}</Text><View style={s.switch}><SegmentedControl<'week' | 'month'> variant="soft" accessibilityLabel="기록 기간" value={period} onChange={setPeriod} options={[{ value: 'week', label: '주간' }, { value: 'month', label: '월간' }]} /></View></View>
     <PeriodHeader previousDisabled={!!earliest && start <= earliest} compact title={period === 'week' ? `${date.getUTCMonth() + 1}월 ${Math.ceil((date.getUTCDate() + ((parseDate(monthStart(start)).getUTCDay() + 6) % 7)) / 7)}주차` : `${date.getUTCFullYear()}년 ${date.getUTCMonth() + 1}월`} onPrevious={() => move(-1)} onNext={() => move(1)} nextDisabled={next > today} />
     {notice}
-    <View style={s.metrics}><View style={s.metricItem}><Text style={s.metricLabel}>총 공부 시간</Text><Text style={s.metricValue}>{loading ? '—' : duration(minutes)}</Text></View><View style={s.metricDivider} /><View style={s.metricItem}><Text style={s.metricLabel}>목표 달성</Text><Text style={[s.metricValue, { color: colors.primary }]}>{loading ? '—' : `${elapsed.filter(achieved).length}일`}</Text></View></View>
-    {period === 'week' ? <WeeklyChart today={today} days={days} selected={selected} onSelect={selectDay} /> : <MonthlyCalendar compact days={days} selected={selected} onSelect={selectDay} today={today} />}
+    <SkeletonRegion loading={loading} label="기록 요약 불러오는 중"><View style={s.metrics}><View style={s.metricItem}><Text style={s.metricLabel}>총 공부 시간</Text><Text style={s.metricValue}>{loading ? '—' : duration(minutes)}</Text></View><View style={s.metricDivider} /><View style={s.metricItem}><Text style={s.metricLabel}>목표 달성</Text><Text style={[s.metricValue, { color: colors.primary }]}>{loading ? '—' : `${elapsed.filter(achieved).length}일`}</Text></View></View></SkeletonRegion>
+    <SkeletonRegion loading={loading} label="공부 기록 불러오는 중">{period === 'week' ? <WeeklyChart today={today} days={days} selected={selected} onSelect={selectDay} /> : <MonthlyCalendar compact days={days} selected={selected} onSelect={selectDay} today={today} />}</SkeletonRegion>
     <View style={s.legendRow}><Text style={s.hint}>날짜를 누르면 아래에서 상세 기록을 볼 수 있어요</Text><InfoButton accessibilityLabel="기록 표시 안내" onPress={() => setLegendOpen(true)} /></View>
-    {!loading && <View style={s.detail}>
+    <View style={s.detail}>
       <Text accessibilityRole="header" style={[typography.title, { color: colors.text }]}>상세 기록</Text>
-      {renderDayDetail ? renderDayDetail(day) : <DayDetail day={day} aggregateOnly={!!records} />}
-    </View>}
+      {loading ? <DetailSkeleton /> : renderDayDetail ? renderDayDetail(day) : <DayDetail day={day} aggregateOnly={!!records} />}
+    </View>
     </ScrollView>
     <Modal visible={legendOpen} transparent animationType="slide" onRequestClose={() => setLegendOpen(false)}>
       <View style={s.overlay}>
@@ -50,7 +51,7 @@ export function RecordsPreview({ initialPeriod = 'week', initialDate = '2026-10-
 }
 const s = StyleSheet.create({
   content: { paddingHorizontal: spacing.xxl, paddingTop: spacing.sm, gap: spacing.sm, paddingBottom: spacing.xxl },
-  detail: { gap: spacing.md, paddingTop: spacing.lg },
+  detail: { minHeight: 280, gap: spacing.md, paddingTop: spacing.lg },
   header: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   heading: { flex: 1, color: colors.text }, switch: { width: 136, flexShrink: 0 },
   metrics: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, paddingVertical: spacing.sm },

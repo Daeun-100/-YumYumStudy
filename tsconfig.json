@@ -7,7 +7,9 @@
   "exclude": [
     "node_modules",
     "dist",
+    "builds",
     "storybook-static",
-    ".pnpm-store"
+    ".pnpm-store",
+    "supabase/functions"
   ]
 }

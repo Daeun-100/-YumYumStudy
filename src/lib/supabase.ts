@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import { validateSupabaseConfig } from './config';
 import { sessionStorage } from './session-storage';
 import { isTestRoom, studyRoomId } from './room';
+import { createNetworkFetch } from './network-fetch';
 
 const clients = new Map<number, SupabaseClient>();
 
@@ -16,6 +17,7 @@ export function getSupabase(): SupabaseClient {
     process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   );
   const client = createClient(url, key, {
+    global: { fetch: createNetworkFetch(fetch) },
     auth: {
       storage: sessionStorage,
       ...(isTestRoom ? { storageKey: `sb-${new URL(url).hostname.split('.')[0]}-auth-token-test-room-0` } : {}),

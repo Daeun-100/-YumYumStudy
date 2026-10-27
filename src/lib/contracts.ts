@@ -20,7 +20,7 @@ export type DayRecord = {
   isRestDay: boolean;
   goalAchieved: boolean | null;
 };
-export type GoalSettings = { current: GoalWeek; scheduled: GoalWeek | null; effectiveDate: StudyDate | null };
+export type GoalSettings = { isFirstSetup?: boolean; current: GoalWeek; scheduled: GoalWeek | null; effectiveDate: StudyDate | null };
 export type LeaveState = 'AVAILABLE' | 'SCHEDULED' | 'USED' | 'EXPIRED';
 export type LeaveGrant = { status: LeaveState; scheduledDate: StudyDate | null; id: string; earningWeek: StudyDate; earnedAt: string; expiresAt: string };
 // Each grant belongs to exactly one state; only AVAILABLE contributes to the balance.

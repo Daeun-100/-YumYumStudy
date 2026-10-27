@@ -9,6 +9,7 @@ export const characters = {
   puppy: { label: '강아지', image: require('../../../assets/characters/puppy/puppy-home.png') },
   maltese: { label: '말티즈', image: require('../../../assets/characters/maltese/maltese-home.png') },
   pomeranian: { label: '포메라니안', image: require('../../../assets/characters/pomeranian/pomeranian-home.png') },
+  blackcat: { label: '검은 고양이', image: require('../../../assets/characters/black-cat/black-cat-home.png') },
 };
 export function CharacterPicker({ value, onChange, disabled = false }: { value: CharacterId; onChange(value: CharacterId): void; disabled?: boolean }) {
   return <View style={{ gap: 12 }}><Text style={{ ...typography.label, color: colors.text }}>나의 캐릭터</Text><View accessibilityRole="radiogroup" accessibilityLabel="캐릭터 선택" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

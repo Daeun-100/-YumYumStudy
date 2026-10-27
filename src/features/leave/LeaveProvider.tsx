@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from 'react';
-import { AppState, Platform } from 'react-native';
+import { isAppActive, useRefreshOnResume } from '../../hooks/useRefreshOnResume';
 import { useIdentity } from '../../components/IdentityProvider';
 import { useStudy } from '../study/StudyProvider';
 import { getLeaveStatus, resumePendingLeave, scheduleLeave, cancelLeave } from '../../data/leave';
@@ -19,6 +19,7 @@ export function LeaveProvider({ children }: PropsWithChildren) {
   const runner = useRef<(() => Promise<void>) | null>(null);
   const retryNeeded = useRef(false);
   const refresh = useCallback(async () => { await runner.current?.(); }, []);
+  useRefreshOnResume(refresh, !!uid);
   useEffect(() => {
     retryNeeded.current = false;
     if (!uid) { runner.current = null; return; }
@@ -49,14 +50,9 @@ export function LeaveProvider({ children }: PropsWithChildren) {
       return flight;
     };
     runner.current = run;
-    const active = () => Platform.OS === 'web' ? document.visibilityState === 'visible' : AppState.currentState === 'active';
-    const resume = () => { if (active()) void run(); };
-    const initial = setTimeout(resume, 0);
-    const subscription = AppState.addEventListener('change', resume);
-    if (Platform.OS === 'web') { document.addEventListener('visibilitychange', resume); window.addEventListener('online', resume); }
+    const initial = setTimeout(() => { if (isAppActive()) void run(); }, 0);
     return () => {
-      disposed = true; runner.current = null; clearTimeout(initial); subscription.remove();
-      if (Platform.OS === 'web') { document.removeEventListener('visibilitychange', resume); window.removeEventListener('online', resume); }
+      disposed = true; runner.current = null; clearTimeout(initial);
     };
   }, [uid]);
   // A successful study read is evidence that connectivity recovered, including on native.

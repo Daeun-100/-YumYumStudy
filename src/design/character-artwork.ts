@@ -13,6 +13,9 @@ import malteseLeave from '../../assets/characters/maltese/maltese-leave.png';
 import pomeranianFocus from '../../assets/characters/pomeranian/pomeranian-focus.png';
 import pomeranianLeave from '../../assets/characters/pomeranian/pomeranian-leave.png';
 
+import blackcatFocus from '../../assets/characters/black-cat/black-cat-focus.png';
+import blackcatLeave from '../../assets/characters/black-cat/black-cat-vacation.png';
+
 const source = (asset: ImageSourcePropType | string): ImageSourcePropType => typeof asset === 'string' ? { uri: asset } : asset;
 
 export const characterArtwork = {
@@ -22,4 +25,5 @@ export const characterArtwork = {
   puppy: { label: '강아지', focus: source(puppyFocus), leave: source(puppyLeave) },
   maltese: { label: '말티즈', focus: source(malteseFocus), leave: source(malteseLeave) },
   pomeranian: { label: '포메라니안', focus: source(pomeranianFocus), leave: source(pomeranianLeave) },
+  blackcat: { label: '검은 고양이', focus: source(blackcatFocus), leave: source(blackcatLeave) },
 } satisfies Record<CharacterId, { label: string; focus: ImageSourcePropType; leave: ImageSourcePropType }>;
