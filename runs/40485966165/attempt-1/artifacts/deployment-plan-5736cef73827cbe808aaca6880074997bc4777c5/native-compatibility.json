@@ -1,0 +1,10 @@
+{
+  "compatible": true,
+  "normalizedRuntime": "7e3df9398006bc04f4400ac26189dd6c3b36ef9a",
+  "exemptions": [
+    "ignore-additions:.easignore",
+    "ignore-additions:.gitignore",
+    "package-script:update:production"
+  ],
+  "reasons": []
+}
