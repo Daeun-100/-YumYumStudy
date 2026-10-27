@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useAndroidBack } from '../navigation/useAndroidBack';
 import { AllowedAppsView } from './AllowedAppsView';
 import { AllowedAppsSetup } from './AllowedAppsSetup';
+import { createAllowedAppsSelectionQueue } from './selection-queue';
 import { studyGuard, type GuardApp, type GuardStatus } from './native';
 
 const back = () => { if (router.canGoBack()) router.back(); else router.replace('/'); };
@@ -14,13 +15,20 @@ export default function AllowedAppsScreen() {
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pendingPackages, setPendingPackages] = useState<string[]>([]);
   const locked = useRef(false);
   const alive = useRef(true);
+  const [selectionQueue] = useState(() => studyGuard ? createAllowedAppsSelectionQueue(studyGuard, {
+    onPending: setPendingPackages,
+    onStatus: setStatus,
+    onError: failure => setError(failure instanceof Error ? failure.message : String(failure)),
+  }) : null);
   const refresh = useCallback(async () => {
-    if (!studyGuard || AppState.currentState !== 'active') return;
-    try { const next = await studyGuard.status(); if (alive.current) setStatus(next); }
+    if (!studyGuard || selectionQueue?.pending || AppState.currentState !== 'active') return;
+    const revision = selectionQueue?.revision;
+    try { const next = await studyGuard.status(); if (alive.current && !selectionQueue?.pending && revision === selectionQueue?.revision) setStatus(next); }
     catch (failure) { if (alive.current) setError(String(failure)); }
-  }, []);
+  }, [selectionQueue]);
   useEffect(() => {
     alive.current = true;
     const initial = setTimeout(() => void refresh(), 0);
@@ -48,6 +56,6 @@ export default function AllowedAppsScreen() {
   }
   return <AllowedAppsView nativeAvailable={!!studyGuard} status={status} apps={apps}
     setupContent={studyGuard && <AllowedAppsSetup status={status} busy={busy} guard={studyGuard} run={action} onEnableNotifications={enableNotifications} />}
-    error={error} busy={busy} search={search} onSearch={setSearch} onBack={back}
-    onSelect={(pkg, value) => void action(() => studyGuard!.select(value ? [...(status?.allowed ?? []), pkg] : (status?.allowed ?? []).filter(item => item !== pkg)))} />;
+    error={error} busy={busy} pendingPackages={pendingPackages} search={search} onSearch={setSearch} onBack={back}
+    onSelect={(pkg, value) => { setError(''); void selectionQueue?.select(pkg, value); }} />;
 }

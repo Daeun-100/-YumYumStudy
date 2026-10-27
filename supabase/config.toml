@@ -418,3 +418,7 @@ enabled = true
 # call-friend validates every bearer token using auth.getUser before any action.
 [functions.call-friend]
 verify_jwt = false
+
+# Server-only scheduler authenticates with a random shared secret before any work.
+[functions.log-monitor]
+verify_jwt = false

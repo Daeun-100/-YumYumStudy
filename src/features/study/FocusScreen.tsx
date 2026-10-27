@@ -10,7 +10,7 @@ import { useIdentity } from '../../components/IdentityProvider';
 import { useStudy } from './StudyProvider';
 import { ui } from './StudyUI';
 import { FocusView, type FocusMember } from './FocusView';
-import { displayedSeconds, duration } from './presentation';
+import { displayedSeconds, duration, progress } from './presentation';
 
 export function FocusScreen() {
   const [calledFriend, setCalledFriend] = useState<FocusMember | null>(null);
@@ -28,7 +28,8 @@ export function FocusScreen() {
   const friends = study.room?.data.filter(member => member.profile.id !== profile?.id).sort((a, b) => a.profile.id.localeCompare(b.profile.id)) ?? [];
   for (const member of friends) {
     const elapsed = displayedSeconds(member.today, member.activeSession, study.room!.serverNow, Math.max(study.now, Date.parse(study.room!.serverNow)));
-    members.push({ id: member.profile.id, name: member.profile.displayName, character: member.profile.character ?? 'bunny', active: !!member.activeSession, time: duration(elapsed, false) });
+    const percent = progress(elapsed, member.today.goalMinutes);
+    members.push({ id: member.profile.id, name: member.profile.displayName, character: member.profile.character ?? 'bunny', active: !!member.activeSession, time: duration(elapsed, false), achieved: percent !== null && percent >= 100 });
   }
   return <View style={ui.outer}><View style={ui.page}>
     <FocusView onWake={setCalledFriend} renderRoomOverlay={scene => <PostitOverlay scene={scene} />} members={members} memberCount={study.room ? study.room.data.length : null} seconds={seconds} sessionSeconds={sessionSeconds} goalMinutes={data?.day.goalMinutes ?? null} running={!!data?.activeSession} busy={study.busy} disabled={!data || !!identity.error} timerControl={<StudyControl round />} onBack={() => router.dismissTo('/')} onFriends={() => router.navigate('/friends')} onToggle={() => void study.toggle()} onAllowedApps={() => setAllowedAppsOpen(true)} />
