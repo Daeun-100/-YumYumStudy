@@ -29,6 +29,7 @@ export type FocusMember = { id: string; name: string; time: string; active: bool
 export type FocusViewProps = {
   onWake?(member: FocusMember): void;
   wakeSentIds?: string[];
+  timerControl?: ReactNode;
   renderRoomOverlay?(size: { width: number; height: number }): ReactNode;
   members: FocusMember[]; memberCount: number | null; seconds: number | null; sessionSeconds?: number | null; goalMinutes: number | null;
   running: boolean; busy?: boolean; disabled?: boolean; retry?: boolean;
@@ -36,7 +37,7 @@ export type FocusViewProps = {
 };
 
 /** Shared Storybook and app layout. All session state comes from the caller. */
-export function FocusView({ onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay }: FocusViewProps) {
+export function FocusView({ onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl }: FocusViewProps) {
   const { height } = useWindowDimensions();
   const compact = height < 740;
   const artwork = useMeasuredLayout('focus-art', String(compact));
@@ -71,9 +72,9 @@ export function FocusView({ onWake, wakeSentIds = [], members, memberCount, seco
         <View pointerEvents="none" accessibilityElementsHidden={!achieved} importantForAccessibility={achieved ? 'auto' : 'no-hide-descendants'} style={[s.achievement, { opacity: achieved ? 1 : 0 }]}><AchievementBadge label="달성 완료" /></View>
       </View>
       <View style={s.timeRow}><Text accessibilityLabel="이번 집중 시간" numberOfLines={1} adjustsFontSizeToFit style={[s.timer, compact && { fontSize: 52, lineHeight: 64 }]}>{seconds === null ? '--:--:--' : timer(sessionSeconds ?? 0)}</Text></View>
-      <Text style={s.goalSummary}>{seconds === null ? '오늘 기록을 확인하고 있어요' : `오늘 누적 ${duration(seconds, false)} / ${goalLabel(goalMinutes)}`}</Text>
+      <Text style={s.goalSummary}>{seconds === null ? '오늘 누적 — / 오늘 목표 —' : `오늘 누적 ${duration(seconds, false)} / ${goalLabel(goalMinutes)}`}</Text>
       <View style={s.progressRow}><View accessibilityRole="progressbar" accessibilityLabel="오늘 목표 달성률" accessibilityValue={percent === null ? { text: '목표 없음' } : { min: 0, max: 100, now: Math.min(percent, 100), text: `${percent}%` }} style={s.track}><View style={[s.fill, { width: `${Math.min(percent ?? 0, 100)}%` }]} /></View><Text style={s.secondary}>{percent === null ? '—' : `${percent}%`}</Text></View>
-      <Button label={retry ? '↻' : running ? 'Ⅱ' : '▶'} size="round" accessibilityLabel={retry ? '공부 요청 다시 시도' : running ? '공부 일시정지' : '공부 시작'} loading={busy} disabled={disabled} onPress={onToggle} style={compact ? { width: 64, height: 64 } : undefined} />
+      {timerControl ?? <Button label={retry ? '↻' : running ? 'Ⅱ' : '▶'} size="round" accessibilityLabel={retry ? '공부 요청 다시 시도' : running ? '공부 일시정지' : '공부 시작'} loading={busy} disabled={disabled} onPress={onToggle} style={compact ? { width: 64, height: 64 } : undefined} />}
     </Card>
   </>;
 }

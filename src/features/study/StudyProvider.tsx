@@ -1,4 +1,5 @@
 import { needsStudyGuard } from './timer-mode-core';
+import { actionConfirmed } from './pending-action';
 import { AppState, Platform } from 'react-native';
 import { withTimeout } from '../../lib/with-timeout';
 import { studyGuard } from '../allowed-apps/native';
@@ -62,6 +63,9 @@ export function StudyProvider({ children }: PropsWithChildren) {
       if (!alive.current || request !== sequence.current) return;
       clock.current = createServerClock(snapshot.serverNow);
       setNow(clock.current()); setToday(snapshot);
+      if (actionConfirmed(pending.current, snapshot.data.activeSession?.id ?? null)) {
+        pending.current = null; setActionFailed(false);
+      }
       if (!pending.current) setError(null);
     } else if (!pending.current) setError(toStudyError(results[0].reason).message);
     if (results[1].status === 'fulfilled') {

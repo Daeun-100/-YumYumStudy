@@ -9,7 +9,8 @@ import { useIdentity } from '../../components/IdentityProvider';
 import { AchievementBadge, Button, PressableCard } from '../../design/components';
 import { colors, layout, radius, typography } from '../../design/theme';
 import { useStudy } from './StudyProvider';
-import { Nav, Status } from './StudyUI';
+import { Nav } from './StudyUI';
+import { StudyControl } from './StudyControl';
 import { displayedSeconds, goalLabel, progress, timer } from './presentation';
 
 import { HomeArtwork } from './HomeArtwork';
@@ -26,36 +27,28 @@ export function HomeScreen() {
   const data = study.today?.data;
   const seconds = data && study.today ? displayedSeconds(data.day, data.activeSession, study.today.serverNow, study.now) : 0;
   const percent = progress(seconds, data?.day.goalMinutes ?? null);
-  const running = !!data?.activeSession;
   const activeFriends = study.room?.data.filter(member => member.profile.id !== identity.profile?.id && member.activeSession) ?? [];
-  const friendMessage = study.roomError ? '친구 현황을 다시 확인해 주세요' : !study.room ? '친구 현황을 불러오는 중이에요' : activeFriends.length ? `지금 ${activeFriends.length}명이 공부 중이에요` : '오늘의 첫 공부, 먼저 시작해 볼까요?';
-
-
-  async function toggle() {
-    const succeeded = await study.toggle();
-    if (succeeded && !running) router.navigate('/focus');
-  }
+  const friendMessage = !study.room ? '함께 공부하는 친구들' : activeFriends.length ? `지금 ${activeFriends.length}명이 공부 중이에요` : '오늘의 첫 공부, 먼저 시작해 볼까요?';
 
   return <View style={s.outer}><View style={s.page}>
     <View style={{ flex: 1, minHeight: 0 }} onLayout={frame.onLayout}>
-      <Status />
       <View style={[s.summary, compact && s.summaryCompact]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Text style={s.label}>오늘 전체 공부 시간</Text><Button label="허용앱" accessibilityLabel="내 허용앱 목록 열기" size="compact" variant="raised" onPress={() => setAllowedAppsOpen(true)} /></View>
         <View style={s.timerGroup}>
         <View style={s.timerRow}><Text numberOfLines={1} adjustsFontSizeToFit style={[s.metric, compact && { fontSize: 44 }]}>{data ? timer(seconds) : '—'}</Text>{percent !== null && percent >= 100 && <View style={s.timerBadge}><AchievementBadge label="달성 완료" /></View>}</View>
         <View style={s.row}><View accessibilityRole="progressbar" accessibilityLabel="오늘 목표 달성률" accessibilityValue={percent === null ? { text: '목표 없음' } : { min: 0, max: 100, now: Math.min(percent, 100), text: `${percent}%` }} style={s.track}><View style={[s.fill, { width: `${Math.min(percent ?? 0, 100)}%` }]} /></View><Text style={s.secondary}>{percent === null ? '—' : `${percent}%`}</Text></View>
         </View>
-        <Button label={data ? `${goalLabel(data.day.goalMinutes)}  ›` : '목표 불러오는 중'} variant="ghost" size="compact" onPress={() => router.navigate('/goals')} disabled={!data} style={s.goal} />
+        <Button label={data ? `${goalLabel(data.day.goalMinutes)}  ›` : '오늘 목표 —'} variant="ghost" size="compact" onPress={() => router.navigate('/goals')} disabled={!data} style={s.goal} />
       </View>
       <View onLayout={artwork.onLayout} style={s.scene}>
         {height !== null && scene && <HomeArtwork character={identity.profile?.character ?? 'bunny'} width={scene.width} height={scene.height} />}
         <View style={{ flex: 1, minHeight: 0 }} />
-        <PressableCard accessibilityLabel={`${friendMessage}, 집중 화면으로 이동`} onPress={() => study.roomError ? void study.refresh() : router.navigate('/focus')} style={s.friends}>
+        <PressableCard accessibilityLabel={`${friendMessage}, 집중 화면으로 이동`} onPress={() => router.navigate('/focus')} style={s.friends}>
           {!!activeFriends.length && <View style={s.avatars}>{activeFriends.slice(0, 3).map(member => <View key={member.profile.id} style={s.avatar}><Image source={characters[member.profile.character ?? 'bunny'].image} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${member.profile.displayName} 캐릭터`} /></View>)}</View>}
           <Text style={[s.secondary, { flex: 1, color: colors.text }]}>{friendMessage}</Text><ChevronRight size={20} color={colors.secondary} style={{ flexShrink: 0 }} />
         </PressableCard>
       </View>
-      <View style={s.actions}><Button label={study.actionFailed ? '↻  다시 시도' : running ? 'Ⅱ  일시정지' : '▶  공부 시작'} accessibilityLabel={study.actionFailed ? '공부 요청 다시 시도' : running ? '공부 일시정지' : '공부 시작'} loading={study.busy} disabled={!data || !!identity.error} onPress={() => void toggle()} /></View>
+      <View style={s.actions}><StudyControl onStarted={() => router.navigate('/focus')} /></View>
     </View>
     <AllowedAppsLauncher visible={allowedAppsOpen} onClose={() => setAllowedAppsOpen(false)} />
     <Nav current="home" />
