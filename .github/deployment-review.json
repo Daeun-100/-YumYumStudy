@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "sourceCommit": "aca444c0b87604141479ea29915273869bb92a1c",
+  "sourceTreeDigest": "69a6dc7de99b5c2e45115fd31f8ba469fbbeab2fe3fc1770e4d9daee2f44f594",
+  "baseline": {
+    "tag": "v1.0.1",
+    "sha": "9edf9d1f989b61aae7db96d54e23fe8be2ba7bf8",
+    "runtimeVersion": "7e3df9398006bc04f4400ac26189dd6c3b36ef9a"
+  },
+  "reviewer": {
+    "kind": "interactive-codex"
+  },
+  "recommendation": "update",
+  "rationale": "The release changes leave decoding, same-day leave behavior and React Native UI in JavaScript, plus deployment automation. Native dependencies, lockfile, native modules and permissions are unchanged. Restoring only the verified deployment shortcut and additive temporary-output exclusions reproduces the installed v1.0.1 APK fingerprint exactly.",
+  "evidence": [
+    "Compared all committed master-to-develop changes and the complete production APK baseline at 9edf9d1f989b61aae7db96d54e23fe8be2ba7bf8.",
+    "Production APK v1.0.1 uses app version 1.0.1, Android versionCode 2 and channel production; these values remain unchanged.",
+    "Native compatibility calculation reproduced runtime 7e3df9398006bc04f4400ac26189dd6c3b36ef9a using the SDK fingerprint API after only the declared administrative normalization.",
+    "package.json differs only in update:production; package-lock.json, Expo/React Native/native dependencies, config plugins, native modules and app permissions are unchanged.",
+    "Ignore-file additions only exclude known generated deployment records; lifecycle and EAS build hooks are not changed.",
+    "app.config.js retains fingerprint policy for native builds and permits the existing APK runtime only in the guarded verified production master OTA child process.",
+    "The merge of current origin/master and the reviewed develop source produces the same source tree, so the review remains valid through this merge.",
+    "Weekly-free and same-day leave SQL migrations are recorded as already applied in the repository reports; this PR does not apply SQL or issue leave grants.",
+    "Uncommitted Discord log-monitor code, configuration and tests are excluded from the release source.",
+    "Clean npm ci, lint, typecheck, all 164 committed unit tests and test-variant web export passed in an isolated checkout.",
+    "Temporary review output exclusions are root-anchored; the committed .github/deployment-review.json remains trackable and is covered by a regression test."
+  ],
+  "exemptions": [
+    "ignore-additions:.easignore",
+    "ignore-additions:.gitignore",
+    "package-script:update:production"
+  ],
+  "blockers": [],
+  "changedFiles": [
+    ".easignore",
+    ".github/workflows/check.yml",
+    ".github/workflows/cloud-build.yml",
+    ".github/workflows/deployment-labels.yml",
+    ".github/workflows/publish-release.yml",
+    ".github/workflows/publish-web.yml",
+    ".github/workflows/sync-develop.yml",
+    ".gitignore",
+    ".storybook/main.ts",
+    "app.config.js",
+    "docs/DECISIONS.md",
+    "docs/SETUP-STATUS.md",
+    "docs/SPEC.md",
+    "docs/execution/05-attendance-leave.md",
+    "docs/execution/reports/same-day-leave.md",
+    "docs/execution/reports/weekly-free-leave.md",
+    "package.json",
+    "scripts/deployment-history.mjs",
+    "scripts/deployment-review.mjs",
+    "scripts/deployment.mjs",
+    "scripts/release-candidate.mjs",
+    "src/data/decode.ts",
+    "src/data/rpc.ts",
+    "src/design/theme.ts",
+    "src/features/friends/FriendsScreen.tsx",
+    "src/features/leave/LeaveScheduleList.tsx",
+    "src/features/leave/LeaveScreen.tsx",
+    "src/features/leave/LeaveView.tsx",
+    "src/features/leave/model.ts",
+    "src/features/profile/ProfileDetails.tsx",
+    "src/features/study/HomeScreen.tsx",
+    "src/lib/contracts.ts",
+    "stories/LeaveComponents.stories.tsx",
+    "stories/screens/LeaveLayout.stories.tsx",
+    "stories/screens/LeaveLayout.tsx",
+    "stories/screens/LeaveStatusPreview.stories.tsx",
+    "stories/screens/ProfileLayout.tsx",
+    "stories/screens/StudyLayouts.tsx",
+    "supabase/migrations/20261027072856_weekly_free_leave.sql",
+    "supabase/migrations/20261027092939_same_day_leave.sql",
+    "supabase/tests/leave_attendance_policy.sql",
+    "supabase/tests/leave_concurrency_holder.sql",
+    "supabase/tests/leave_requests.sql",
+    "supabase/tests/leave_reschedule.sql",
+    "supabase/tests/leave_states.sql",
+    "supabase/tests/same_day_leave.sql",
+    "supabase/tests/weekly_free_leave.sql",
+    "tests/deployment-history.test.mjs",
+    "tests/deployment-labels.test.mjs",
+    "tests/deployment-review.test.mjs",
+    "tests/deployment.test.mjs",
+    "tests/leave-screen.test.mjs",
+    "tests/leave.test.mjs",
+    "tests/release-config.test.mjs",
+    "tests/release-publication.test.mjs"
+  ],
+  "actualWorkflowRoute": {
+    "mode": "update",
+    "channel": "production",
+    "apkRebuild": false,
+    "version": "1.0.1",
+    "androidVersionCode": 2,
+    "runtimeVersion": "7e3df9398006bc04f4400ac26189dd6c3b36ef9a",
+    "gates": [
+      "PR review-check",
+      "master lint/typecheck/tests",
+      "fresh review and production APK native comparison",
+      "production environment protection if configured",
+      "latest-master and runtime recheck before EAS publication"
+    ]
+  },
+  "checks": {
+    "lint": "passed",
+    "typecheck": "passed",
+    "unitTests": {
+      "passed": 164,
+      "failed": 0
+    },
+    "webExport": "passed (test variant, matching PR Check)",
+    "normalizedFingerprint": "7e3df9398006bc04f4400ac26189dd6c3b36ef9a"
+  },
+  "limitations": [
+    "No EAS Update, APK build or physical-device installation was performed during PR preparation.",
+    "Web production promotion remains on the separate APK release path."
+  ]
+}
