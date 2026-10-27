@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "mode": "skip",
+  "sha": "f87809032128e613d89b53f3e423ea100beea73b",
+  "observedRuntimeVersion": null,
+  "runtimeVersion": null,
+  "baseline": null,
+  "native": {
+    "compatible": true,
+    "exemptions": [],
+    "reasons": []
+  },
+  "review": null,
+  "version": "1.0.2",
+  "revision": 3,
+  "repository": "Daeun-100/-YumYumStudy",
+  "run": "https://github.com/Daeun-100/-YumYumStudy/actions/runs/40506403995"
+}

@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "repository": "Daeun-100/-YumYumStudy",
+  "sha": "f87809032128e613d89b53f3e423ea100beea73b",
+  "runId": "40506403995",
+  "attempt": "1",
+  "workflow": "Cloud Build",
+  "run": "https://github.com/Daeun-100/-YumYumStudy/actions/runs/40506403995/attempts/1",
+  "jobs": {
+    "prepare": {
+      "result": "success",
+      "mode": "skip"
+    },
+    "android": {
+      "result": "skipped"
+    },
+    "web": {
+      "result": "skipped"
+    },
+    "record": {
+      "result": "skipped"
+    },
+    "update": {
+      "result": "skipped"
+    }
+  },
+  "files": [
+    {
+      "path": "artifacts/deployment-plan-f87809032128e613d89b53f3e423ea100beea73b/deployment-review.json",
+      "sha256": "469969d3bc15caec20f0ff7fb8dbe248e3e61671940a861e20990c3c490cef77",
+      "bytes": 10517
+    },
+    {
+      "path": "artifacts/deployment-plan-f87809032128e613d89b53f3e423ea100beea73b/deployment-review-validation.json",
+      "sha256": "5c6d04fcc1900d2fe8ea115d2897d77ddc34e2aa49c0780b66c1fd996678f2d0",
+      "bytes": 212
+    },
+    {
+      "path": "artifacts/deployment-plan-f87809032128e613d89b53f3e423ea100beea73b/native-compatibility.json",
+      "sha256": "1a6637834c4a8186fec6c4b87155c438022aa0df75dc3ca101332e3241d3f150",
+      "bytes": 62
+    },
+    {
+      "path": "artifacts/deployment-plan-f87809032128e613d89b53f3e423ea100beea73b/deployment-plan.json",
+      "sha256": "b11a1bb0b4cb985226030ed05b5a105fb6cab2ccf418d072a27655520af13ce1",
+      "bytes": 430
+    }
+  ]
+}
