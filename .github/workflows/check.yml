@@ -29,4 +29,11 @@ jobs:
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       - name: Check production version
         if: github.event_name == 'pull_request' && github.base_ref == 'master'
-        run: node scripts/check-release.mjs
+        run: |
+          # Workflow-only repairs reuse the already verified release artifacts.
+          # Any application or other source change still requires version validation.
+          if git diff --quiet origin/master...HEAD -- . ':!.github/workflows'; then
+            echo 'Workflow-only change; existing application version is unchanged.'
+          else
+            node scripts/check-release.mjs
+          fi
