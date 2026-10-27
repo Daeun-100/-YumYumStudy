@@ -1,3 +1,4 @@
+import { Dialog, DialogCloseButton } from '../../src/design/Dialog';
 import { BottomTabs } from '../../src/features/navigation/BottomTabs';
 export { BottomTabs } from '../../src/features/navigation/BottomTabs';
 import { StudyControlView } from '../../src/features/study/StudyControlView';
@@ -19,6 +20,8 @@ const characters = [bunny, bear, cat, puppy];
 export type LayoutProps = {
   screen: 'home' | 'focus';
   homeEntryPreview?: boolean;
+  todayLeave?: boolean;
+  onOpenLeave?(): void;
   running?: boolean;
   seconds?: number;
   goalMinutes?: number;
@@ -35,12 +38,12 @@ const friends = [
 function clock(seconds: number) {
   return [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60].map(n => String(n).padStart(2, '0')).join(':');
 }
-function Progress({ seconds, goalMinutes }: { seconds: number; goalMinutes: number }) {
+function Progress({ seconds, goalMinutes, todayLeave = false }: { seconds: number; goalMinutes: number; todayLeave?: boolean }) {
   const percent = goalMinutes > 0 ? Math.floor(seconds / (goalMinutes * 60) * 100) : null;
-  return <View style={s.progressRow}><View accessibilityRole="progressbar" accessibilityLabel="목표 달성률" accessibilityValue={percent === null ? { text: '목표 없음' } : { min: 0, max: 100, now: Math.min(percent, 100), text: `${percent}%` }} style={s.track}><View style={[s.fill, { width: `${Math.min(percent ?? 0, 100)}%` }]} /></View><Text style={s.secondary}>{percent === null ? '—' : `${percent}%`}</Text></View>;
+  return <View style={s.progressRow}><View accessibilityRole="progressbar" accessibilityLabel="목표 달성률" accessibilityValue={percent === null ? { text: '목표 없음' } : { min: 0, max: 100, now: Math.min(percent, 100), text: `${percent}%` }} style={[s.track, todayLeave && { backgroundColor: colors.leaveTrack }]}><View style={[s.fill, { width: `${Math.min(percent ?? 0, 100)}%` }]} /></View><Text style={s.secondary}>{percent === null ? '—' : `${percent}%`}</Text></View>;
 }
 // Storybook-only presentation: no identity, API, router, or running study session.
-export function StudyLayout({ screen, homeEntryPreview = false, running = true, seconds: initialSeconds = 4815, goalMinutes = 180, activeFriendCount = 2, name = '다이앤', width = 390, height = 844 }: LayoutProps) {
+export function StudyLayout({ screen, homeEntryPreview = false, todayLeave = false, onOpenLeave, running = true, seconds: initialSeconds = 4815, goalMinutes = 180, activeFriendCount = 2, name = '다이앤', width = 390, height = 844 }: LayoutProps) {
   const [activeScreen, setActiveScreen] = useState(screen);
   const [isRunning, setRunning] = useState(running);
   const [seconds, setSeconds] = useState(initialSeconds);
@@ -55,6 +58,7 @@ export function StudyLayout({ screen, homeEntryPreview = false, running = true, 
     return () => clearInterval(interval);
   }, [isRunning]);
   const [notice, setNotice] = useState('');
+  const [leaveDetails, setLeaveDetails] = useState(false);
   const [homeSize, setHomeSize] = useState({ width, height: 340 });
   // Background and character share one 1536 × 1024 scene coordinate system.
   // The character's laptop base (768, 860) rests on the desk at (800, 785), with a 2px visual lift.
@@ -80,7 +84,7 @@ export function StudyLayout({ screen, homeEntryPreview = false, running = true, 
     <View style={s.statusBar}><Text style={s.statusTime}>9:41</Text><View style={s.statusIcons}><View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>{[5, 8, 11, 14].map(h => <View key={h} style={{ width: 3, height: h, backgroundColor: colors.text, borderRadius: 1 }} />)}</View><View style={s.battery}><View style={s.batteryFill} /></View></View></View>
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
       {activeScreen === 'home' ? <>
-        <View style={s.summary}><Text style={[s.body, { fontWeight: '600' }]}>오늘 공부한 시간</Text><View style={s.timeRow}>{homeEntryPreview && <StudyControlView round roundSize={56} running={isRunning} onPress={() => setRunning(value => !value)} />}<Text numberOfLines={1} adjustsFontSizeToFit style={[s.metric, s.timeValue, homeEntryPreview && { fontSize: width < 360 ? 34 : 44 }]}>{clock(seconds)}</Text>{achieved && !homeEntryPreview && <View style={s.timeBadge}><AchievementBadge label="달성 완료" /></View>}</View><Progress seconds={seconds} goalMinutes={goalMinutes} /><View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}><Text style={s.secondary}>{goal}</Text>{homeEntryPreview && achieved && <AchievementBadge label="달성 완료" />}</View></View>
+        <View style={s.summary}><Text style={[s.body, { fontWeight: '600' }]}>오늘 공부한 시간</Text><View style={s.timeRow}>{homeEntryPreview && <StudyControlView round roundSize={56} running={isRunning} onPress={() => setRunning(value => !value)} />}<Text numberOfLines={1} adjustsFontSizeToFit style={[s.metric, s.timeValue, homeEntryPreview && { fontSize: width < 360 ? 34 : 44 }]}>{clock(seconds)}</Text>{achieved && !homeEntryPreview && <View style={s.timeBadge}><AchievementBadge label="달성 완료" /></View>}</View><Progress seconds={seconds} goalMinutes={goalMinutes} todayLeave={todayLeave} /><View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}><Pressable accessibilityRole="button" accessibilityLabel={todayLeave ? '연차 탭으로 이동' : '오늘 목표 확인'} onPress={() => todayLeave ? onOpenLeave ? onOpenLeave() : setLeaveDetails(true) : feedback('목표')} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6 }}><Text style={[s.secondary, todayLeave && { color: colors.leave }]}>{todayLeave ? '✈  오늘 연차' : goal}</Text><ChevronRight size={16} color={todayLeave ? colors.leave : colors.secondary} /></Pressable>{homeEntryPreview && achieved && <AchievementBadge label="달성 완료" />}</View></View>
         <View onLayout={({ nativeEvent }) => setHomeSize(nativeEvent.layout)} style={[s.homeScene, homeEntryPreview && { minHeight: 180, paddingBottom: 0 }]}>
           <Image source={imageSource(homeBackground)} resizeMode="contain" style={backgroundFrame} accessibilityLabel="햇살이 드는 공부방" />
           <Image source={imageSource(homeBunny)} resizeMode="contain" style={characterFrame} accessibilityLabel={`${name}의 토끼 캐릭터`} />
@@ -106,7 +110,8 @@ export function StudyLayout({ screen, homeEntryPreview = false, running = true, 
       </>}
       {!!notice && <Pressable accessibilityRole="button" accessibilityLabel="미리보기 안내 닫기" onPress={() => setNotice('')} style={s.notice}><Text accessibilityLiveRegion="polite" style={s.caption}>{notice}  ×</Text></Pressable>}
     </ScrollView>
-    {activeScreen === 'home' && <BottomTabs onSelect={label => label === '홈' ? move('home') : feedback(label)} />}
+    <Dialog visible={leaveDetails} label="오늘 연차" embedded onClose={() => setLeaveDetails(false)}><View style={{ padding: 24, borderRadius: 24, backgroundColor: colors.surface, gap: 16 }}><Text style={s.title}>오늘은 연차예요</Text><Text style={s.secondary}>10월 27일 공부 날짜 · 10월 28일 오전 6시까지</Text><Text style={s.secondary}>오늘 목표는 면제돼요. 공부 시간과 실제 목표 달성은 기록되지만 보상 인정 일수에는 포함되지 않아요.</Text><Text style={s.secondary}>이미 사용한 연차는 취소하거나 날짜를 변경할 수 없어요.</Text><DialogCloseButton label="확인" variant="secondary" /></View></Dialog>
+    {activeScreen === 'home' && <BottomTabs onSelect={label => label === '홈' ? move('home') : label === '연차' && onOpenLeave ? onOpenLeave() : feedback(label)} />}
   </View>;
 }
 const s = StyleSheet.create({

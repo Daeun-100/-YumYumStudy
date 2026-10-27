@@ -11,7 +11,7 @@ begin
  w:=d-(extract(isodow from d)::integer-1);
  insert into public.leave_grants(user_id,earning_week,earned_at,expires_at)
  values(u,w,(w+time '06:00') at time zone 'Asia/Seoul',((w+21)+time '06:00') at time zone 'Asia/Seoul')
- on conflict(user_id,earning_week) do update set scheduled_date=null returning id into g;
+ on conflict(user_id,earning_week,kind) do update set scheduled_date=null returning id into g;
  p:=public.get_leave_status(); n:=(p->'data'->>'availableCount')::integer;
  p:=public.schedule_leave(g,d+1);
  if (p->'data'->>'availableCount')::integer<>n-1 then raise exception 'Reservation balance failed'; end if;

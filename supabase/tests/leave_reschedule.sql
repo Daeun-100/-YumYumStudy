@@ -12,10 +12,10 @@ begin
  w:=d-(extract(isodow from d)::integer-1);
  insert into public.leave_grants(user_id,earning_week,earned_at,expires_at)
  values(u,w-7,((w-7)+time '06:00') at time zone 'Asia/Seoul',((w+14)+time '06:00') at time zone 'Asia/Seoul')
- on conflict(user_id,earning_week) do update set scheduled_date=null returning id into a;
+ on conflict(user_id,earning_week,kind) do update set scheduled_date=null returning id into a;
  insert into public.leave_grants(user_id,earning_week,earned_at,expires_at)
  values(u,w,(w+time '06:00') at time zone 'Asia/Seoul',((w+21)+time '06:00') at time zone 'Asia/Seoul')
- on conflict(user_id,earning_week) do update set scheduled_date=null returning id into b;
+ on conflict(user_id,earning_week,kind) do update set scheduled_date=null returning id into b;
  perform set_config('test.a',a::text,true); perform set_config('test.b',b::text,true);
  perform set_config('test.date',(d+1)::text,true);
 end; $$;
@@ -31,7 +31,7 @@ begin
  perform public.mutate_leave(move_id,rev+1,'schedule',d+1,a);
  perform public.mutate_leave(gen_random_uuid(),rev+2,'schedule',d+2,b);
  begin perform public.mutate_leave(gen_random_uuid(),rev+3,'schedule',d+2,a); raise exception 'Occupied date accepted'; exception when sqlstate '22023' then null; end;
- begin perform public.mutate_leave(gen_random_uuid(),rev+3,'schedule',d-1,a); raise exception 'Today accepted'; exception when sqlstate '22023' then null; end;
+ begin perform public.mutate_leave(gen_random_uuid(),rev+3,'schedule',d-2,a); raise exception 'Past accepted'; exception when sqlstate '22023' then null; end;
  begin perform public.mutate_leave(gen_random_uuid(),rev+3,'schedule',d+30,a); raise exception 'Expiry accepted'; exception when sqlstate '22023' then null; end;
  begin perform public.mutate_leave(gen_random_uuid(),rev,'schedule',d+3,a); raise exception 'Stale revision accepted'; exception when sqlstate '22023' then null; end;
  if not exists(select 1 from public.leave_grants where id=a and scheduled_date=d+1) then raise exception 'Failed move lost original booking'; end if;

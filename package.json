@@ -39,7 +39,7 @@
   },
   "scripts": {
     "update:test": "APP_VARIANT=test EXPO_PUBLIC_APP_VARIANT=test npx eas-cli@latest update --channel test --environment preview --platform android",
-    "update:production": "APP_VARIANT=production EXPO_PUBLIC_APP_VARIANT=production npx eas-cli@latest update --channel production --environment production --platform android",
+    "update:production": "gh workflow run cloud-build.yml --ref master -f target=production",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",

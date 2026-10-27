@@ -39,3 +39,6 @@ export const RestDay: Story = { name: '달력 · 쉬는 날', args: { initialScr
 
 export const ConfirmUse: Story = { name: '달력 · 사용 확인', args: { initialScreen: 'calendar', initialDate: '2026-10-30', initialConfirmation: 'use' } };
 export const ConfirmChange: Story = { name: '달력 · 변경 확인', args: { initialScreen: 'calendar', initialDate: '2026-10-30', initialChanging: true, initialConfirmation: 'change' } };
+
+export const TodayUse: Story = { name: '오늘 연차 사용 확인', args: { initialScreen: 'calendar', initialDate: '2026-10-26', initialConfirmation: 'use' } };
+export const MoveToToday: Story = { name: '예약을 오늘로 변경', args: { initialScreen: 'calendar', initialDate: '2026-10-26', initialChanging: true, initialConfirmation: 'change' } };

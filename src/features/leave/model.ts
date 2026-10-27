@@ -1,14 +1,22 @@
 import type { DayRecord, LeaveGrant } from '../../lib/contracts.ts';
-import { getStudyDayBounds } from '../../lib/study-day.ts';
+import { getStudyDate, getStudyDayBounds } from '../../lib/study-day.ts';
 
-export function reservationReason(date: string, today: string, grants: LeaveGrant[], now: number, changingId: string | null = null): string | null {
-  if (date <= today) return '오늘과 지난 날짜에는 새로 예약할 수 없어요.';
+export function reservationReason(date: string, today: string, grants: LeaveGrant[], now: number, changingId: string | null = null, days?: DayRecord[]): string | null {
+  if (date < today || date < getStudyDate(now)) return '지난 공부 날짜에는 연차를 사용할 수 없어요.';
+  if (date === today && days) {
+    const week = studyWeek(today);
+    const current = days.filter(d => studyWeek(d.studyDate) === week);
+    const earned = grants.some(g => (g.kind ?? 'reward') === 'reward' && g.earningWeek === week) || weeklyAchievement(current) >= 6;
+    if (earned && weeklyAchievement(current.filter(d => d.studyDate !== today)) < 6) return '오늘은 이번 주 보상 연차 획득에 포함된 날이라 연차로 변경할 수 없어요.';
+  }
   if (grants.some(g => g.id !== changingId && g.scheduledDate === date)) return '이미 연차가 예약된 날이에요.';
   const start = getStudyDayBounds(date).startMs;
-  const eligible = grants.some(g => (changingId ? g.id === changingId && g.status === 'SCHEDULED' && !!g.scheduledDate && getStudyDayBounds(g.scheduledDate).startMs > now : g.status === 'AVAILABLE') && Date.parse(g.expiresAt) > start && Date.parse(g.expiresAt) > now);
+  const eligible = grants.some(g => (changingId ? g.id === changingId && g.status === 'SCHEDULED' && !!g.scheduledDate && getStudyDayBounds(g.scheduledDate).startMs > now : g.status === 'AVAILABLE') && (!g.earnedAt || Date.parse(g.earnedAt) <= now) && Date.parse(g.expiresAt) > start && Date.parse(g.expiresAt) > now);
   return eligible ? null : '이 날짜에 사용할 수 있는 연차가 없어요.';
 }
 export function weeklyAchievement(days: DayRecord[]): number {
   return Math.min(6, days.filter(day => day.attendance !== 'leave' && !day.isRestDay && day.goalMinutes !== null && day.goalMinutes > 0 && day.closedSeconds + day.runningSeconds >= day.goalMinutes * 60).length);
 }
 export const koreanDate = (instant: string) => new Date(Date.parse(instant) + 9 * 3600000).toISOString().slice(0, 10);
+
+function studyWeek(date: string) { const d = new Date(date + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7); return d.toISOString().slice(0, 10); }

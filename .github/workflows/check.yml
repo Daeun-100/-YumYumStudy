@@ -6,6 +6,7 @@ on:
     branches: [master, develop]
 permissions:
   contents: read
+  actions: read
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -27,13 +28,16 @@ jobs:
           EXPO_PUBLIC_APP_VARIANT: test
           EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-      - name: Check production version
+      - name: Check app version metadata (APK version advancement is checked by deployment)
+        run: node scripts/deployment.mjs check
+      - name: Verify release review against current source and production APK
         if: github.event_name == 'pull_request' && github.base_ref == 'master'
-        run: |
-          # Workflow and standalone download-site changes do not change the app release.
-          # Any application or other source change still requires version validation.
-          if git diff --quiet origin/master...HEAD -- . ':!.github/workflows' ':!download-site'; then
-            echo 'Only workflow/download-site changes; application version is unchanged.'
-          else
-            node scripts/check-release.mjs
-          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_BASE: ${{ github.event.pull_request.base.sha }}
+          APP_VARIANT: production
+          EXPO_PUBLIC_APP_VARIANT: production
+          EXPO_NO_DOTENV: '1'
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: node scripts/deployment.mjs review-check

@@ -42,7 +42,7 @@ export function LeaveLayout({ width = 390, height = 844, weeklyDays = 4, state =
       onApply={async (date, changingId) => {
         const grant = changingId ? grants.find(g => g.id === changingId) : grants.filter(g => g.state === 'available' && g.expires > date).sort((a,b) => a.expires.localeCompare(b.expires))[0];
         if (!grant) return false;
-        setGrants(previous => previous.map(g => g.id === grant.id ? { ...g, state: 'scheduled', date } : g));
+        setGrants(previous => previous.map(g => g.id === grant.id ? { ...g, state: date === today ? 'used' : 'scheduled', date } : g));
         setNotice('스토리북 시안 · 샘플 데이터만 변경했어요.'); return true;
       }}
       onCancel={async id => { setGrants(previous => previous.map(g => g.id === id ? { ...g, state: 'available', date: undefined } : g)); setNotice('예약을 취소했어요. 연차 1개가 돌아왔어요.'); return true; }} />

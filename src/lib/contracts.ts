@@ -22,7 +22,8 @@ export type DayRecord = {
 };
 export type GoalSettings = { isFirstSetup?: boolean; current: GoalWeek; scheduled: GoalWeek | null; effectiveDate: StudyDate | null };
 export type LeaveState = 'AVAILABLE' | 'SCHEDULED' | 'USED' | 'EXPIRED';
-export type LeaveGrant = { status: LeaveState; scheduledDate: StudyDate | null; id: string; earningWeek: StudyDate; earnedAt: string; expiresAt: string };
+// Missing kind in older server responses means reward.
+export type LeaveGrant = { approvedAt?: string | null; kind?: 'reward' | 'free'; status: LeaveState; scheduledDate: StudyDate | null; id: string; earningWeek: StudyDate; earnedAt: string; expiresAt: string };
 // Each grant belongs to exactly one state; only AVAILABLE contributes to the balance.
 export type LeaveStatus = { revision: number; availableCount: number; grants: LeaveGrant[] };
 export type RoomMember = { profile: Profile; today: DayRecord; activeSession: StudySession | null };

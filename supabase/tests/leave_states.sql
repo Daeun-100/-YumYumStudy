@@ -31,7 +31,7 @@ begin
  w := today - (extract(isodow from today)::integer-1);
  insert into public.leave_grants(user_id,earning_week,earned_at,expires_at)
  values(u,w,(w+time '06:00') at time zone 'Asia/Seoul',((w+21)+time '06:00') at time zone 'Asia/Seoul')
- on conflict(user_id,earning_week) do update set scheduled_date=null
+ on conflict(user_id,earning_week,kind) do update set scheduled_date=null
  returning id into g;
  perform set_config('test.leave_grant',g::text,true);
 end;
@@ -95,11 +95,11 @@ begin
  if u is null or other_uid is null then raise exception 'Test and second profile required'; end if;
  insert into public.leave_grants(user_id,earning_week,earned_at,expires_at,scheduled_date)
  values(u,'2020-03-02','2020-03-07 06:00+09','2020-03-23 06:00+09','2020-03-08')
- on conflict(user_id,earning_week) do update set scheduled_date='2020-03-08'
+ on conflict(user_id,earning_week,kind) do update set scheduled_date='2020-03-08'
  returning id into used_id;
  insert into public.leave_grants(user_id,earning_week,earned_at,expires_at)
  values(u,'2020-03-09','2020-03-14 06:00+09','2020-03-30 06:00+09')
- on conflict(user_id,earning_week) do update set scheduled_date=null
+ on conflict(user_id,earning_week,kind) do update set scheduled_date=null
  returning id into expired_id;
  perform set_config('request.jwt.claim.sub',u::text,true);
  payload:=public.get_leave_status();

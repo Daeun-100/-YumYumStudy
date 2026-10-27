@@ -22,8 +22,8 @@ begin
  insert into public.study_sessions(user_id,started_at,ended_at) values(u,'2020-04-12 06:00+09','2020-04-12 06:01+09');
  if public._leave_earned_at(u,'2020-04-06','2020-04-13 06:00+09') is distinct from '2020-04-12 06:01+09'::timestamptz then raise exception 'Six non-leave days did not earn'; end if;
  w:=d-(extract(isodow from d)::integer-1);
- insert into public.leave_grants(user_id,earning_week,earned_at,expires_at) values(u,w,(w+time '06:00') at time zone 'Asia/Seoul',((w+21)+time '06:00') at time zone 'Asia/Seoul') on conflict(user_id,earning_week) do update set scheduled_date=null returning id into g1;
- insert into public.leave_grants(user_id,earning_week,earned_at,expires_at) values(u,w-7,((w-7)+time '06:00') at time zone 'Asia/Seoul',((w+14)+time '06:00') at time zone 'Asia/Seoul') on conflict(user_id,earning_week) do update set scheduled_date=null returning id into g2;
+ insert into public.leave_grants(user_id,earning_week,earned_at,expires_at) values(u,w,(w+time '06:00') at time zone 'Asia/Seoul',((w+21)+time '06:00') at time zone 'Asia/Seoul') on conflict(user_id,earning_week,kind) do update set scheduled_date=null returning id into g1;
+ insert into public.leave_grants(user_id,earning_week,earned_at,expires_at) values(u,w-7,((w-7)+time '06:00') at time zone 'Asia/Seoul',((w+14)+time '06:00') at time zone 'Asia/Seoul') on conflict(user_id,earning_week,kind) do update set scheduled_date=null returning id into g2;
  perform public.schedule_leave(g1,d+1);
  perform public.schedule_leave(g1,d+1);
  begin perform public.schedule_leave(g2,d+1); raise exception 'Same-day duplicate accepted'; exception when sqlstate '22023' then null; end;

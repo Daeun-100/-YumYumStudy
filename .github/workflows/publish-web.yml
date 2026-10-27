@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: publish-production-web
+  group: deploy-production
   cancel-in-progress: false
 jobs:
   publish:
