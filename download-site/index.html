@@ -17,18 +17,15 @@
     .intro { margin: 0 0 36px; color: #768178; font-size: 16px; line-height: 1.6; }
     .button { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 56px; padding: 16px 20px; border: 1px solid #3e8067; border-radius: 16px; background: #3e8067; color: white; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
     .button:hover { filter: brightness(.95); }
-    .button:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid #e5ad5c; outline-offset: 4px; }
-    .secondary { margin-top: 12px; background: transparent; color: #3e8067; border-color: #dce5dd; }
+    .button:focus-visible, a:focus-visible { outline: 3px solid #e5ad5c; outline-offset: 4px; }
     .note { margin: 14px 0 0; color: #889187; font-size: 12px; line-height: 1.6; }
-    details { margin-top: 12px; }
-    summary { list-style: none; }
-    summary::-webkit-details-marker { display: none; }
-    details .secondary { margin: 0; }
-    .guide { padding: 20px; margin-top: 12px; border: 1px solid #e4e8df; border-radius: 16px; background: #f3f6ee; text-align: left; font-size: 14px; line-height: 1.8; }
+    section { margin-top: 30px; text-align: left; }
+    h2 { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+    .guide { color: #768178; font-size: 13px; line-height: 1.8; }
     .guide p { margin: 0 0 12px; }
     ol { padding-left: 22px; margin: 0 0 18px; }
     li + li { margin-top: 6px; }
-    .guide .button { min-height: 48px; padding: 12px; font-size: 14px; }
+    .open-app { color: #3e8067; font-weight: 600; text-underline-offset: 3px; }
     footer { margin-top: 36px; font-size: 12px; color: #889187; }
     @media (prefers-reduced-motion: no-preference) { .button { transition: filter .15s; } }
   </style>
@@ -39,18 +36,17 @@
     <h1>얌얌스터디</h1>
     <p class="intro">친구와 함께, 오늘도 한 입 공부.</p>
     <a class="button" href="https://github.com/Daeun-100/-YumYumStudy/releases/download/v1.0.0/yumyumstudy-v1.0.0.apk">Android APK 다운로드</a>
-    <details>
-      <summary class="button secondary">iPhone 홈 화면 추가 안내</summary>
+    <section aria-labelledby="iphone-title">
+      <h2 id="iphone-title">iPhone 홈 화면 추가 안내</h2>
       <div class="guide">
         <p>iPhone에서는 Safari로 설치해 주세요.</p>
         <ol>
-          <li>아래 버튼으로 얌얌스터디를 열어요.</li>
+          <li><a class="open-app" href="https://yumyumstudy-daeun100.expo.app">얌얌스터디를 Safari로 열어요.</a></li>
           <li>Safari의 <strong>공유</strong> 메뉴에서 <strong>홈 화면에 추가</strong>를 선택해요.</li>
           <li><strong>웹 앱으로 열기</strong> 항목이 있으면 켜고, <strong>추가</strong>를 눌러요.</li>
         </ol>
-        <a class="button" href="https://yumyumstudy-daeun100.expo.app">얌얌스터디 열기</a>
       </div>
-    </details>
+    </section>
     <p class="note">Android 휴대폰에서는 APK를 내려받은 뒤 설치해 주세요.<br>카카오톡에서 열었다면 외부 브라우저로 열어 주세요.</p>
     <footer>함께 공부하는 작은 습관</footer>
   </main>
