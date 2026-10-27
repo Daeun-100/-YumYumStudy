@@ -6,7 +6,7 @@ import { callRpc } from './rpc';
 import { decodeGoals, decodeGoalSettings, decodeHistory, decodeRoom, decodeSession, decodeSnapshot, decodeToday } from './decode';
 import { randomUUID } from 'expo-crypto';
 import { createStudyStarter } from '../lib/study-start-core';
-import { ensureIdentity } from '../lib/identity';
+import { ensureStudyIdentity } from '../lib/identity';
 import { sessionStorage } from '../lib/session-storage';
 import { studyRoomId, withRoomOperation } from '../lib/room';
 
@@ -24,7 +24,7 @@ async function sendStudyStart(requestId: string): Promise<Snapshot<StudySession>
   return decodeSnapshot(await callRpc('start_study', { p_request_id: requestId }), decodeSession);
 }
 const starter = createStudyStarter({
-  getUid: async () => (await ensureIdentity()).id,
+  getUid: ensureStudyIdentity,
   storage: sessionStorage,
   newId: randomUUID,
   send: sendStudyStart,
@@ -71,6 +71,7 @@ export function subscribeStudyChanges(onChange: () => void, onState: (state: Con
   onState('connecting');
   const channel = client.channel(`study-changes-${++subscriptionId}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'study_sessions', filter: `room_id=eq.${studyRoomId}` }, () => { if (!disposed) onChange(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `room_id=eq.${studyRoomId}` }, () => { if (!disposed) onChange(); })
     .on('system', {}, (payload) => {
       if (!disposed && payload.extension === 'postgres_changes') {
         onState(payload.status === 'ok' ? 'connected' : 'disconnected');

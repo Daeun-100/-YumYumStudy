@@ -30,6 +30,7 @@ export type FocusViewProps = {
   onWake?(member: FocusMember): void;
   wakeSentIds?: string[];
   timerControl?: ReactNode;
+  initialSceneSize?: { width: number; height: number };
   renderRoomOverlay?(size: { width: number; height: number }): ReactNode;
   members: FocusMember[]; memberCount: number | null; seconds: number | null; sessionSeconds?: number | null; goalMinutes: number | null;
   running: boolean; busy?: boolean; disabled?: boolean; retry?: boolean;
@@ -37,11 +38,11 @@ export type FocusViewProps = {
 };
 
 /** Shared Storybook and app layout. All session state comes from the caller. */
-export function FocusView({ onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl }: FocusViewProps) {
+export function FocusView({ onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl, initialSceneSize }: FocusViewProps) {
   const { height } = useWindowDimensions();
   const compact = height < 740;
   const artwork = useMeasuredLayout('focus-art', String(compact));
-  const sceneSize = artwork.size;
+  const sceneSize = artwork.size ?? initialSceneSize;
   const sceneWidth = sceneSize?.width ?? 0;
   const sceneHeight = sceneSize?.height ?? 0;
   const scale = Math.max(sceneWidth / 1024, sceneHeight / 1100);

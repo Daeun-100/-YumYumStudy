@@ -1,5 +1,6 @@
 import { BottomTabs } from '../../src/features/navigation/BottomTabs';
 export { BottomTabs } from '../../src/features/navigation/BottomTabs';
+import { StudyControlView } from '../../src/features/study/StudyControlView';
 import { FocusView } from '../../src/features/study/FocusView';
 import { ChevronRight } from 'lucide-react-native';
 import homeBackground from '../../assets/backgrounds/home-background.png';
@@ -17,6 +18,7 @@ const characters = [bunny, bear, cat, puppy];
 
 export type LayoutProps = {
   screen: 'home' | 'focus';
+  homeEntryPreview?: boolean;
   running?: boolean;
   seconds?: number;
   goalMinutes?: number;
@@ -38,7 +40,7 @@ function Progress({ seconds, goalMinutes }: { seconds: number; goalMinutes: numb
   return <View style={s.progressRow}><View accessibilityRole="progressbar" accessibilityLabel="목표 달성률" accessibilityValue={percent === null ? { text: '목표 없음' } : { min: 0, max: 100, now: Math.min(percent, 100), text: `${percent}%` }} style={s.track}><View style={[s.fill, { width: `${Math.min(percent ?? 0, 100)}%` }]} /></View><Text style={s.secondary}>{percent === null ? '—' : `${percent}%`}</Text></View>;
 }
 // Storybook-only presentation: no identity, API, router, or running study session.
-export function StudyLayout({ screen, running = true, seconds: initialSeconds = 4815, goalMinutes = 180, activeFriendCount = 2, name = '다이앤', width = 390, height = 844 }: LayoutProps) {
+export function StudyLayout({ screen, homeEntryPreview = false, running = true, seconds: initialSeconds = 4815, goalMinutes = 180, activeFriendCount = 2, name = '다이앤', width = 390, height = 844 }: LayoutProps) {
   const [activeScreen, setActiveScreen] = useState(screen);
   const [isRunning, setRunning] = useState(running);
   const [seconds, setSeconds] = useState(initialSeconds);
@@ -78,18 +80,26 @@ export function StudyLayout({ screen, running = true, seconds: initialSeconds = 
     <View style={s.statusBar}><Text style={s.statusTime}>9:41</Text><View style={s.statusIcons}><View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2 }}>{[5, 8, 11, 14].map(h => <View key={h} style={{ width: 3, height: h, backgroundColor: colors.text, borderRadius: 1 }} />)}</View><View style={s.battery}><View style={s.batteryFill} /></View></View></View>
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
       {activeScreen === 'home' ? <>
-        <View style={s.summary}><Text style={[s.body, { fontWeight: '600' }]}>오늘 공부한 시간</Text><View style={s.timeRow}><Text numberOfLines={1} adjustsFontSizeToFit style={[s.metric, s.timeValue]}>{clock(seconds)}</Text>{achieved && <View style={s.timeBadge}><AchievementBadge label="달성 완료" /></View>}</View><Progress seconds={seconds} goalMinutes={goalMinutes} /><Text style={s.secondary}>{goal}</Text></View>
-        <View onLayout={({ nativeEvent }) => setHomeSize(nativeEvent.layout)} style={s.homeScene}>
+        <View style={s.summary}><Text style={[s.body, { fontWeight: '600' }]}>오늘 공부한 시간</Text><View style={s.timeRow}>{homeEntryPreview && <StudyControlView round roundSize={56} running={isRunning} onPress={() => setRunning(value => !value)} />}<Text numberOfLines={1} adjustsFontSizeToFit style={[s.metric, s.timeValue, homeEntryPreview && { fontSize: width < 360 ? 34 : 44 }]}>{clock(seconds)}</Text>{achieved && !homeEntryPreview && <View style={s.timeBadge}><AchievementBadge label="달성 완료" /></View>}</View><Progress seconds={seconds} goalMinutes={goalMinutes} /><View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}><Text style={s.secondary}>{goal}</Text>{homeEntryPreview && achieved && <AchievementBadge label="달성 완료" />}</View></View>
+        <View onLayout={({ nativeEvent }) => setHomeSize(nativeEvent.layout)} style={[s.homeScene, homeEntryPreview && { minHeight: 180, paddingBottom: 0 }]}>
           <Image source={imageSource(homeBackground)} resizeMode="contain" style={backgroundFrame} accessibilityLabel="햇살이 드는 공부방" />
           <Image source={imageSource(homeBunny)} resizeMode="contain" style={characterFrame} accessibilityLabel={`${name}의 토끼 캐릭터`} />
-          <View style={s.homeSceneSpace} />
-          <PressableCard style={s.friends} accessibilityLabel={`${friendMessage}, 집중 화면으로 이동`} onPress={() => move('focus')}>
+          <View style={[s.homeSceneSpace, homeEntryPreview && { minHeight: 180 }]} />
+        {homeEntryPreview && friendCount > 0 && <>           <View style={s.friendToast} accessibilityLabel={friendMessage}>
+            <>{friendCount > 0 && <View style={s.avatars}>{friends.slice(0, friendCount).map((friend, index) => <View key={friend.name} style={s.avatarSlot}><Image source={imageSource(characters[index + 1])} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${friend.name} 캐릭터`} /></View>)}</View>}</>
+            <Text style={[s.secondary, { flex: 1, color: colors.text }]}>{friendCount === 0 ? '오늘의 첫 공부, 먼저 시작해 볼까요?' : <>{width >= 360 ? '지금 ' : ''}<Text style={{ fontWeight: '700', color: colors.primary }}>{friendCount}명</Text>이 공부 중이에요</>}</Text>
+          </View> </>}
+
+          {!homeEntryPreview && <>          <PressableCard style={s.friends} accessibilityLabel={`${friendMessage}, 집중 화면으로 이동`} onPress={() => move('focus')}>
             <>{friendCount > 0 && <View style={s.avatars}>{friends.slice(0, friendCount).map((friend, index) => <View key={friend.name} style={s.avatarSlot}><Image source={imageSource(characters[index + 1])} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${friend.name} 캐릭터`} /></View>)}</View>}</>
             <Text style={[s.secondary, { flex: 1, color: colors.text }]}>{friendCount === 0 ? '오늘의 첫 공부, 먼저 시작해 볼까요?' : <>{width >= 360 ? '지금 ' : ''}<Text style={{ fontWeight: '700', color: colors.primary }}>{friendCount}명</Text>이 공부 중이에요</>}</Text><ChevronRight size={20} color={colors.secondary} style={{ flexShrink: 0 }} />
-          </PressableCard>
+          </PressableCard></>}
         </View>
-        <View style={s.actionBar}>
-          <Button label={isRunning ? 'Ⅱ  일시정지' : '▶  공부 시작'} accessibilityLabel={isRunning ? '공부 일시정지' : '공부 시작'} onPress={() => { if (isRunning) setRunning(false); else { setRunning(true); move('focus'); } }} style={{ flex: 1 }} />
+        <View style={[s.actionBar, homeEntryPreview && { justifyContent: 'center', gap: 40 }]}>
+          {homeEntryPreview ? <>
+            <Button label="공부방 입장하기" accessibilityLabel="공부방 입장하기" onPress={() => move('focus')} style={{ flex: 1, minHeight: 60 }} />
+          </> :
+          <Button label={isRunning ? 'Ⅱ  일시정지' : '▶  공부 시작'} accessibilityLabel={isRunning ? '공부 일시정지' : '공부 시작'} onPress={() => { if (isRunning) setRunning(false); else { setRunning(true); move('focus'); } }} style={{ flex: 1 }} />}
         </View>
       </> : <>
         <FocusView members={[{ id: 'self', name, time: '나', active: isRunning, character: 'bunny', self: true }, ...friends.map((friend, index) => ({ id: String(index), name: friend.name, time: friend.time, active: index < friendCount, character: (['bear', 'cat', 'puppy'] as const)[index] }))]} memberCount={4} seconds={seconds} sessionSeconds={28 * 60} goalMinutes={goalMinutes} running={isRunning} onBack={() => move('home')} onFriends={() => feedback('친구')} onToggle={() => setRunning(!isRunning)} />
@@ -100,6 +110,7 @@ export function StudyLayout({ screen, running = true, seconds: initialSeconds = 
   </View>;
 }
 const s = StyleSheet.create({
+  friendToast: { position: 'absolute', top: 16, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: colors.surface, boxShadow: '0 4px 16px rgba(37, 45, 40, 0.14)' },
   phone: { borderRadius: 32, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
   statusBar: { height: 44, paddingHorizontal: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   statusTime: { ...typography.label, fontSize: 14, color: colors.text }, statusIcons: { flexDirection: 'row', alignItems: 'center', gap: 8 },

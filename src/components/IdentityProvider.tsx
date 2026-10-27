@@ -1,3 +1,4 @@
+import { measure } from '../lib/performance';
 import { withTimeout } from '../lib/with-timeout';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { PropsWithChildren } from 'react';
@@ -35,13 +36,13 @@ export function IdentityProvider({ children }: PropsWithChildren) {
         verifiedUid = uid;
         if (disposed) return;
         setState({ uid, profile: null, step: null, loading: true, error: null });
-        const admission = await withTimeout(getOnboarding(), 15000, '입장 상태를 불러오지 못했어요. 다시 확인해 주세요.');
+        const admission = await measure('startup.admission', () => withTimeout(getOnboarding(), 15000, '입장 상태를 불러오지 못했어요. 다시 확인해 주세요.'));
         if (disposed) return;
         if (admission.step !== 'ready') {
           setState({ uid, profile: null, step: admission.step, loading: false, error: null });
           return;
         }
-        const profile = await withTimeout(ensureIdentity(), 15000, '내 정보를 불러오지 못했어요. 다시 확인해 주세요.');
+        const profile = await measure('startup.profile', () => withTimeout(ensureIdentity(), 15000, '내 정보를 불러오지 못했어요. 다시 확인해 주세요.'));
         if (disposed) return;
         if (!disposed) setState({ uid, profile, step: 'ready', loading: false, error: null });
       } catch (failure) {

@@ -2,7 +2,7 @@ import { useAndroidBack } from '../navigation/useAndroidBack';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useRefreshOnResume } from '../../hooks/useRefreshOnResume';
-import { router, useFocusEffect, usePreventRemove } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { getStudyDate } from '../../lib/study-day';
 import { getGoalSettings, saveGoals } from '../../data/study';
 import { useIdentity } from '../../components/IdentityProvider';
@@ -14,6 +14,7 @@ import { GoalsView } from './GoalsView';
 
 type Editor = { snapshot: Snapshot<GoalSettings>; base: GoalWeek; draft: GoalWeek };
 export default function GoalsScreen() {
+  const { view } = useLocalSearchParams<{ view?: string }>();
   const identity = useIdentity();
   const study = useStudy();
   const uid = identity.profile?.id;
@@ -90,7 +91,7 @@ export default function GoalsScreen() {
     }
   }
   return <View style={ui.outer}><View style={ui.page}>
-    <GoalsView isFirstSetup={editor?.snapshot.data.isFirstSetup} goals={editor?.draft ?? null} saved={editor?.base ?? null} current={editor?.snapshot.data.current} loading={loading} saving={saving}
+    <GoalsView key={view ?? 'days'} initialPreview={view === 'preview'} isFirstSetup={editor?.snapshot.data.isFirstSetup} goals={editor?.draft ?? null} saved={editor?.base ?? null} current={editor?.snapshot.data.current} loading={loading} saving={saving}
       effectiveDate={editor?.snapshot.data.effectiveDate} error={saveError ?? error} notice={notice} status={<Status showLoading={false} />} discard={discard}
       onChange={draft => { if (!editorRef.current || busy.current) return; commit({ ...editorRef.current, draft }); setNotice(null); }}
       onSave={() => void save()} onRetry={() => void load()}

@@ -13,3 +13,5 @@ export const Reading: Story = { name: '포스트잇 · 내용 보기', args: { i
 export const Placement: Story = { name: '포스트잇 · 위치 선택', args: { initialPlacement: true } };
 export const Empty: Story = { name: '공부방 · 포스트잇 없음', args: { empty: true } };
 export const Small: Story = { name: '공부방 · 작은 화면', args: { width: 320, height: 640 } };
+
+export const BorderOnly: Story = { name: '공부방 · 테두리만 추가', args: { noteBorder: true }, parameters: { docs: { description: { story: '기존 크기·종이색·그림자는 그대로 두고, 작은 포스트잇에 짙은 갈색 1.5px 테두리만 추가한 시안입니다.' } } } };

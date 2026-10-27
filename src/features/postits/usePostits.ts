@@ -1,3 +1,4 @@
+import { measure } from '../../lib/performance';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSupabase } from '../../lib/supabase';
 import { studyRoomId, withRoomOperation } from '../../lib/room';
@@ -24,7 +25,11 @@ export function usePostits() {
     const seen = changes.current;
     const request = ++latestRequest.current;
     try {
-      const { data, error: failure } = await getSupabase().rpc('get_room_postits');
+      const { data, error: failure } = await measure('postit.load', async () => {
+        const result = await getSupabase().rpc('get_room_postits');
+        if (result.error) throw result.error;
+        return result;
+      });
       if (failure) throw failure;
       if (version !== generation.current || request !== latestRequest.current) return;
       if (!data || typeof data.date !== 'string' || !Array.isArray(data.notes)) throw new Error();
@@ -74,12 +79,12 @@ export function usePostits() {
   }, [uid, profile, room, refresh, resume]);
   const mutate = async (name: string, args: Record<string, unknown>) => {
     const version = generation.current;
-    return withRoomOperation(async () => {
+    return measure(`postit.${name}`, () => withRoomOperation(async () => {
       const { data, error: failure } = await getSupabase().rpc(name, args);
       if (failure) throw new Error(failure.code === '22023' ? failure.message : '저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.');
       const note = decodePostit(data);
       if (version === generation.current) { events.current.push({ sequence: ++changes.current, note }); setNotes(previous => mergePostit(previous, note)); }
-    });
+    }));
   };
   return { notes: notes.filter(n => n.study_date === (now ? getStudyDate(now) : date) && !n.deleted_at), error, refresh,
     add: (id: string, text: string, color: string, x: number, y: number) => mutate('put_room_postit', { p_id: id, p_text: text, p_color: color, p_x: x, p_y: y }),
