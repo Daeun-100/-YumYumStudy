@@ -49,7 +49,7 @@ export function Nav({ current }: { current: TabKey }) {
 }
 export function Page({ children, current }: PropsWithChildren<{ current?: TabKey }>) {
   const study = useStudy();
-  return <View style={ui.outer}><View style={ui.page}><ScrollView contentContainerStyle={{ paddingBottom: 22 }} refreshControl={<RefreshControl refreshing={study.loading} onRefresh={() => void study.refresh()} tintColor={colors.primary} />}><>{children}</></ScrollView>{current && <Nav current={current} />}</View></View>;
+  return <View style={ui.outer}><View style={ui.page}><ScrollView contentContainerStyle={{ paddingBottom: 22 }} refreshControl={<RefreshControl refreshing={current === 'friends' ? study.roomLoading : study.loading} onRefresh={() => void study.refresh()} tintColor={colors.primary} />}><>{children}</></ScrollView>{current && <Nav current={current} />}</View></View>;
 }
 export function Status({ showLoading = true }: { showLoading?: boolean } = {}) {
   const identity = useIdentity(); const study = useStudy();

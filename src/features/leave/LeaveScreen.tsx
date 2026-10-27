@@ -55,7 +55,7 @@ export function LeaveScreen() {
   });
   return <View style={ui.outer}><View style={ui.page}>
     <LeaveView backRef={backRef} backBlocked={leave.busy} character={profile?.character ?? 'bunny'} today={today} grants={grants.map(grant => ({ id: grant.id, state: grant.status.toLowerCase() as 'available' | 'scheduled' | 'used' | 'expired', earned: koreanDate(grant.earnedAt), expires: koreanDate(grant.expiresAt), date: grant.scheduledDate ?? undefined }))}
-      state={!snapshot ? leave.error ? 'error' : 'loading' : 'ready'} busy={leave.busy || leave.actionFailed || !!error} error={leave.error || error} notice={notice}
+      state={!snapshot ? leave.error ? 'error' : 'loading' : 'ready'} busy={leave.busy || leave.actionFailed || !!error} error={leave.error || error} notice={notice || (weekly.cached || monthly.cached ? '저장된 공부 기록을 보여드리고 있어요. 최신 기록을 확인 중이에요.' : '')}
       weeklyDays={liveWeek ? weeklyAchievement(liveWeek) : null} weeklyLoading={!week && !error} calendarDays={calendarDays} calendarLoading={!calendar && !error}
       navigation={<Nav current="leave" />} onClearNotice={() => setNotice('')} onMonthChange={changeMonth}
       onRefresh={async () => { weekly.retry(); monthly.retry(); await Promise.all([leave.refresh(), study.refresh()]); }}

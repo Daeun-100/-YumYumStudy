@@ -9,6 +9,17 @@ export type AuthPort = {
   signInAnonymously(): Promise<Result<{ user: User | null }>>;
 };
 
+// Use only after server verification during bootstrap. RPC authorization still
+// happens on the server; this check protects the pending-request storage owner.
+export async function readVerifiedSession(auth: Pick<AuthPort, 'getSession'>, verifiedUid: UID): Promise<UID> {
+  const { data, error } = await auth.getSession();
+  if (error) throw toStudyError(error);
+  if (!data.session || data.session.user.id !== verifiedUid) {
+    throw new StudyError('UNAUTHORIZED', '현재 인증이 확인된 사용자와 다릅니다. 앱을 다시 열어 본인 인증을 확인해 주세요.');
+  }
+  return verifiedUid;
+}
+
 // A tiny boundary for testing failure/retry/concurrency without creating real users.
 export function createAuthBootstrap(auth: AuthPort, knownUid: { read(): Promise<string | null>; save(uid: string): Promise<void> }) {
   let inFlight: Promise<UID> | null = null;

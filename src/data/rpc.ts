@@ -1,4 +1,5 @@
 import { roomSwitching } from '../lib/room';
+import { finishTiming } from '../lib/performance';
 import { getSupabase } from '../lib/supabase';
 import { StudyError, toStudyError } from '../lib/contracts';
 
@@ -7,6 +8,8 @@ export let activeRpcCount = 0;
 export async function callRpc(name: string, args?: Record<string, unknown>): Promise<unknown> {
   if (roomSwitching) throw new StudyError('VALIDATION', '방을 변경하고 있어요. 잠시 후 다시 시도해 주세요.');
   activeRpcCount++;
+  const finish = finishTiming(`rpc.${name}`);
+  let succeeded = false;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
@@ -35,10 +38,12 @@ export async function callRpc(name: string, args?: Record<string, unknown>): Pro
       }
       throw new StudyError('UNKNOWN', '공부 기록 요청을 처리하지 못했습니다. 다시 시도해 주세요.');
     }
+    succeeded = true;
     return data;
   } catch (error) {
     throw toStudyError(error);
   } finally {
+    finish(succeeded ? 'ok' : 'error');
     activeRpcCount--;
     clearTimeout(timeout);
   }

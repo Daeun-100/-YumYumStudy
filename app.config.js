@@ -6,6 +6,11 @@ module.exports = () => {
   const test = variant === 'test';
   return {
     ...base,
+    runtimeVersion: { policy: 'fingerprint' },
+    updates: {
+      url: `https://u.expo.dev/${base.extra.eas.projectId}`,
+      requestHeaders: { 'expo-channel-name': variant },
+    },
     plugins: [...base.plugins, ['expo-secure-store', { configureAndroidBackup: true }]],
     name: test ? '얌얌스터디 테스트' : base.name,
     scheme: test ? 'yumyumstudy-test' : base.scheme,

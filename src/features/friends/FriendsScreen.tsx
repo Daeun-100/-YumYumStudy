@@ -26,9 +26,9 @@ export function FriendsScreen() {
   const stale = !!study.roomError || !!study.room && study.now - Date.parse(study.room.serverNow) > 90000;
   return <Page current="friends"><View style={s.content}>
     <View style={s.header}><Text accessibilityRole="header" style={s.heading}>친구들</Text></View>
-    <View style={s.toolbar}><Text style={s.label}>구성원 {members.length}명</Text>{study.room && <Text style={s.caption}>공부 중 {members.filter(member => member.activeSession).length}명</Text>}</View>
+    <View style={s.toolbar}><Text style={s.label}>{study.room ? `구성원 ${members.length}명` : '구성원 확인 중'}</Text>{study.room && <Text style={s.caption}>공부 중 {members.filter(member => member.activeSession).length}명</Text>}</View>
     {stale && <Text accessibilityRole="alert" style={s.update}>{study.roomError ? '연결 끊김 · 마지막 확인한 현황이에요' : '갱신 지연 · 마지막 확인한 현황이에요'}</Text>}
-    {study.roomError && <View style={{ gap: spacing.sm, paddingVertical: spacing.md }}><Text accessibilityRole="alert" style={ui.error}>{study.roomError}</Text><Button variant="secondary" size="compact" label="다시 불러오기" disabled={study.loading} onPress={() => void study.refresh()} /></View>}
+    {study.roomError && <View style={{ gap: spacing.sm, paddingVertical: spacing.md }}><Text accessibilityRole="alert" style={ui.error}>{study.roomError}</Text><Button variant="secondary" size="compact" label="다시 불러오기" disabled={study.roomLoading} onPress={() => void study.refreshRoom()} /></View>}
     {!study.room && !study.roomError && [0, 1, 2].map(id => <View key={id} accessibilityLabel="친구 정보 불러오는 중" style={s.placeholder}><View style={s.skeleton} /><View style={[s.skeleton, { width: '60%' }]} /></View>)}
     {members.map(member => {
       const seconds = displayedSeconds(member.today, member.activeSession, study.room!.serverNow, stale ? Date.parse(study.room!.serverNow) : Math.max(study.now, Date.parse(study.room!.serverNow)));

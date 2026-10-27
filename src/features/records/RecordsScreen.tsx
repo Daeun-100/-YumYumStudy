@@ -21,19 +21,20 @@ export function RecordsScreen() {
   }, []);
   const snapshotVersion = study.today?.serverNow;
   const loadHistory = useCallback(() => { void snapshotVersion; return getHistory(range.from, range.to); }, [range.from, range.to, snapshotVersion]);
-  const { data: history, error, loading, retry } = useMemoryQuery(['history', range.from, range.to], loadHistory);
+  const { data: history, error, loading, cached, retry } = useMemoryQuery(['history', range.from, range.to], loadHistory);
   const records: StudyRecord[] = (history?.data ?? []).map(day => {
     const current = study.today;
     const useCurrent = day.studyDate === today && current && Date.parse(current.serverNow) >= Date.parse(history!.serverNow);
     const source = useCurrent ? current.data.day : day;
     const snapshotTime = useCurrent ? current.serverNow : history!.serverNow;
-    const now = study.error ? Date.parse(snapshotTime) : Math.max(study.now, Date.parse(snapshotTime));
+    const now = (cached && !useCurrent) || study.error ? Date.parse(snapshotTime) : Math.max(study.now, Date.parse(snapshotTime));
     const seconds = displayedSeconds(source, current?.data.activeSession ?? null, snapshotTime, now);
     return { date: day.studyDate, minutes: seconds / 60, goal: source.goalMinutes,
       status: source.attendance === 'leave' ? 'leave' : source.isRestDay ? 'rest' : seconds > 0 ? 'study' : 'empty', sessions: [] };
   });
-  const notice = error ? <View style={{ gap: 8 }}>
-    <Text accessibilityRole="alert" style={ui.error}>{error}</Text><Button label="다시 불러오기" onPress={() => retry()} />
+  const notice = error || cached ? <View style={{ gap: 8 }}>
+    {cached && <Text style={ui.muted}>{error ? '저장된 기록이에요. 연결을 확인한 뒤 다시 불러와 주세요.' : '저장된 기록을 보여드리고 있어요. 최신 기록을 확인 중이에요.'}</Text>}
+    {!!error && <><Text accessibilityRole="alert" style={ui.error}>{error}</Text><Button label="다시 불러오기" onPress={() => retry()} /></>}
   </View> : null;
   return <View style={ui.outer}><View style={ui.page}>
     <RecordsPreview initialDate={today} today={today} records={records} onRangeChange={changeRange} notice={notice} loading={loading} renderDayDetail={day => <OwnDayDetail key={day.date} day={day} />}

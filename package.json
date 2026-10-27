@@ -1,6 +1,6 @@
 {
   "name": "yumyumstudy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.ts",
   "dependencies": {
     "@expo/metro-runtime": "~58.0.15",
@@ -15,6 +15,7 @@
     "expo-secure-store": "~58.0.2",
     "expo-splash-screen": "~58.0.11",
     "expo-status-bar": "~58.0.4",
+    "expo-updates": "~58.0.18",
     "lucide-react": "^1.61.0",
     "lucide-react-native": "^1.61.0",
     "react": "19.3.0",
@@ -37,6 +38,8 @@
     "vite": "^8.3.5"
   },
   "scripts": {
+    "update:test": "APP_VARIANT=test EXPO_PUBLIC_APP_VARIANT=test npx eas-cli@latest update --channel test --environment preview --platform android",
+    "update:production": "APP_VARIANT=production EXPO_PUBLIC_APP_VARIANT=production npx eas-cli@latest update --channel production --environment production --platform android",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",

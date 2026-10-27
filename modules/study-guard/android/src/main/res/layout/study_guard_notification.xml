@@ -4,13 +4,6 @@
     android:layout_height="48dp"
     android:gravity="center_vertical"
     android:orientation="horizontal">
-    <ImageView
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:layout_marginEnd="12dp"
-        android:contentDescription="@string/study_guard_logo"
-        android:scaleType="fitCenter"
-        android:src="@drawable/study_guard_logo" />
     <TextView
         android:id="@+id/study_guard_timer"
         android:layout_width="0dp"

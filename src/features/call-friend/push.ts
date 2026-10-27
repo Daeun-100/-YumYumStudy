@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { callService } from './api';
+import { createPushRefresh } from './push-refresh';
 import { roomStorageKey, studyRoomId } from '../../lib/room';
 import { sessionStorage } from '../../lib/session-storage';
 
@@ -13,7 +14,7 @@ Notifications.setNotificationHandler({ handleNotification: async notification =>
   shouldSetBadge: false,
 }) });
 export async function preparePush() { /* Native permissions are requested only by the settings button. */ }
-export async function enablePush(ask = true): Promise<void> {
+export async function enablePush(ask = true, devicePushToken?: Notifications.DevicePushToken): Promise<void> {
   if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('friend-calls', {
     name: '친구 부르기', importance: AndroidImportance.HIGH, sound: 'default', vibrationPattern: [0, 200, 100, 200],
   });
@@ -22,13 +23,16 @@ export async function enablePush(ask = true): Promise<void> {
   if (!permission.granted) throw new Error('휴대폰 설정에서 얌얌스터디 알림을 허용해 주세요.');
   const projectId = Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId;
   if (!projectId) throw new Error('앱의 알림 설정을 확인해 주세요.');
-  const token = await Notifications.getExpoPushTokenAsync({ projectId });
+  const token = await Notifications.getExpoPushTokenAsync({ projectId, devicePushToken });
   const { deviceId } = await callService<{ deviceId: string }>({ action: 'register', provider: 'expo', address: token.data });
   await sessionStorage.setItem(roomStorageKey('friend-call-device'), deviceId);
   await sessionStorage.setItem('friend-call-opt-in', 'true');
 }
-export async function refreshPush(): Promise<void> {
-  if (await sessionStorage.getItem('friend-call-opt-in') === 'true') await enablePush(false);
+const refreshRegistration = createPushRefresh<Notifications.DevicePushToken>(async devicePushToken => {
+  if (await sessionStorage.getItem('friend-call-opt-in') === 'true') await enablePush(false, devicePushToken);
+});
+export function refreshPush(devicePushToken?: Notifications.DevicePushToken): Promise<void> {
+  return refreshRegistration(studyRoomId, devicePushToken);
 }
 export async function pushEnabled(): Promise<boolean> {
   if (!(await Notifications.getPermissionsAsync()).granted) return false;
@@ -51,7 +55,10 @@ export function listenForCalls(onOpen: () => void): () => void {
     }
   };
   const sub = Notifications.addNotificationResponseReceivedListener(open);
-  const tokenSub = Notifications.addPushTokenListener(() => { void refreshPush().catch(() => {}); });
+  const tokenSub = Notifications.addPushTokenListener(devicePushToken => {
+    // Use the emitted token: querying the native token here emits this event again.
+    void refreshPush(devicePushToken).catch(() => {});
+  });
   void Notifications.getLastNotificationResponseAsync().then(open).catch(() => {});
   return () => { sub.remove(); tokenSub.remove(); };
 }
