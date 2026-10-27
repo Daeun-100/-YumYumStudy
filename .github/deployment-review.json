@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "sourceCommit": "aca444c0b87604141479ea29915273869bb92a1c",
-  "sourceTreeDigest": "69a6dc7de99b5c2e45115fd31f8ba469fbbeab2fe3fc1770e4d9daee2f44f594",
+  "sourceCommit": "f8f21a9550d2b4c05c5245bce5c01f2aeb393b49",
+  "sourceTreeDigest": "1d2f9fe1313a07a2d67ee4956f3d3b8d556b1cd9c5e739b9ce4a55a230d2a027",
   "baseline": {
     "tag": "v1.0.1",
     "sha": "9edf9d1f989b61aae7db96d54e23fe8be2ba7bf8",
@@ -10,20 +10,17 @@
   "reviewer": {
     "kind": "interactive-codex"
   },
-  "recommendation": "update",
-  "rationale": "The release changes leave decoding, same-day leave behavior and React Native UI in JavaScript, plus deployment automation. Native dependencies, lockfile, native modules and permissions are unchanged. Restoring only the verified deployment shortcut and additive temporary-output exclusions reproduces the installed v1.0.1 APK fingerprint exactly.",
+  "recommendation": "skip",
+  "rationale": "This PR only records an already-active Supabase log monitor, its server-only configuration and scheduling migration, mocked tests and operational documentation. It contains no mobile application, native dependency or app runtime changes. Merging must skip APK and EAS Update publication and does not redeploy the server or replay the scheduling migration.",
   "evidence": [
-    "Compared all committed master-to-develop changes and the complete production APK baseline at 9edf9d1f989b61aae7db96d54e23fe8be2ba7bf8.",
-    "Production APK v1.0.1 uses app version 1.0.1, Android versionCode 2 and channel production; these values remain unchanged.",
-    "Native compatibility calculation reproduced runtime 7e3df9398006bc04f4400ac26189dd6c3b36ef9a using the SDK fingerprint API after only the declared administrative normalization.",
-    "package.json differs only in update:production; package-lock.json, Expo/React Native/native dependencies, config plugins, native modules and app permissions are unchanged.",
-    "Ignore-file additions only exclude known generated deployment records; lifecycle and EAS build hooks are not changed.",
-    "app.config.js retains fingerprint policy for native builds and permits the existing APK runtime only in the guarded verified production master OTA child process.",
-    "The merge of current origin/master and the reviewed develop source produces the same source tree, so the review remains valid through this merge.",
-    "Weekly-free and same-day leave SQL migrations are recorded as already applied in the repository reports; this PR does not apply SQL or issue leave grants.",
-    "Uncommitted Discord log-monitor code, configuration and tests are excluded from the release source.",
-    "Clean npm ci, lint, typecheck, all 164 committed unit tests and test-variant web export passed in an isolated checkout.",
-    "Temporary review output exclusions are root-anchored; the committed .github/deployment-review.json remains trackable and is covered by a regression test."
+    "The complete master-to-branch change list consists only of seven files under supabase/, tests/ and docs/.",
+    "The two function source files match the deployed log-monitor version 3 source exactly; the live function is ACTIVE.",
+    "Read-only SQL confirmed discord-log-monitor is active with UTC schedule 10 6,7,8,10,11,12,13 * * *.",
+    "The scheduling migration is an already-applied initial-deployment record and deliberately starts paused. It must not be replayed on the active production project.",
+    "No function invocation, Discord notification, secret update, cron activation/deactivation or database mutation was performed while preparing this PR.",
+    "No .env, real credentials or webhook values are included. The endpoint authenticates its scheduler secret before querying logs; test credentials and outbound HTTP are mocked.",
+    "Production APK version/runtime and all app/native build inputs remain unchanged. Existing master administrative exclusions reproduce the published APK runtime 7e3df9398006bc04f4400ac26189dd6c3b36ef9a.",
+    "Lint, typecheck and all 168 committed unit tests passed, including authentication, seven KST slots, ten-minute windows, traffic/error thresholds, dry-run silence and monitoring-failure handling."
   ],
   "exemptions": [
     "ignore-additions:.easignore",
@@ -32,89 +29,40 @@
   ],
   "blockers": [],
   "changedFiles": [
-    ".easignore",
-    ".github/workflows/check.yml",
-    ".github/workflows/cloud-build.yml",
-    ".github/workflows/deployment-labels.yml",
-    ".github/workflows/publish-release.yml",
-    ".github/workflows/publish-web.yml",
-    ".github/workflows/sync-develop.yml",
-    ".gitignore",
-    ".storybook/main.ts",
-    "app.config.js",
-    "docs/DECISIONS.md",
-    "docs/SETUP-STATUS.md",
-    "docs/SPEC.md",
-    "docs/execution/05-attendance-leave.md",
-    "docs/execution/reports/same-day-leave.md",
-    "docs/execution/reports/weekly-free-leave.md",
-    "package.json",
-    "scripts/deployment-history.mjs",
-    "scripts/deployment-review.mjs",
-    "scripts/deployment.mjs",
-    "scripts/release-candidate.mjs",
-    "src/data/decode.ts",
-    "src/data/rpc.ts",
-    "src/design/theme.ts",
-    "src/features/friends/FriendsScreen.tsx",
-    "src/features/leave/LeaveScheduleList.tsx",
-    "src/features/leave/LeaveScreen.tsx",
-    "src/features/leave/LeaveView.tsx",
-    "src/features/leave/model.ts",
-    "src/features/profile/ProfileDetails.tsx",
-    "src/features/study/HomeScreen.tsx",
-    "src/lib/contracts.ts",
-    "stories/LeaveComponents.stories.tsx",
-    "stories/screens/LeaveLayout.stories.tsx",
-    "stories/screens/LeaveLayout.tsx",
-    "stories/screens/LeaveStatusPreview.stories.tsx",
-    "stories/screens/ProfileLayout.tsx",
-    "stories/screens/StudyLayouts.tsx",
-    "supabase/migrations/20261027072856_weekly_free_leave.sql",
-    "supabase/migrations/20261027092939_same_day_leave.sql",
-    "supabase/tests/leave_attendance_policy.sql",
-    "supabase/tests/leave_concurrency_holder.sql",
-    "supabase/tests/leave_requests.sql",
-    "supabase/tests/leave_reschedule.sql",
-    "supabase/tests/leave_states.sql",
-    "supabase/tests/same_day_leave.sql",
-    "supabase/tests/weekly_free_leave.sql",
-    "tests/deployment-history.test.mjs",
-    "tests/deployment-labels.test.mjs",
-    "tests/deployment-review.test.mjs",
-    "tests/deployment.test.mjs",
-    "tests/leave-screen.test.mjs",
-    "tests/leave.test.mjs",
-    "tests/release-config.test.mjs",
-    "tests/release-publication.test.mjs"
+    "docs/execution/reports/supabase-log-monitor.md",
+    "supabase/config.toml",
+    "supabase/functions/log-monitor/deno.json",
+    "supabase/functions/log-monitor/index.ts",
+    "supabase/functions/log-monitor/policy.ts",
+    "supabase/migrations/20261027075804_scheduled_discord_log_monitor.sql",
+    "tests/log-monitor.test.mjs"
   ],
   "actualWorkflowRoute": {
-    "mode": "update",
-    "channel": "production",
-    "apkRebuild": false,
-    "version": "1.0.1",
-    "androidVersionCode": 2,
-    "runtimeVersion": "7e3df9398006bc04f4400ac26189dd6c3b36ef9a",
-    "gates": [
-      "PR review-check",
-      "master lint/typecheck/tests",
-      "fresh review and production APK native comparison",
-      "production environment protection if configured",
-      "latest-master and runtime recheck before EAS publication"
-    ]
+    "mode": "skip",
+    "apkBuild": false,
+    "easUpdate": false,
+    "serverDeployment": false,
+    "notes": "Check validates this report; Cloud Build preparation and durable history recording may run, but no app build or publication runs."
   },
   "checks": {
     "lint": "passed",
     "typecheck": "passed",
     "unitTests": {
-      "passed": 164,
+      "passed": 168,
       "failed": 0
     },
-    "webExport": "passed (test variant, matching PR Check)",
-    "normalizedFingerprint": "7e3df9398006bc04f4400ac26189dd6c3b36ef9a"
+    "liveSourceComparison": "exact match for index.ts and policy.ts",
+    "liveFunction": {
+      "status": "ACTIVE",
+      "version": 3
+    },
+    "liveCron": {
+      "active": true,
+      "schedule": "10 6,7,8,10,11,12,13 * * *"
+    }
   },
   "limitations": [
-    "No EAS Update, APK build or physical-device installation was performed during PR preparation.",
-    "Web production promotion remains on the separate APK release path."
+    "Seven sampled ten-minute windows per day cover 70 minutes, not continuous monitoring.",
+    "Empty log windows are unassessed and do not prove service health."
   ]
 }
