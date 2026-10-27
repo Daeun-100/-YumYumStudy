@@ -38,7 +38,8 @@ class StudyGuardModule : Module() {
       val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
       pm.queryIntentActivities(intent, 0).filter { it.activityInfo.packageName != ctx.packageName }
         .distinctBy { it.activityInfo.packageName }.map {
-          mapOf("packageName" to it.activityInfo.packageName, "label" to it.loadLabel(pm).toString())
+          val pkg = it.activityInfo.packageName
+          mapOf("packageName" to pkg, "label" to it.loadLabel(pm).toString(), "iconUri" to StudyAppIcons.uri(ctx, it))
         }.sortedBy { it["label"] }
     }.runOnQueue(Queues.DEFAULT)
     AsyncFunction("select") { packages: List<String> ->

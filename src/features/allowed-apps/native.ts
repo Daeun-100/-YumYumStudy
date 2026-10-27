@@ -1,7 +1,7 @@
 import { requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';
 
-export type GuardApp = { packageName: string; label: string };
+export type GuardApp = { packageName: string; label: string; iconUri?: string | null };
 export type GuardLink = { sessionId: string; ownerId: string; roomId: number; endedAt: string | null; confirmed: boolean };
 export type GuardStatus = {
   link: GuardLink | null;
