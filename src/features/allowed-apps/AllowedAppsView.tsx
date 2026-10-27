@@ -10,9 +10,10 @@ import type { GuardApp, GuardStatus } from './native';
 type Props = {
   nativeAvailable: boolean; status: GuardStatus | null; apps: GuardApp[]; setupContent: ReactNode;
   error: string; busy: boolean; search: string; onSearch(value: string): void; onBack(): void;
+  pendingPackages?: string[];
   onSelect(packageName: string, selected: boolean): void;
 };
-export function AllowedAppsView({ nativeAvailable, status, apps, setupContent, error, busy, search, onSearch, onBack, onSelect }: Props) {
+export function AllowedAppsView({ nativeAvailable, status, apps, setupContent, error, busy, pendingPackages = [], search, onSearch, onBack, onSelect }: Props) {
   const setup = allowedAppsSetup(status);
   const sections = allowedAppSections(apps, status?.allowed ?? [], search);
   const header = <View style={s.content}>
@@ -38,8 +39,8 @@ export function AllowedAppsView({ nativeAvailable, status, apps, setupContent, e
       </View>}
       renderItem={({ item }) => <View style={s.app}>
         <AllowedAppIcon app={item} size={36} />
-        <Text style={[s.body, { flex: 1 }]}>{item.label}</Text>
-        <Switch accessibilityLabel={`${item.label} 허용`} value={status?.allowed.includes(item.packageName) ?? false} disabled={busy || !status || status.running} onValueChange={value => onSelect(item.packageName, value)} />
+        <View style={{ flex: 1 }}><Text style={s.body}>{item.label}</Text>{pendingPackages.includes(item.packageName) && <Text accessibilityLiveRegion="polite" style={s.caption}>저장 중…</Text>}</View>
+        <Switch accessibilityLabel={`${item.label} 허용`} value={status?.allowed.includes(item.packageName) ?? false} disabled={busy || pendingPackages.includes(item.packageName) || !status || status.running} onValueChange={value => onSelect(item.packageName, value)} />
       </View>}
       ListFooterComponent={nativeAvailable ? <View style={s.content}><Card>
         <Text style={s.label}>허용앱은 이렇게 사용해요</Text>

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Button } from '../src/design/components';
 import { colors, spacing, typography } from '../src/design/theme';
@@ -7,6 +7,7 @@ import { AllowedAppsView } from '../src/features/allowed-apps/AllowedAppsView';
 import { AllowedAppsSetup } from '../src/features/allowed-apps/AllowedAppsSetup';
 import { AllowedAppsLauncherView } from '../src/features/allowed-apps/AllowedAppsLauncherView';
 import { sortAllowedApps } from '../src/features/allowed-apps/app-list';
+import { createAllowedAppsSelectionQueue } from '../src/features/allowed-apps/selection-queue';
 import type { GuardStatus, studyGuard } from '../src/features/allowed-apps/native';
 
 // Offline image fixtures for layout review; production will need installed-app icons.
@@ -39,12 +40,19 @@ function AllowedAppsProposal({ screen, width, height, empty, missingIcons, runni
   const status: GuardStatus = { running, elapsedMs: 1500000, reason: '', foreground: '', authorized: null,
     usageAccess: true, notificationAccess: true, restrictedSettingsReviewed: true, serviceAlive: running,
     allowed, events: [], pollMs: 500, link: null };
-  const select = (pkg: string, on: boolean) => setAllowed(previous => on ? [...previous, pkg] : previous.filter(value => value !== pkg));
+  const statusRef = useRef(status);
+  statusRef.current = status;
+  const [pendingPackages, setPendingPackages] = useState<string[]>([]);
   const guard: NonNullable<typeof studyGuard> = {
-    status: async () => status, apps: async () => apps, select: async value => setAllowed(value),
+    status: async () => statusRef.current, apps: async () => apps, select: async value => { await new Promise(resolve => setTimeout(resolve, 900)); statusRef.current = { ...statusRef.current, allowed: value }; },
     openAppSettings: async () => {}, reviewRestrictedSettings: async () => {}, openUsageSettings: async () => {}, openNotificationSettings: async () => {},
     setTransport: async () => {}, prepareStudy: async () => {}, bindStudy: async () => {}, recoverStoppedStudy: async () => {}, acknowledgeStop: async () => {}, pause: async () => {}, finish: async () => {}, reset: async () => {}, launch: async () => {},
   };
+  const [selectionQueue] = useState(() => createAllowedAppsSelectionQueue(guard, {
+    onPending: setPendingPackages, onStatus: next => setAllowed(next.allowed),
+    onError: failure => setMessage(String(failure)),
+  }));
+  const select = (pkg: string, on: boolean) => { void selectionQueue.select(pkg, on); };
   return <View style={{ maxWidth: '100%', gap: spacing.md }}>
     <Text style={[typography.caption, { color: colors.secondary, maxWidth: width }]}>#9 · 실제 앱과 동일한 화면 · 아이콘 이미지만 예시 데이터예요.</Text>
     <View style={{ width, height, maxWidth: '100%', backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 28, overflow: 'hidden' }}>
@@ -54,7 +62,7 @@ function AllowedAppsProposal({ screen, width, height, empty, missingIcons, runni
         <Button label="허용앱" variant="secondary" onPress={() => setVisible(true)} />
       </View> : <AllowedAppsView nativeAvailable status={status} apps={apps}
         setupContent={<AllowedAppsSetup status={status} busy={false} guard={guard} run={async task => { await task(); }} onEnableNotifications={guard.openNotificationSettings} />}
-        error="" busy={false} search={search} onSearch={setSearch} onBack={() => { setCurrent('modal'); setVisible(true); }} onSelect={select} />}
+        error={message} busy={false} pendingPackages={pendingPackages} search={search} onSearch={setSearch} onBack={() => { setCurrent('modal'); setVisible(true); }} onSelect={select} />}
       <AllowedAppsLauncherView embedded visible={current === 'modal' && visible} nativeAvailable needsSetup={false}
         apps={sortAllowedApps(apps.filter(app => allowed.includes(app.packageName)))} selected={selected} error={message}
         busy={false} studyBusy={false} hasSession onClose={() => setVisible(false)}
