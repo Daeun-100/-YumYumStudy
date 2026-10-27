@@ -1,8 +1,9 @@
+import { LeaveScheduleList } from './LeaveScheduleList';
 import { Dialog, DialogCloseButton } from '../../design/Dialog';
 import { SkeletonRegion } from '../../design/Skeleton';
 import { useImperativeHandle, useState, type ReactNode, type Ref } from 'react';
 import { leaveBackTarget } from '../navigation/back-policy';
-import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AchievementIcon, Button, Card, InfoButton, InfoIcon } from '../../design/components';
 import { colors, interaction, radius, spacing, typography } from '../../design/theme';
 import { characterArtwork } from '../../design/character-artwork';
@@ -27,6 +28,7 @@ export type LeaveLayoutProps = {
 };
 const stateNames = { available: '사용 가능', scheduled: '사용 예정', used: '사용 완료', expired: '만료' };
 const parse = (date: string) => new Date(`${date}T00:00:00Z`);
+const nextDate = (date: string) => { const d = parse(date); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); };
 const dateText = (date: string, weekday = false) => `${parse(date).getUTCMonth() + 1}월 ${parse(date).getUTCDate()}일${weekday ? ` (${['일', '월', '화', '수', '목', '금', '토'][parse(date).getUTCDay()]})` : ''}`;
 const monthShift = (date: string, step: number) => { const value = parse(date); value.setUTCMonth(value.getUTCMonth() + step, 1); return value.toISOString().slice(0, 10); };
 
@@ -42,9 +44,9 @@ export function LeaveIcon({ state, size = 48 }: { state: LeaveState; size?: numb
 }
 export function WeeklyLeaveProgress({ days = 4 }: { days?: number }) {
   const count = Math.min(6, Math.max(0, days));
-  return <View style={s.progressCard}><View style={s.between}><Text style={[s.cardTitle, { flex: 1 }]}>{count >= 6 ? '이번 주 연차 획득 완료' : '이번 주 목표 달성'}</Text><Text style={s.title}>{count}<Text style={s.secondary}>/6일</Text></Text></View>
+  return <View style={s.progressCard}><View style={s.between}><Text style={[s.cardTitle, { flex: 1 }]}>{count >= 6 ? '이번 주 보상 획득 조건 달성' : '이번 주 보상 인정 일수'}</Text><Text style={s.title}>{count}<Text style={s.secondary}>/6일</Text></Text></View>
     <View accessible accessibilityLabel={`이번 주 연차 획득 조건 ${count}일 달성, 6일 중`} style={s.fruitRow}>{Array.from({ length: 6 }, (_, i) => <View key={i} style={s.fruitSlot}>{i < count ? <AchievementIcon size={32} /> : <View style={s.emptyFruit} />}</View>)}</View>
-    <Text style={s.caption}>{count >= 6 ? '이번 주 연차 1개를 받았어요.' : `${6 - count}일 더 달성하면 연차 1개를 받아요.`}</Text>
+    <Text style={s.caption}>{count >= 6 ? '이번 주 보상 연차 획득 조건을 달성했어요.' : `${6 - count}일 더 달성하면 보상 연차 1개를 받아요. 연차 사용일은 제외돼요.`}</Text>
   </View>;
 }
 export function LeaveInfo({ children }: { children: string }) {
@@ -67,30 +69,34 @@ export function LeaveView({ embedded = false, character = 'bunny', initialScreen
   const [selectedDate, setSelectedDate] = useState<string | null>(initialDate ?? null);
   const [changingId, setChangingId] = useState<string | null>(initialChanging ? 'c' : null);
   const [confirmation, setConfirmation] = useState<false | 'cancel' | 'use' | 'change'>(initialConfirmation === true ? 'cancel' : initialConfirmation || false);
+  const [confirmedDay, setConfirmedDay] = useState(today);
   const [refreshing, setRefreshing] = useState(false);
   const [details, setDetails] = useState<'rules' | null>(null);
   const loadState = state;
   const refresh = async () => { setRefreshing(true); try { await onRefresh(); } finally { setRefreshing(false); } };
   const ready = loadState === 'ready' || loadState === 'empty';
   const available = grants.filter(g => g.state === 'available').sort((a, b) => a.expires.localeCompare(b.expires));
-  const scheduled = grants.filter(g => g.state === 'scheduled').sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
+  const scheduleItems = grants.flatMap(g => g.date && (g.state === 'scheduled' || g.state === 'used') ? [{ id: g.id, date: g.date, state: g.state }] : []);
   const expiryGroups = available.reduce<Record<string, number>>((groups, grant) => { groups[grant.expires] = (groups[grant.expires] ?? 0) + 1; return groups; }, {});
   const selectedGrant = grants.find(g => g.date === selectedDate && (g.state === 'scheduled' || g.state === 'used'));
   const changingGrant = grants.find(g => g.id === changingId);
   const confirming = confirmation !== false;
+  const dayChanged = confirming && confirmedDay !== today;
+  const confirm = (value: 'use' | 'change' | 'cancel') => { setConfirmedDay(today); setConfirmation(value); };
   const overlayOpen = confirming || details !== null;
   const Content = ScrollView;
   const reason = selectedDate ? unavailable(selectedDate, changingId) : null;
   const canApply = !!selectedDate && !reason && (!changingGrant || selectedDate !== changingGrant.date);
   const openCalendar = (date?: string) => { setMonth(`${(date ?? today).slice(0, 7)}-01`); onMonthChange(`${(date ?? today).slice(0, 7)}-01`); setSelectedDate(date ?? null); setChangingId(null); onClearNotice(); setScreen('calendar'); };
   const apply = async () => {
+    if (dayChanged) return;
     if (!selectedDate || !canApply || busy) return;
     if (await onApply(selectedDate, changingId)) { setChangingId(null); setConfirmation(false); }
-    else setConfirmation(false);
+
   };
   const cancel = async () => {
-    if (!selectedGrant || busy || !selectedDate) return;
-    await onCancel(selectedGrant.id, selectedDate); setConfirmation(false);
+    if (dayChanged || !selectedGrant || busy || !selectedDate) return;
+    if (await onCancel(selectedGrant.id, selectedDate)) setConfirmation(false);
   };
   const back = () => { setScreen('home'); setChangingId(null); setConfirmation(false); onClearNotice(); };
   useImperativeHandle(backRef, () => ({ back() {
@@ -111,10 +117,10 @@ export function LeaveView({ embedded = false, character = 'bunny', initialScreen
           <Card style={s.balance}>
             <View style={s.balanceSummary}><Text style={s.cardTitle}>사용 가능한 연차</Text><View accessible accessibilityLabel={`${available.length}개`} style={s.balanceValue}><Text style={s.balanceNumber}>{available.length}</Text><Text style={s.balanceUnit}>개</Text></View></View>
             <Image source={characterArtwork[character].leave} resizeMode="contain" accessibilityLabel={`휴가를 즐기는 ${characterArtwork[character].label}`} pointerEvents="none" style={[s.heroArt, ['bunny', 'bear', 'cat', 'puppy'].includes(character) && s.heroArtLarge]} />
-            {available.length ? <View style={s.expiryRow}><Text style={s.caption}>가장 빠른 만료 · {dateText(available[0].expires)} 오전 6시</Text></View> : <Text style={s.caption}>목표를 달성하고 첫 연차를 모아보세요.</Text>}
+            {available.length ? <View style={s.expiryRow}><Text style={s.caption}>가장 빠른 만료 · {dateText(available[0].expires)} 오전 6시</Text></View> : <Text style={s.caption}>매주 무료 연차를 받고, 목표 달성으로 보상 연차도 모아보세요.</Text>}
           </Card>
           <SkeletonRegion loading={weeklyLoading} label="주간 달성 불러오는 중"><WeeklyLeaveProgress days={weeklyDays ?? 0} /></SkeletonRegion>{!weeklyLoading && weeklyDays === null && <Text style={s.secondary}>이번 주 달성 현황을 확인하지 못했어요.</Text>}
-          {scheduled.length ? <Pressable accessibilityRole="button" accessibilityLabel="다가오는 연차, 달력에서 확인" onPress={() => openCalendar(scheduled[0].date)} style={({ pressed }) => [s.upcoming, pressed && { backgroundColor: colors.surfacePressed }]}><Text style={s.cardTitle}>다가오는 연차</Text><View style={s.row}><LeaveIcon state="scheduled" size={32} /><Text style={[s.title, { flex: 1 }]}>{dateText(scheduled[0].date!, true)}</Text><Text style={s.chevron}>›</Text></View></Pressable> : <View style={s.upcoming}><Text style={s.cardTitle}>다가오는 연차</Text><Text style={s.secondary}>아직 예약한 연차가 없어요.</Text></View>}
+          <LeaveScheduleList items={scheduleItems} today={today} onSelect={openCalendar} />
         </> : <>
           <View style={s.calendarBalance}>
             <View style={s.calendarSummary}>
@@ -127,7 +133,7 @@ export function LeaveView({ embedded = false, character = 'bunny', initialScreen
           <Text style={s.caption}>만료가 빠른 연차부터 사용해요.</Text>
           <View style={s.dateActions}>
             <View style={[s.between, { minHeight: 32 }]}><Text style={s.cardTitle}>{selectedDate ? dateText(selectedDate, true) : '날짜를 선택해 주세요'}</Text>{selectedGrant && <LeaveBadge state={selectedGrant.state} />}</View>
-            {changingGrant ? <><Button label={selectedDate && canApply ? `${dateText(selectedDate)}로 변경` : '날짜 변경'} disabled={!canApply || busy || calendarLoading} onPress={() => setConfirmation('change')} /><Button label="변경 그만두기" variant="secondary" onPress={() => { setSelectedDate(changingGrant.date!); setMonth(`${changingGrant.date!.slice(0, 7)}-01`); onMonthChange(`${changingGrant.date!.slice(0, 7)}-01`); setChangingId(null); }} /></> : selectedGrant?.state === 'scheduled' ? <View style={s.row}><Button label="날짜 변경" disabled={busy} style={{ flex: 1 }} onPress={() => { setChangingId(selectedGrant.id); onClearNotice(); }} /><Button label="예약 취소" disabled={busy} variant="secondary" style={{ flex: 1 }} onPress={() => setConfirmation('cancel')} /></View> : selectedGrant?.state === 'used' ? null : <><Button label={selectedDate && canApply ? `${dateText(selectedDate)} 연차 사용` : '연차 사용하기'} disabled={!canApply || busy || calendarLoading} onPress={() => setConfirmation('use')} /></>}
+            {changingGrant ? <><Button label={selectedDate && canApply ? `${dateText(selectedDate)}로 변경` : '날짜 변경'} disabled={!canApply || busy || calendarLoading} onPress={() => confirm('change')} /><Button label="변경 그만두기" variant="secondary" onPress={() => { setSelectedDate(changingGrant.date!); setMonth(`${changingGrant.date!.slice(0, 7)}-01`); onMonthChange(`${changingGrant.date!.slice(0, 7)}-01`); setChangingId(null); }} /></> : selectedGrant?.state === 'scheduled' ? <View style={s.row}><Button label="날짜 변경" disabled={busy} style={{ flex: 1 }} onPress={() => { setChangingId(selectedGrant.id); onClearNotice(); }} /><Button label="예약 취소" disabled={busy} variant="secondary" style={{ flex: 1 }} onPress={() => confirm('cancel')} /></View> : selectedGrant?.state === 'used' ? <><Text style={s.secondary}>사용 완료 · {selectedDate ? dateText(nextDate(selectedDate)) : ''} 오전 6시까지</Text><Text style={s.secondary}>이미 사용한 연차는 취소하거나 날짜를 변경할 수 없어요.</Text></> : <><Button label={selectedDate && canApply ? selectedDate === today ? '오늘 연차 사용' : `${dateText(selectedDate)} 연차 예약` : '연차 사용하기'} disabled={!canApply || busy || calendarLoading} onPress={() => confirm('use')} /></>}
             {selectedDate && reason && !selectedGrant && (!changingGrant || selectedDate !== changingGrant.date) && <Text style={s.secondary}>{reason}</Text>}
 
           </View>
@@ -137,13 +143,15 @@ export function LeaveView({ embedded = false, character = 'bunny', initialScreen
       </Content>
       {screen === 'home' && <><View style={s.fixedAction}><Button label="연차 사용하기" disabled={!ready || busy} onPress={() => openCalendar()} /></View>{navigation}</>}
     </View>
-    <Dialog visible={details !== null} label="연차 이용 안내" embedded={embedded} onClose={() => setDetails(null)}><Card style={{ gap: spacing.lg, maxHeight: '90%' }}><Text accessibilityRole="header" style={s.title}>연차 이용 안내</Text><ScrollView><Text style={s.secondary}>한 주에 6일 목표를 달성하면 연차 1개를 받아요. 휴무·미설정·연차 사용일은 달성 일수에서 제외돼요. 획득 주 시작일로부터 21일 뒤 오전 6시에 만료돼요. 사용일 오전 6시 전까지 예약을 변경하거나 취소할 수 있어요.</Text></ScrollView><DialogCloseButton label="닫기" variant="secondary" /></Card></Dialog>
+    <Dialog visible={details !== null} label="연차 이용 안내" embedded={embedded} onClose={() => setDetails(null)}><Card style={{ gap: spacing.lg, maxHeight: '90%' }}><Text accessibilityRole="header" style={s.title}>연차 이용 안내</Text><ScrollView><Text style={s.secondary}>무료 연차는 매주 월요일 오전 6시에 1개 지급되고, 다음 월요일 오전 6시에 만료돼요. 이월되지 않아요. 보상 연차는 한 주에 6일 목표를 달성하면 1개를 받아요. 휴무·미설정·연차 사용일은 달성 일수에서 제외돼요. 보상 연차는 획득 주 시작일로부터 21일 뒤 오전 6시에 만료돼요. 오늘 공부 날짜에는 바로 사용할 수 있고, 사용 후에는 취소하거나 날짜를 변경할 수 없어요. 미래 예약은 사용일 오전 6시 전까지 변경하거나 취소할 수 있어요. 오늘을 제외하면 이미 획득한 보상의 인정 일수가 6일 미만이 되는 경우에는 오늘 연차를 사용할 수 없어요.</Text></ScrollView><DialogCloseButton label="닫기" variant="secondary" /></Card></Dialog>
     <Dialog visible={confirming} label={confirmation === 'cancel' ? '연차 취소 확인' : confirmation === 'change' ? '날짜 변경 확인' : '연차 사용 확인'} busy={backBlocked} embedded={embedded} onClose={() => setConfirmation(false)}><Card style={{ width: '100%', gap: spacing.lg }}>
-      <Text accessibilityRole="header" style={s.title}>{confirmation === 'cancel' ? '예약을 취소할까요?' : confirmation === 'change' ? '날짜를 변경할까요?' : '연차를 사용할까요?'}</Text>
+      <Text accessibilityRole="header" style={s.title}>{confirmation === 'cancel' ? '예약을 취소할까요?' : confirmation === 'change' ? '날짜를 변경할까요?' : selectedDate === today ? '오늘 연차를 사용할까요?' : '연차를 예약할까요?'}</Text>
       <Text style={s.cardTitle}>{confirmation === 'change' && changingGrant ? `${dateText(changingGrant.date!, true)} → ` : ''}{selectedDate ? dateText(selectedDate, true) : ''}</Text>
+      {dayChanged && <Text accessibilityRole="alert" style={[s.secondary, { color: colors.error }]}>공부 날짜가 바뀌었어요. 닫고 날짜를 선택한 뒤 다시 확인해 주세요.</Text>}
+      {confirmation !== 'cancel' && selectedDate && <><Text style={s.secondary}>{dateText(selectedDate)} 공부 날짜 · {dateText(nextDate(selectedDate))} 오전 6시까지</Text><Text style={s.secondary}>{selectedDate === today ? '오늘 공부 날짜에 바로 적용되며, 사용 후 취소하거나 날짜를 변경할 수 없어요.' : '사용일 오전 6시부터 적용되며, 그 전까지 취소하거나 날짜를 변경할 수 있어요.'}</Text></>}
       {confirmation === 'cancel' && <Text style={s.secondary}>연차 1개가 돌아오며, 만료일은 그대로예요.</Text>}
       {!!error && <Text accessibilityRole="alert" style={[s.secondary, { color: colors.error }]}>{error}</Text>}
-      <Button label={confirmation === 'cancel' ? '예약 취소' : confirmation === 'change' ? '변경' : '사용'} loading={busy} disabled={busy} onPress={() => void (confirmation === 'cancel' ? cancel() : apply())} />
+      <Button label={confirmation === 'cancel' ? '예약 취소' : confirmation === 'change' ? selectedDate === today ? '오늘로 변경하고 사용' : '변경' : selectedDate === today ? '오늘 사용' : '예약'} loading={busy} disabled={busy || dayChanged || (confirmation !== 'cancel' && !canApply)} onPress={() => void (confirmation === 'cancel' ? cancel() : apply())} />
       <DialogCloseButton label={confirmation === 'cancel' ? '예약 유지' : '닫기'} variant="secondary" disabled={backBlocked} />
     </Card></Dialog>
 

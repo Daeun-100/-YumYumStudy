@@ -21,6 +21,9 @@ export async function callRpc(name: string, args?: Record<string, unknown>): Pro
       if (name === 'mutate_leave' && error.code === '22023') {
         const messages: Record<string, string> = {
           'Leave changed; refresh before making a new request': '연차 예약 상태가 변경되었습니다. 새로 조회한 뒤 다시 요청해 주세요.',
+          'Today is required for earned reward': '오늘은 이번 주 보상 연차 획득에 포함된 날이라 연차로 변경할 수 없어요.',
+          'Study date changed; confirm again': '공부 날짜가 바뀌었어요. 날짜를 확인하고 다시 신청해 주세요.',
+          'Cannot cancel this reservation': '사용이 확정된 연차는 취소하거나 변경할 수 없어요.',
           'No eligible leave': '선택한 날짜에 사용할 수 있는 연차가 없습니다.',
           'Date already reserved': '이미 연차가 예약된 날짜입니다.',
           'Request ID reused with different input': '기존 요청과 내용이 다릅니다. 연차 상태를 다시 확인해 주세요.',

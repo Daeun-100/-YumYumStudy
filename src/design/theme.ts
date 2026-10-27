@@ -7,7 +7,7 @@ export const colors = {
   background: '#FCFCF9', canvas: '#F6F6F2', surface: '#FFFFFF', navigation: '#FFFFFF',
   primary: '#108363', primaryPressed: '#096B50', surfacePressed: '#DDEFE2', disabledSurface: '#ECEDEA', disabledText: '#686C66', onPrimary: '#FFFFFF', text: '#252D28', secondary: '#66716F',
   border: '#EDF0EB', track: '#E8EDE7', soft: '#EDF8EE', raised: '#FFFFFF',
-  study: '#C5E8CC', goal: '#FFA3A6', leaveIconBackground: '#CCE5FF', leaveBackground: '#EFF7FF', leave: '#226CB5',
+  study: '#C5E8CC', goal: '#FFA3A6', leaveIconBackground: '#CCE5FF', leaveBackground: '#EFF7FF', leave: '#226CB5', leaveTrack: '#4E89C4',
   emptyBackground: '#F4F5F2', restBackground: '#F0F1EE', restStripe: '#D8DDD5',
   inactive: '#A6A59E', inactiveLabel: '#8C8F88', error: '#A24A37', resting: '#DBAE68',
   accent: '#E8A74F', onImage: '#FFFDF5', imageShadow: '#6F5339', artFallback: '#D5B28F',

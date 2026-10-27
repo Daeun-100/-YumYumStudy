@@ -6,8 +6,8 @@ begin
  if u is null then raise exception 'Test profile required'; end if;
  perform set_config('request.jwt.claim.sub',u::text,true);
  w:=d-(extract(isodow from d)::integer-1);
- insert into public.leave_grants(user_id,earning_week,earned_at,expires_at) values(u,w-7,((w-7)+time '06:00') at time zone 'Asia/Seoul',((w+14)+time '06:00') at time zone 'Asia/Seoul') on conflict(user_id,earning_week) do update set scheduled_date=null returning id into a;
- insert into public.leave_grants(user_id,earning_week,earned_at,expires_at) values(u,w,(w+time '06:00') at time zone 'Asia/Seoul',((w+21)+time '06:00') at time zone 'Asia/Seoul') on conflict(user_id,earning_week) do update set scheduled_date=null returning id into b;
+ insert into public.leave_grants(user_id,earning_week,earned_at,expires_at) values(u,w-7,((w-7)+time '06:00') at time zone 'Asia/Seoul',((w+14)+time '06:00') at time zone 'Asia/Seoul') on conflict(user_id,earning_week,kind) do update set scheduled_date=null returning id into a;
+ insert into public.leave_grants(user_id,earning_week,earned_at,expires_at) values(u,w,(w+time '06:00') at time zone 'Asia/Seoul',((w+21)+time '06:00') at time zone 'Asia/Seoul') on conflict(user_id,earning_week,kind) do update set scheduled_date=null returning id into b;
  perform set_config('test.a',a::text,true); perform set_config('test.b',b::text,true);
  perform set_config('test.date',(d+1)::text,true); perform set_config('test.later',(w+14)::text,true);
 end; $$;

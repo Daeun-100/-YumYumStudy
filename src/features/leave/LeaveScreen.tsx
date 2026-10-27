@@ -24,7 +24,7 @@ export function LeaveScreen() {
   const leave = useLeave();
   const study = useStudy();
   const [initialNow] = useState(() => Date.now());
-  const today = study.today?.data.day.studyDate ?? getStudyDate(initialNow);
+  const today = getStudyDate(study.now || Date.parse(leave.snapshot?.serverNow ?? study.today?.serverNow ?? new Date(initialNow).toISOString()));
   const [month, setMonth] = useState(monthStart(today));
   const [notice, setNotice] = useState('');
   const changeMonth = useCallback((value: string) => setMonth(value), []);
@@ -40,11 +40,13 @@ export function LeaveScreen() {
   const snapshot = leave.snapshot;
   const now = Math.max(study.now, Date.parse(snapshot?.serverNow ?? study.today?.serverNow ?? new Date(initialNow).toISOString()));
   const grants = snapshot?.data.grants ?? [];
-  const liveWeek = week?.map(day => {
+  const liveWeek = week?.map(source => {
+    const day = grants.some(g => g.scheduledDate === source.studyDate) ? { ...source, attendance: 'leave' as const } : source;
     if (day.studyDate !== today || !study.today) return day;
     const current = study.today;
+    if (current.data.day.studyDate !== today) return day;
     const seconds = displayedSeconds(current.data.day, current.data.activeSession, current.serverNow, study.error ? Date.parse(current.serverNow) : now);
-    return { ...current.data.day, closedSeconds: seconds, runningSeconds: 0 };
+    return { ...current.data.day, attendance: grants.some(g => g.scheduledDate === today) ? 'leave' as const : current.data.day.attendance, closedSeconds: seconds, runningSeconds: 0 };
   });
   const calendarDays = Array.from({ length: parseDate(shiftDate(shiftMonth(month, 1), -1)).getUTCDate() }, (_, i) => {
     const date = shiftDate(month, i);
@@ -59,8 +61,8 @@ export function LeaveScreen() {
       weeklyDays={liveWeek ? weeklyAchievement(liveWeek) : null} weeklyLoading={!week && !error} calendarDays={calendarDays} calendarLoading={!calendar && !error}
       navigation={<Nav current="leave" />} onClearNotice={() => setNotice('')} onMonthChange={changeMonth}
       onRefresh={async () => { weekly.retry(); monthly.retry(); await Promise.all([leave.refresh(), study.refresh()]); }}
-      unavailable={(date, changingId) => reservationReason(date, today, grants, now, changingId)}
-      onApply={async (date, changingId) => { const ok = await leave.schedule(date, changingId); if (ok) setNotice(`${date} 연차를 ${changingId ? '변경' : '예약'}했어요.`); return ok; }}
+      unavailable={(date, changingId) => reservationReason(date, today, grants, now, changingId, liveWeek)}
+      onApply={async (date, changingId) => { const ok = await leave.schedule(date, changingId); if (ok) setNotice(date === today ? changingId ? '예약을 오늘로 변경하고 연차를 사용했어요.' : '오늘 연차를 사용했어요.' : `${date} 연차를 ${changingId ? '변경' : '예약'}했어요.`); return ok; }}
       onCancel={async (id, date) => { const ok = await leave.cancel(id, date); if (ok) setNotice('예약을 취소했어요. 연차 1개가 돌아왔어요.'); return ok; }} />
   </View></View>;
 }
