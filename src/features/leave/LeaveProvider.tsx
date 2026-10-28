@@ -15,6 +15,7 @@ export function LeaveProvider({ children }: PropsWithChildren) {
   const identity = useIdentity();
   const study = useStudy();
   const studyNow = useStudyNow();
+  const refreshStudy = study.refresh;
   const uid = !identity.loading && identity.profile ? identity.uid : null;
   const [state, setState] = useState<{ uid: string | null; snapshot: State['snapshot']; error: string | null }>({ uid: null, snapshot: null, error: null });
   const [busy, setBusy] = useState(false);
@@ -28,6 +29,7 @@ export function LeaveProvider({ children }: PropsWithChildren) {
     retryNeeded.current = false;
     if (!uid) { runner.current = null; return; }
     let disposed = false;
+    let lastRevision: number | null = null;
     let again = false;
     let flight: Promise<void> | null = null;
     const run = (): Promise<void> => {
@@ -45,6 +47,12 @@ export function LeaveProvider({ children }: PropsWithChildren) {
               pendingError = error.message;
             }
             const snapshot = await getLeaveStatus();
+            if (!disposed && snapshot.data.revision !== lastRevision) {
+              const previousRevision = lastRevision;
+              lastRevision = snapshot.data.revision;
+              invalidateRecordQueries(studyRoomId);
+              if (previousRevision !== null) void refreshStudy();
+            }
             if (!disposed) { retryNeeded.current = false; setActionFailed(false); setState(previous => previous.uid === uid && previous.snapshot && previous.snapshot.data.revision > snapshot.data.revision ? previous : { uid, snapshot, error: pendingError }); }
           } catch (failure) {
             if (!disposed) { retryNeeded.current = true; setActionFailed(true); setState(s => ({ uid, snapshot: s.uid === uid ? s.snapshot : null, error: toStudyError(failure).message })); }
@@ -58,7 +66,7 @@ export function LeaveProvider({ children }: PropsWithChildren) {
     return () => {
       disposed = true; runner.current = null; clearTimeout(initial);
     };
-  }, [uid]);
+  }, [uid, refreshStudy]);
   // A successful study read is evidence that connectivity recovered, including on native.
   useEffect(() => {
     if (!uid || !study.today || !retryNeeded.current) return;
@@ -76,7 +84,6 @@ export function LeaveProvider({ children }: PropsWithChildren) {
     const timer = setTimeout(() => { previous.current = key; void refresh(); }, 0);
     return () => clearTimeout(timer);
   }, [uid, trigger, refresh]);
-  const refreshStudy = study.refresh;
   const mutate = useCallback(async function mutate(action: 'schedule' | 'cancel', date: string, grantId: string | null): Promise<boolean> {
     if (mutationLock.current || actionFailed || !snapshot || !uid) return false;
     mutationLock.current = true; setBusy(true);
