@@ -25,28 +25,25 @@ function useMotionAllowed() {
 }
 
 function Steam({ placement, width, height, phase, strength }: { placement: SkinEffectPlacement; width: number; height: number; phase: number; strength: number }) {
-  const [values] = useState(() => [new Animated.Value(0), new Animated.Value(0)]);
+  const [value] = useState(() => new Animated.Value(0));
   const plumeWidth = placement.width * width;
   const peakOpacity = Math.min(1, placement.opacity * strength);
   useEffect(() => {
-    const loops = values.map((value, index) => {
-      value.setValue(0);
-      const loop = Animated.sequence([
-        Animated.delay(phase + index * 1400),
-        Animated.loop(Animated.sequence([
-          Animated.timing(value, { toValue: 1, duration: 2800, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web', isInteraction: false }),
-          Animated.timing(value, { toValue: 0, duration: 0, useNativeDriver: Platform.OS !== 'web', isInteraction: false }),
-          Animated.delay(1000),
-        ])),
-      ]);
-      loop.start();
-      return loop;
-    });
-    return () => loops.forEach(loop => loop.stop());
-  }, [phase, values]);
+    value.setValue(0);
+    const loop = Animated.sequence([
+      Animated.delay(phase),
+      Animated.loop(Animated.sequence([
+        Animated.timing(value, { toValue: 1, duration: 2800, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web', isInteraction: false }),
+        Animated.timing(value, { toValue: 0, duration: 0, useNativeDriver: Platform.OS !== 'web', isInteraction: false }),
+        Animated.delay(1000),
+      ])),
+    ]);
+    loop.start();
+    return () => loop.stop();
+  }, [phase, value]);
   return <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ position: 'absolute', left: placement.x * width - plumeWidth / 2, top: placement.y * height - plumeWidth * .7, width: plumeWidth, height: plumeWidth }}>
-    {values.map((value, index) => <Animated.View key={index} style={{ position: 'absolute', width: plumeWidth, height: plumeWidth, opacity: value.interpolate({ inputRange: [0, .2, .65, 1], outputRange: [0, peakOpacity, peakOpacity * .7, 0] }), transform: [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [0, -plumeWidth * .8] }) }, { translateX: value.interpolate({ inputRange: [0, .5, 1], outputRange: [index * plumeWidth * .22, (index ? .1 : -.12) * plumeWidth, (index ? .2 : -.2) * plumeWidth] }) }] }}>
-      <Svg width="100%" height="100%" viewBox="0 0 60 60"><Path d="M 26 56 C 41 45 12 35 27 24 C 37 16 23 10 28 3" fill="none" stroke="#FFF2D9" strokeWidth={4} strokeLinecap="round" /></Svg>
+    {[0, 1, 2].map(index => <Animated.View key={index} style={{ position: 'absolute', width: plumeWidth, height: plumeWidth, opacity: value.interpolate({ inputRange: [0, .2, .65, 1], outputRange: [0, peakOpacity, peakOpacity * .7, 0] }), transform: [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [0, -plumeWidth * .8] }) }, { translateX: value.interpolate({ inputRange: [0, .5, 1], outputRange: [(index - 1) * plumeWidth * .32, ((index - 1) * .32 + .06) * plumeWidth, ((index - 1) * .32 - .06) * plumeWidth] }) }] }}>
+      <Svg width="100%" height="100%" viewBox="0 0 60 60"><Path d="M 26 56 C 41 45 12 35 27 24 C 37 16 23 10 28 3" fill="none" stroke="#FFF2D9" strokeWidth={7} strokeLinecap="round" /></Svg>
     </Animated.View>)}
   </View>;
 }
