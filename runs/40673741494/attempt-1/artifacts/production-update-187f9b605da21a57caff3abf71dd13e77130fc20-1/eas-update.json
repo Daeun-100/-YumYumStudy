@@ -1,0 +1,14 @@
+[
+  {
+    "id": "01a1821e-1d0a-7384-b1d6-45655acf4039",
+    "createdAt": "2026-10-28T10:46:14.026Z",
+    "group": "cb60cf34-930c-43ea-a5e2-561a072a411f",
+    "branch": "production",
+    "message": "master 187f9b605da2: Merge pull request #20 from Daeun-100/codex/release-tab-performance",
+    "runtimeVersion": "4a7adc844a392bfaead47665719d0291b9f3da58",
+    "platform": "android",
+    "manifestPermalink": "https://u.expo.dev/update/01a1821e-1d0a-7384-b1d6-45655acf4039",
+    "isRollBackToEmbedded": false,
+    "gitCommitHash": "187f9b605da21a57caff3abf71dd13e77130fc20"
+  }
+]
