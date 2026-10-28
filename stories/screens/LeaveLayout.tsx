@@ -40,7 +40,7 @@ export function LeaveLayout({ width = 390, height = 844, weeklyDays = 4, state =
       onRefresh={async () => setLoadState('ready')}
       unavailable={(date, changingId) => reservationReason(date, today, backendGrants, Date.parse(`${today}T12:00:00+09:00`), changingId)}
       onApply={async (date, changingId) => {
-        const grant = changingId ? grants.find(g => g.id === changingId) : grants.filter(g => g.state === 'available' && g.expires > date).sort((a,b) => a.expires.localeCompare(b.expires))[0];
+        const grant = changingId ? grants.find(g => g.id === changingId) : grants.filter(g => g.state === 'available' && g.expires !== null && g.expires > date).sort((a,b) => a.expires!.localeCompare(b.expires!))[0];
         if (!grant) return false;
         setGrants(previous => previous.map(g => g.id === grant.id ? { ...g, state: date === today ? 'used' : 'scheduled', date } : g));
         setNotice('스토리북 시안 · 샘플 데이터만 변경했어요.'); return true;

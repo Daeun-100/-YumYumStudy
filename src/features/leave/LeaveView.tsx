@@ -13,7 +13,7 @@ import type { StudyRecord } from '../records/model';
 
 type LeaveState = 'available' | 'scheduled' | 'used' | 'expired';
 type Screen = 'home' | 'calendar';
-type Grant = { id: string; state: LeaveState; earned: string; expires: string; date?: string };
+type Grant = { kind?: 'free' | 'reward' | 'admin'; id: string; state: LeaveState; earned: string; expires: string | null; date?: string };
 export type LeaveLayoutProps = {
   embedded?: boolean;
   character?: CharacterId;
@@ -75,8 +75,8 @@ export function LeaveView({ embedded = false, character = 'bunny', initialScreen
   const loadState = state;
   const refresh = async () => { setRefreshing(true); try { await onRefresh(); } finally { setRefreshing(false); } };
   const ready = loadState === 'ready' || loadState === 'empty';
-  const available = grants.filter(g => g.state === 'available').sort((a, b) => a.expires.localeCompare(b.expires));
-  const scheduleItems = grants.flatMap(g => g.date && (g.state === 'scheduled' || g.state === 'used') ? [{ id: g.id, date: g.date, state: g.state }] : []);
+  const available = grants.filter((g): g is Grant & { expires: string } => g.kind !== 'admin' && g.expires !== null && g.state === 'available').sort((a, b) => a.expires.localeCompare(b.expires));
+  const scheduleItems = grants.flatMap(g => g.date && (g.state === 'scheduled' || g.state === 'used') ? [{ id: g.id, date: g.date, state: g.state, kind: g.kind }] : []);
   const expiryGroups = available.reduce<Record<string, number>>((groups, grant) => { groups[grant.expires] = (groups[grant.expires] ?? 0) + 1; return groups; }, {});
   const selectedGrant = grants.find(g => g.date === selectedDate && (g.state === 'scheduled' || g.state === 'used'));
   const changingGrant = grants.find(g => g.id === changingId);
@@ -90,12 +90,12 @@ export function LeaveView({ embedded = false, character = 'bunny', initialScreen
   const openCalendar = (date?: string) => { setMonth(`${(date ?? today).slice(0, 7)}-01`); onMonthChange(`${(date ?? today).slice(0, 7)}-01`); setSelectedDate(date ?? null); setChangingId(null); onClearNotice(); setScreen('calendar'); };
   const apply = async () => {
     if (dayChanged) return;
-    if (!selectedDate || !canApply || busy) return;
+    if (!selectedDate || !canApply || busy || selectedGrant?.kind === 'admin' || changingGrant?.kind === 'admin') return;
     if (await onApply(selectedDate, changingId)) { setChangingId(null); setConfirmation(false); }
 
   };
   const cancel = async () => {
-    if (dayChanged || !selectedGrant || busy || !selectedDate) return;
+    if (dayChanged || !selectedGrant || selectedGrant.kind === 'admin' || busy || !selectedDate) return;
     if (await onCancel(selectedGrant.id, selectedDate)) setConfirmation(false);
   };
   const back = () => { setScreen('home'); setChangingId(null); setConfirmation(false); onClearNotice(); };
@@ -133,7 +133,7 @@ export function LeaveView({ embedded = false, character = 'bunny', initialScreen
           <Text style={s.caption}>만료가 빠른 연차부터 사용해요.</Text>
           <View style={s.dateActions}>
             <View style={[s.between, { minHeight: 32 }]}><Text style={s.cardTitle}>{selectedDate ? dateText(selectedDate, true) : '날짜를 선택해 주세요'}</Text>{selectedGrant && <LeaveBadge state={selectedGrant.state} />}</View>
-            {changingGrant ? <><Button label={selectedDate && canApply ? `${dateText(selectedDate)}로 변경` : '날짜 변경'} disabled={!canApply || busy || calendarLoading} onPress={() => confirm('change')} /><Button label="변경 그만두기" variant="secondary" onPress={() => { setSelectedDate(changingGrant.date!); setMonth(`${changingGrant.date!.slice(0, 7)}-01`); onMonthChange(`${changingGrant.date!.slice(0, 7)}-01`); setChangingId(null); }} /></> : selectedGrant?.state === 'scheduled' ? <View style={s.row}><Button label="날짜 변경" disabled={busy} style={{ flex: 1 }} onPress={() => { setChangingId(selectedGrant.id); onClearNotice(); }} /><Button label="예약 취소" disabled={busy} variant="secondary" style={{ flex: 1 }} onPress={() => confirm('cancel')} /></View> : selectedGrant?.state === 'used' ? <><Text style={s.secondary}>사용 완료 · {selectedDate ? dateText(nextDate(selectedDate)) : ''} 오전 6시까지</Text><Text style={s.secondary}>이미 사용한 연차는 취소하거나 날짜를 변경할 수 없어요.</Text></> : <><Button label={selectedDate && canApply ? selectedDate === today ? '오늘 연차 사용' : `${dateText(selectedDate)} 연차 예약` : '연차 사용하기'} disabled={!canApply || busy || calendarLoading} onPress={() => confirm('use')} /></>}
+            {selectedGrant?.kind === 'admin' ? <><Text style={[s.cardTitle, { color: colors.leave }]}>관리자 지급</Text><Text style={s.secondary}>관리자가 적용한 연차예요. 변경이 필요하면 관리자에게 문의해 주세요.</Text></> : changingGrant ? <><Button label={selectedDate && canApply ? `${dateText(selectedDate)}로 변경` : '날짜 변경'} disabled={!canApply || busy || calendarLoading} onPress={() => confirm('change')} /><Button label="변경 그만두기" variant="secondary" onPress={() => { setSelectedDate(changingGrant.date!); setMonth(`${changingGrant.date!.slice(0, 7)}-01`); onMonthChange(`${changingGrant.date!.slice(0, 7)}-01`); setChangingId(null); }} /></> : selectedGrant?.state === 'scheduled' ? <View style={s.row}><Button label="날짜 변경" disabled={busy} style={{ flex: 1 }} onPress={() => { setChangingId(selectedGrant.id); onClearNotice(); }} /><Button label="예약 취소" disabled={busy} variant="secondary" style={{ flex: 1 }} onPress={() => confirm('cancel')} /></View> : selectedGrant?.state === 'used' ? <><Text style={s.secondary}>사용 완료 · {selectedDate ? dateText(nextDate(selectedDate)) : ''} 오전 6시까지</Text><Text style={s.secondary}>이미 사용한 연차는 취소하거나 날짜를 변경할 수 없어요.</Text></> : <><Button label={selectedDate && canApply ? selectedDate === today ? '오늘 연차 사용' : `${dateText(selectedDate)} 연차 예약` : '연차 사용하기'} disabled={!canApply || busy || calendarLoading} onPress={() => confirm('use')} /></>}
             {selectedDate && reason && !selectedGrant && (!changingGrant || selectedDate !== changingGrant.date) && <Text style={s.secondary}>{reason}</Text>}
 
           </View>
