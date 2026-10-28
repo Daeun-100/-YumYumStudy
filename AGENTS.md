@@ -23,6 +23,20 @@ npx expo install --fix      # fix incompatible package versions
 
 Run lint and typecheck before declaring any task done.
 
+## Feature development workflow
+
+- Create feature branches from the latest `develop` branch. Use the `codex/` prefix for branches created by Codex.
+- Implement features on the feature branch and open a pull request targeting `develop`.
+- Run lint and typecheck before opening the pull request. Production releases follow the existing `develop` → `master` release PR workflow in `docs/RELEASES.md`.
+
+## Deployment versions
+
+- Keep `app.json` (`expo.version`) and `package.json` versions identical, using `X.Y.Z`. This is the APK version shown to users; never append a revision suffix to app config.
+- For a new production APK, increase Major for breaking changes, Minor for compatible features, or Patch for fixes, resetting lower positions. Increase Android `versionCode` too. APK releases use `vX.Y.Z`.
+- For an update compatible with the published APK, keep the app version and `versionCode` unchanged. After a successful production update, automation creates a GitHub Release/tag `vX.Y.Z-rN` on the deployed commit, starting at `r1` for each APK version.
+- Revision tags are deployment identifiers, not SemVer precedence. Never use them as an APK baseline or trigger APK download notices from them. Keep GitHub Latest pointing to the APK release.
+- Use the existing master deployment workflow and compatibility review. Do not manually move tags, reuse revision numbers, or publish production updates directly from a local checkout. See `docs/RELEASES.md`.
+
 ## Navigation & Routing
 
 - Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.

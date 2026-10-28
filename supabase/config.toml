@@ -422,3 +422,7 @@ verify_jwt = false
 # Server-only scheduler authenticates with a random shared secret before any work.
 [functions.log-monitor]
 verify_jwt = false
+
+# Server-only administrator endpoint checks ADMIN_NOTIFICATION_TOKEN before any work.
+[functions.admin-notifications]
+verify_jwt = false
