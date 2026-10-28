@@ -115,6 +115,20 @@ export function normalizationHook(before, oldScripts) {
     return chunk;
   };
 }
+export function nativeInputReasons(files, scripts) {
+  const reasons = [];
+  // Audited operator/CI tools; full fingerprint equality is still required.
+  const adminScript = /^(deployment(?:-review|-history)?|release-candidate|check-release|build-record|publish-release-info|admin-notifications|update-release)\.mjs$/;
+  for (const file of files) {
+    const nativeHooks = Object.entries(scripts).filter(([name]) => /^(preinstall|install|postinstall|prepare|prebuild|eas-build)/.test(name));
+    if (file.startsWith('scripts/') && nativeHooks.some(([, command]) => String(command).includes(file))) {
+      reasons.push(`Changed script is called by a native build hook: ${file}`);
+    }
+    if (/^(android\/|ios\/|modules\/|plugins\/|fingerprint\.config\.|\.fingerprintignore$|eas\.json$|package-lock\.json$)/.test(file)
+      || (file.startsWith('scripts/') && !adminScript.test(file.slice(8)))) reasons.push(`Native/build input changed: ${file}`);
+  }
+  return reasons;
+}
 export async function nativeCompatibility(cwd, baseline) {
   if (!baseline?.runtimeVersion) return { compatible: false, exemptions: [], reasons: ['No published fingerprint runtime'], normalizedRuntime: null };
   const before = {}, after = {};
@@ -124,15 +138,7 @@ export async function nativeCompatibility(cwd, baseline) {
   }
   const analysis = inspectAdministrativeChanges(before, after);
   const files = git(cwd, ['diff', '--name-only', baseline.sha, 'HEAD']).trim().split('\n').filter(Boolean);
-  const adminScript = /^(deployment(?:-review|-history)?|release-candidate|check-release|build-record|publish-release-info)\.mjs$/;
-  for (const file of files) {
-    const nativeHooks = Object.entries(analysis.oldScripts).filter(([name]) => /^(preinstall|install|postinstall|prepare|prebuild|eas-build)/.test(name));
-    if (file.startsWith('scripts/') && nativeHooks.some(([, command]) => String(command).includes(file))) {
-      analysis.reasons.push(`Changed script is called by a native build hook: ${file}`);
-    }
-    if (/^(android\/|ios\/|modules\/|plugins\/|fingerprint\.config\.|\.fingerprintignore$|eas\.json$|package-lock\.json$)/.test(file)
-      || (file.startsWith('scripts/') && !adminScript.test(file.slice(8)))) analysis.reasons.push(`Native/build input changed: ${file}`);
-  }
+  analysis.reasons.push(...nativeInputReasons(files, analysis.oldScripts));
   if (analysis.reasons.length) return { compatible: false, exemptions: analysis.exemptions, reasons: analysis.reasons, normalizedRuntime: null };
   const { createFingerprintAsync } = require('expo/fingerprint');
   const fingerprint = await createFingerprintAsync(cwd, { platforms: ['android'], ignorePaths: ['android/**/*', 'ios/**/*'],
