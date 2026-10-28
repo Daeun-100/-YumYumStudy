@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -40,6 +40,17 @@ export function validateUpdate(updates, plan) {
   assert.equal(update.gitCommitHash, plan.sha, 'Published update differs from the checked master commit');
   for (const key of ['id', 'group']) assert.match(update[key], /^[a-f0-9-]{36}$/i);
   return update;
+}
+export function validateWebPromotion(plan, update, web, { sha, deploymentId, runNumber }) {
+  assert.equal(plan.mode, 'update');
+  assert.equal(plan.sha, sha, 'Web candidate must use the checked master source');
+  assert.equal(update.status, 'published', 'Android OTA must succeed before web promotion');
+  assert.equal(update.sha, sha, 'OTA source differs from web source');
+  assert.equal(update.runtimeVersion, plan.runtimeVersion, 'OTA runtime differs from checked plan');
+  assert.match(String(runNumber), /^\d+$/);
+  assert.match(deploymentId, new RegExp(`^production-${sha.slice(0, 12)}-${runNumber}-[0-9]+$`));
+  assert.equal(web.identifier, deploymentId, 'Web artifact differs from this run\'s verified candidate');
+  return deploymentId;
 }
 export function restoreRuntimeBaseline(candidate, build, app) {
   assert.equal(build.status, 'FINISHED');
@@ -172,6 +183,21 @@ async function main() {
     const { mode, baseline } = plan;
     appendFileSync(process.env.GITHUB_OUTPUT, `mode=${mode}\n`);
     console.log(`Production deployment: ${mode}; commit ${sha}; published APK ${baseline?.tag ?? 'none'}`);
+  } else if (command === 'promote-web') {
+    const sha = requireMaster();
+    const plan = json('deployment-plan.json');
+    const baseline = publishedBaseline();
+    const native = await nativeCompatibility(process.cwd(), baseline);
+    assert.ok(native.compatible, 'Native compatibility changed before web promotion');
+    verifyReviewDecision(readReview(), { digest: sourceSnapshot().sourceTreeDigest, baseline, mode: 'update', exemptions: native.exemptions });
+    assert.equal(plan.runtimeVersion, baseline.runtimeVersion);
+    const deploymentId = validateWebPromotion(plan, json('update-record.json'), json('results/web-ota/web-deployment.json'), {
+      sha, deploymentId: process.env.WEB_DEPLOYMENT_ID, runNumber: process.env.GITHUB_RUN_NUMBER,
+    });
+    eas(['deploy:alias', '--id', deploymentId, '--prod', '--non-interactive']);
+    mkdirSync('publication', { recursive: true });
+    save('publication/web-promotion-record.json', { schema: 1, status: 'published', sha, deploymentId,
+      run: plan.run, createdAt: new Date().toISOString() });
   } else if (command === 'publish') {
     const plan = json('deployment-plan.json');
     assert.equal(plan.mode, 'update');

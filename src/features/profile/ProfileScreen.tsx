@@ -1,3 +1,4 @@
+import { recordQueryVersion } from '../../lib/record-query-version';
 import { CallNotificationSettings } from '../call-friend/CallNotifications';
 import { Smartphone } from 'lucide-react-native';
 import { useMemoryQuery } from '../../data/useMemoryQuery';
@@ -27,7 +28,7 @@ export function ProfileScreen() {
     const [history, goals] = await Promise.all([getHistory(weekStart(date), date), getGoalSettings()]);
     return { days: history.data, goals: goals.data };
   }, [study.today]);
-  const { data: summary, error, retry } = useMemoryQuery(['profile-summary', today], loadSummary);
+  const { data: summary, error, retry } = useMemoryQuery(['profile-summary', today], loadSummary, { version: today ? recordQueryVersion(study.today?.data, weekStart(today), today) : '' });
   const character = profile?.character ?? 'bunny';
   const days = today ? Array.from({ length: 7 }, (_, index) => {
     const date = shiftDate(weekStart(today), index);

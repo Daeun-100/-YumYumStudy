@@ -1,4 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { studyRoomId } from '../../lib/room';
+import { invalidateRecordQueries } from '../../data/query-cache';
+import { useStudyNow } from '../study/study-clock';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { isAppActive, useRefreshOnResume } from '../../hooks/useRefreshOnResume';
 import { useIdentity } from '../../components/IdentityProvider';
 import { useStudy } from '../study/StudyProvider';
@@ -11,6 +14,7 @@ const Context = createContext<State | null>(null);
 export function LeaveProvider({ children }: PropsWithChildren) {
   const identity = useIdentity();
   const study = useStudy();
+  const studyNow = useStudyNow();
   const uid = !identity.loading && identity.profile ? identity.uid : null;
   const [state, setState] = useState<{ uid: string | null; snapshot: State['snapshot']; error: string | null }>({ uid: null, snapshot: null, error: null });
   const [busy, setBusy] = useState(false);
@@ -62,7 +66,7 @@ export function LeaveProvider({ children }: PropsWithChildren) {
     return () => clearTimeout(timer);
   }, [uid, study.today, refresh]);
   const snapshot = state.uid === uid ? state.snapshot : null;
-  const trigger = leaveRefreshKey(study.today, study.now, snapshot);
+  const trigger = leaveRefreshKey(study.today, studyNow, snapshot);
   const previous = useRef('');
   useEffect(() => {
     if (!uid || !trigger) return;
@@ -72,13 +76,15 @@ export function LeaveProvider({ children }: PropsWithChildren) {
     const timer = setTimeout(() => { previous.current = key; void refresh(); }, 0);
     return () => clearTimeout(timer);
   }, [uid, trigger, refresh]);
-  async function mutate(action: 'schedule' | 'cancel', date: string, grantId: string | null): Promise<boolean> {
+  const refreshStudy = study.refresh;
+  const mutate = useCallback(async function mutate(action: 'schedule' | 'cancel', date: string, grantId: string | null): Promise<boolean> {
     if (mutationLock.current || actionFailed || !snapshot || !uid) return false;
     mutationLock.current = true; setBusy(true);
     try {
       const result = action === 'schedule' ? await scheduleLeave(date, snapshot.data.revision, grantId) : await cancelLeave(grantId!, date, snapshot.data.revision);
-      setState({ uid, snapshot: result, error: null }); setActionFailed(false);
-      void study.refresh();
+      setState({ uid, snapshot: result, error: null });
+      invalidateRecordQueries(studyRoomId); setActionFailed(false);
+      void refreshStudy();
       return true;
     } catch (failure) {
       const error = toStudyError(failure);
@@ -87,8 +93,9 @@ export function LeaveProvider({ children }: PropsWithChildren) {
       setState(previous => ({ ...previous, error: error.message }));
       return false;
     } finally { mutationLock.current = false; setBusy(false); if (retryNeeded.current) void refresh(); }
-  }
-  return <Context.Provider value={{ snapshot, error: state.uid === uid ? state.error : null, busy, actionFailed, refresh,
-    schedule: (date, grantId = null) => mutate('schedule', date, grantId), cancel: (grantId, date) => mutate('cancel', date, grantId) }}>{children}</Context.Provider>;
+  }, [actionFailed, snapshot, uid, refreshStudy, refresh]);
+  const value = useMemo<State>(() => ({ snapshot, error: state.uid === uid ? state.error : null, busy, actionFailed, refresh,
+    schedule: (date, grantId = null) => mutate('schedule', date, grantId), cancel: (grantId, date) => mutate('cancel', date, grantId) }), [snapshot, state.uid, state.error, uid, busy, actionFailed, refresh, mutate]);
+  return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 export function useLeave() { const value = useContext(Context); if (!value) throw new Error('LeaveProvider required'); return value; }

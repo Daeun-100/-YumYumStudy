@@ -1,3 +1,6 @@
+import { invalidateRecordQueries } from '../../data/query-cache';
+import { StudyClockContext } from './study-clock';
+import { createStudyClock } from '../../lib/study-clock';
 import { createSharedRequest } from '../../lib/shared-request';
 import { finishTiming, measure } from '../../lib/performance';
 import { needsStudyGuard } from './timer-mode-core';
@@ -8,7 +11,7 @@ import { studyGuard } from '../allowed-apps/native';
 import { applyDeparture } from './guard-core';
 import { basicStudyMode, guardTransport, reconcileAndroidGuard } from './android-guard';
 import { studyRoomId, withRoomOperation } from '../../lib/room';
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useMemo, type PropsWithChildren } from 'react';
 import { useRefreshOnResume } from '../../hooks/useRefreshOnResume';
 import { getRoom, getToday, resumePendingStudyStart, startStudy, stopStudy, subscribeStudyChanges } from '../../data/study';
 import { useIdentity } from '../../components/IdentityProvider';
@@ -17,13 +20,14 @@ import { createServerClock } from '../../lib/clock';
 import { getStudyDate } from '../../lib/study-day';
 import { toStudyError, type RoomMember, type Snapshot, type TodayData } from '../../lib/contracts';
 
-type State = { today: Snapshot<TodayData> | null; room: Snapshot<RoomMember[]> | null; now: number; loading: boolean; roomLoading: boolean; busy: boolean; error: string | null; roomError: string | null; actionFailed: boolean; startupReady: boolean; startupError: string | null; retryStartup(): Promise<void>; refresh(): Promise<void>; refreshRoom(): Promise<void>; toggle(): Promise<boolean> };
+type State = { today: Snapshot<TodayData> | null; room: Snapshot<RoomMember[]> | null; loading: boolean; roomLoading: boolean; busy: boolean; error: string | null; roomError: string | null; actionFailed: boolean; startupReady: boolean; startupError: string | null; retryStartup(): Promise<void>; refresh(): Promise<void>; refreshRoom(): Promise<void>; toggle(): Promise<boolean> };
 const Context = createContext<State | null>(null);
 export function StudyProvider({ children }: PropsWithChildren) {
   const identity = useIdentity();
   const [today, setToday] = useState<State['today']>(null);
   const [room, setRoom] = useState<State['room']>(null);
-  const [now, setNow] = useState(0);
+  const [time] = useState(createStudyClock);
+  const setNow = time.set;
   const [loading, setLoading] = useState(false);
   const [roomLoading, setRoomLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -32,6 +36,12 @@ export function StudyProvider({ children }: PropsWithChildren) {
   const [actionFailed, setActionFailed] = useState(false);
   const [startupReady, setStartupReady] = useState(false);
   const [startupError, setStartupError] = useState<string | null>(null);
+  const previousStudyDate = useRef<string | undefined>(undefined);
+  const studyDate = today?.data.day.studyDate;
+  useEffect(() => {
+    if (previousStudyDate.current && studyDate && previousStudyDate.current !== studyDate) invalidateRecordQueries(studyRoomId);
+    previousStudyDate.current = studyDate;
+  }, [studyDate]);
   const latestSnapshot = useRef<State['today']>(null);
   useEffect(() => { latestSnapshot.current = today; }, [today]);
   const clock = useRef<(() => number) | null>(null);
@@ -105,7 +115,7 @@ export function StudyProvider({ children }: PropsWithChildren) {
         if (alive.current && request === sequence.current) setLoading(false);
       }
     }), changed);
-  }, [identity.profile, identity.loading, refreshRoom]);
+  }, [identity.profile, identity.loading, refreshRoom, setNow]);
   const refreshChanged = useCallback(() => refresh(true), [refresh]);
   const refreshRoomChanged = useCallback(() => refreshRoom(true), [refreshRoom]);
   const onRoomResume = useRefreshOnResume(refreshRoomChanged, !!identity.profile && !identity.loading && startupReady);
@@ -151,7 +161,7 @@ export function StudyProvider({ children }: PropsWithChildren) {
       if (today && today.data.day.studyDate !== date && requestedDate !== date) { requestedDate = date; void refresh(); }
     }, 1000);
     return () => clearInterval(tick);
-  }, [today, refresh]);
+  }, [today, refresh, setNow]);
   useEffect(() => {
     const guard = studyGuard;
     if (Platform.OS !== 'android' || !guard || !startupReady) return;
@@ -198,6 +208,7 @@ export function StudyProvider({ children }: PropsWithChildren) {
       requestingServer = true;
       const result = await withTimeout(action.type === 'start' ? startStudy() : stopStudy(action.id), 20000, '서버의 처리 결과를 확인하지 못했어요. 같은 요청으로 다시 확인해 주세요.');
       requestingServer = false;
+      invalidateRecordQueries(studyRoomId);
       if (studyGuard && Platform.OS === 'android') {
         if (action.type === 'start' && !result.data.endedAt && prepared) {
           await measure('timer.bind', () => withTimeout(studyGuard!.bindStudy(result.data.id, identity.profile!.id, studyRoomId, new Date(result.data.startedAt).toISOString()), 5000, '공부 감시 연결을 확인하지 못했어요. 기록을 다시 확인해 주세요.'));
@@ -231,7 +242,8 @@ export function StudyProvider({ children }: PropsWithChildren) {
       return false;
     }
     finally { finish(succeeded ? 'ok' : 'error'); lock.current = false; if (alive.current) { setBusy(false); void refresh(); } }
-  }, [today, startupReady, identity.loading, identity.error, identity.profile, refresh]);
-  return <Context.Provider value={{ today, room, now, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, startupError, retryStartup, refresh, refreshRoom, toggle }}>{children}</Context.Provider>;
+  }, [today, startupReady, identity.loading, identity.error, identity.profile, refresh, setNow]);
+  const value = useMemo(() => ({ today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, startupError, retryStartup, refresh, refreshRoom, toggle }), [today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, startupError, retryStartup, refresh, refreshRoom, toggle]);
+  return <StudyClockContext.Provider value={time}><Context.Provider value={value}>{children}</Context.Provider></StudyClockContext.Provider>;
 }
 export function useStudy() { const state = useContext(Context); if (!state) throw new Error('StudyProvider required'); return state; }

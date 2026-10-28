@@ -109,8 +109,10 @@ jobs:
             android-build.json
             build-record.json
   web:
-    if: needs.prepare.outputs.mode == 'apk'
+    if: needs.prepare.outputs.mode == 'apk' || needs.prepare.outputs.mode == 'update'
     needs: prepare
+    outputs:
+      deployment_id: ${{ steps.deploy.outputs.deployment_id }}
     runs-on: ubuntu-latest
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -131,9 +133,11 @@ jobs:
       - run: node --experimental-strip-types scripts/cloud-preflight.mjs
       - run: npm run export:web
       - name: Publish preview only (never production)
+        id: deploy
         run: |
           test -n "$EAS_HOSTING_DOMAIN" || { echo 'Configure EAS_HOSTING_DOMAIN'; exit 1; }
           npx --yes eas-cli@25.3.0 deploy --dev-domain "$EAS_HOSTING_DOMAIN" --id "$APP_VARIANT-${GITHUB_SHA:0:12}-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" --json > web-deployment.json
+          node -e 'const fs=require("node:fs"); const web=JSON.parse(fs.readFileSync("web-deployment.json")); const expected=`${process.env.APP_VARIANT}-${process.env.GITHUB_SHA.slice(0,12)}-${process.env.GITHUB_RUN_NUMBER}-${process.env.GITHUB_RUN_ATTEMPT}`; if(web.identifier!==expected) throw Error("Unexpected web deployment identifier"); fs.appendFileSync(process.env.GITHUB_OUTPUT,`deployment_id=${web.identifier}\n`);'
       - if: always()
         run: node scripts/build-record.mjs
       - if: always()
@@ -194,7 +198,7 @@ jobs:
             release.json
 
   update:
-    needs: prepare
+    needs: [prepare, web]
     if: needs.prepare.outputs.mode == 'update'
     runs-on: ubuntu-latest
     environment: production
@@ -220,8 +224,16 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: deployment-plan-${{ github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-production-${{ github.sha }}
+          path: results/web-ota
       - name: Publish checked master code to the production channel
         run: npx --yes eas-cli@25.3.0 env:exec production 'node scripts/deployment.mjs publish' --non-interactive
+      - name: Promote the same commit web after verified Android OTA
+        env:
+          WEB_DEPLOYMENT_ID: ${{ needs.web.outputs.deployment_id }}
+        run: node scripts/deployment.mjs promote-web
       - name: Record update result
         if: always()
         env:
@@ -240,6 +252,14 @@ jobs:
             deployment-review.json
             deployment-review-validation.json
             native-compatibility.json
+      - name: Retain web promotion result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-promotion-${{ github.sha }}-${{ github.run_attempt }}
+          retention-days: 90
+          if-no-files-found: ignore
+          path: publication/web-promotion-record.json
 
   history:
     needs: [prepare, android, web, record, update]

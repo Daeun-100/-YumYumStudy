@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 
 const branch = 'refs/heads/deployment-history';
 const filenames = new Set(['deployment-review.json', 'deployment-review-validation.json', 'native-compatibility.json', 'deployment-plan.json', 'eas-update.json', 'update-record.json',
-  'android-build.json', 'web-deployment.json', 'build-record.json', 'candidate.json', 'release.json']);
+  'web-promotion-record.json', 'android-build.json', 'web-deployment.json', 'build-record.json', 'candidate.json', 'release.json']);
 const encode = value => `${JSON.stringify(value, null, 2)}\n`;
 export function redactSecrets(value) {
   if (Array.isArray(value)) return value.map(redactSecrets);

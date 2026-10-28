@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { createStudyClock } from '../src/lib/study-clock.ts';
 import { createSharedRequest } from '../src/lib/shared-request.ts';
 
 const source = ts.transpileModule(readFileSync(new URL('../src/features/study/StudyProvider.tsx', import.meta.url), 'utf8'), {
@@ -48,6 +49,7 @@ function mount() {
       if (!slots[index] || deps.some((dep, i) => dep !== slots[index].deps[i])) slots[index] = { callback, deps };
       return slots[index].callback;
     },
+    useMemo: (factory, deps) => react.useCallback(factory, deps)(),
     useEffect: (effect, deps) => {
       const index = cursor++;
       if (!slots[index] || deps.some((dep, i) => dep !== slots[index].deps[i])) {
@@ -58,9 +60,12 @@ function mount() {
     },
   };
   const modules = {
-    react, 'react/jsx-runtime': { jsx: (_type, props) => props.value },
+    react, 'react/jsx-runtime': { jsx: (_type, props) => _type === 'ClockProvider' ? props.children : props.value },
     'react-native': { Platform: { OS: 'ios' }, AppState: { currentState: 'active' } },
     '../../lib/shared-request': { createSharedRequest },
+    '../../lib/study-clock': { createStudyClock },
+    './study-clock': { StudyClockContext: { Provider: 'ClockProvider' } },
+    '../../data/query-cache': { invalidateRecordQueries: () => {} },
     '../../lib/performance': { measure: (_name, run) => run(), finishTiming: () => () => {} },
     '../../lib/with-timeout': { withTimeout: promise => promise },
     '../allowed-apps/native': { studyGuard: null },

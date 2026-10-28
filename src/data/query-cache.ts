@@ -9,3 +9,11 @@ const records = createRecordHistoryCache({
   setItem: (key, value) => withTimeout(AsyncStorage.setItem(`${key}.${project}`, value), 2000, '기록 캐시 쓰기 지연'),
 });
 export const memoryCache = createMemoryCache(80, records);
+
+/** Preserve visible values while marking this room's record queries stale. */
+export function invalidateRecordQueries(room: number) {
+  memoryCache.invalidate(key => {
+    const [cachedRoom, , kind] = JSON.parse(key);
+    return cachedRoom === room && ['history', 'member-history', 'sessions', 'profile-summary'].includes(kind);
+  });
+}
