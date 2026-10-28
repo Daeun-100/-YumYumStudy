@@ -8,7 +8,7 @@ const sha = 'a'.repeat(40), runtimeVersion = 'b'.repeat(40);
 const record = { status: 'published', channel: 'production', platform: 'android', sha, runtimeVersion,
   apkTag: 'v1.0.2', groupId: '11111111-1111-4111-8111-111111111111', updateId: '22222222-2222-4222-8222-222222222222',
   url: 'https://expo.dev/update', run: 'https://github.com/owner/repo/actions/runs/1', message: 'Fix screen', createdAt: '2026-10-28' };
-const plan = { mode: 'update', sha, runtimeVersion, baseline: { tag: record.apkTag }, repository: 'owner/repo' };
+const plan = { mode: 'update', sha, runtimeVersion, baseline: { tag: record.apkTag }, repository: 'owner/repo', review: { releaseNotes: ['보유한 스킨을 프로필에서 적용할 수 있습니다.'] } };
 function fixture({ tags = [], releases = [], tagSha = sha } = {}) {
   const calls = [], files = {};
   return { calls, files, git(args) {
@@ -36,7 +36,9 @@ test('successful update creates exact commit tag, draft with records, then publi
   assert.equal(create.make_latest, 'false');
   assert.equal(create.prerelease, false);
   assert.equal(create.draft, true);
-  assert.match(create.body, /Fix screen/);
+  assert.ok(create.body.includes(plan.review.releaseNotes[0]));
+  assert.ok(create.body.indexOf('## 변경사항') < create.body.indexOf('<details>'));
+  assert.ok(!create.body.includes('Changes: Fix screen'));
   const uploadIndex = io.calls.findIndex(call => call.includes('upload'));
   const publishIndex = io.calls.findIndex(call => call.includes('--draft=false'));
   assert.ok(uploadIndex > 0 && publishIndex > uploadIndex);
@@ -73,4 +75,13 @@ test('revision releases cannot replace APK baseline or enter APK publication wor
   assert.match(workflow, /!contains\(github.event.release.tag_name, '-'\)/);
   const cloud = readFileSync(new URL('../.github/workflows/cloud-build.yml', import.meta.url), 'utf8');
   assert.ok(cloud.indexOf('deployment.mjs publish') < cloud.indexOf('node scripts/update-release.mjs'));
+});
+
+
+test('missing readable summary stops update release before any remote writes', () => {
+  for (const releaseNotes of [undefined, [], [' ']]) {
+    const io = fixture();
+    assert.throws(() => publishUpdateRelease(record, { ...plan, review: { releaseNotes } }, io), /releaseNotes/);
+    assert.equal(io.calls.length, 0);
+  }
 });

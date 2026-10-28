@@ -3,6 +3,14 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+import { readReview, releaseSummary } from './deployment-review.mjs';
+
+export function apkReleaseNotes(review, release) {
+  return [releaseSummary(review), '',
+    `앱 버전: ${release.version} · Android 빌드 번호: ${release.revision}`, '',
+    'APK 배포 후보입니다. 설치와 동작을 확인한 뒤 공개합니다.', '',
+    '<details>', '<summary>배포 정보</summary>', '', `Commit: ${release.sha}`, '', '</details>'].join('\n');
+}
 
 export function validateCandidate(candidate, app, tag, repository) {
   assert.equal(candidate.schema, 1);
@@ -61,7 +69,11 @@ const gh = args => execFileSync('gh', args, { encoding: 'utf8' });
 
 async function main() {
   const repository = process.env.GITHUB_REPOSITORY;
-  if (process.argv[2] === 'create') {
+  if (process.argv[2] === 'notes') {
+    const release = json('release.json');
+    assert.equal(release.sha, execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim());
+    console.log(apkReleaseNotes(readReview(), release));
+  } else if (process.argv[2] === 'create') {
     const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
     const app = json('app.json').expo;
     const androidDir = `results/android-production-${sha}`;
@@ -108,7 +120,7 @@ async function main() {
     writeFileSync('publication/verified.json', JSON.stringify({ ...candidate, downloadUrl: expectedUrl, notes: String(release.body ?? '').slice(0, 6000) }));
     const { appendFileSync } = await import('node:fs');
     appendFileSync(process.env.GITHUB_OUTPUT, `deployment_id=${candidate.deploymentId}\n`);
-  } else throw new Error('Expected create or verify');
+  } else throw new Error('Expected create, notes or verify');
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch(error => { console.error(error.message); process.exitCode = 1; });

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { releaseSummary } from './deployment-review.mjs';
 
 export function nextUpdateTag(apkTag, tags) {
   assert.match(apkTag, /^v\d+\.\d+\.\d+$/);
@@ -15,6 +16,7 @@ export function nextUpdateTag(apkTag, tags) {
 
 // Adapters make retry/collision behavior testable without publishing anything.
 export function publishUpdateRelease(record, plan, { git, gh, save }) {
+  const summary = releaseSummary(plan.review);
   assert.equal(plan.mode, 'update');
   assert.equal(record.status, 'published', 'Only successful updates get a release');
   assert.equal(record.channel, 'production');
@@ -43,11 +45,12 @@ export function publishUpdateRelease(record, plan, { git, gh, save }) {
   // Persist the chosen tag before network writes so a partial failure can resume.
   record = { ...record, releaseTag: tag, releaseUrl: `https://github.com/${plan.repository}/releases/tag/${tag}` };
   save('update-record.json', record);
-  const body = [marker, '', `App version: ${record.apkTag.slice(1)}`, `Base APK: ${record.apkTag}`,
+  const body = [marker, '', summary, '', '기존 APK에 적용되는 업데이트입니다. 앱 표시 버전은 그대로 유지됩니다.',
+    '', '<details>', '<summary>배포 정보</summary>', '', `App version: ${record.apkTag.slice(1)}`, `Base APK: ${record.apkTag}`,
     `Commit: ${record.sha}`, `Runtime: ${record.runtimeVersion}`, `Update group: ${record.groupId}`,
     `Update ID: ${record.updateId}`, `Published at: ${record.createdAt}`, '',
-    `Changes: ${record.message}`, '', `[Update details](${record.url})`, `[Deployment run](${record.run})`,
-    '', 'This update uses the existing APK. The installed app version is unchanged.'].join('\n');
+    `[Update details](${record.url})`, `[Deployment run](${record.run})`,
+    '', '</details>'].join('\n');
   if (existing) {
     assert.equal(existing.prerelease, false);
     // A completed release is immutable; a retry only finishes our own draft.

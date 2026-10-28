@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { candidateFromBuilds, validateCandidate } from '../scripts/release-candidate.mjs';
+import { apkReleaseNotes, candidateFromBuilds, validateCandidate } from '../scripts/release-candidate.mjs';
 import { preventRollback, releaseRows } from '../scripts/publish-release-info.mjs';
 const sha = 'a'.repeat(40);
 const app = { version: '1.0.1', android: { versionCode: 2, package: 'com.yumyumstudy.app' } };
@@ -42,4 +42,14 @@ test('publish stable APK URL and fixed web URL as enabled platform rows', () => 
   preventRollback(rows, rows); // Re-running after a partial failure is safe.
   assert.throws(() => preventRollback([{ ...rows[0], revision: 3 }], rows));
   assert.throws(() => preventRollback([{ ...rows[0], download_url: 'https://different.test/app.apk' }], rows));
+});
+
+
+test('APK release leads with the reviewed user summary and rejects missing notes', () => {
+  const notes = ['관리자가 지정한 연차 날짜를 앱에서 확인할 수 있습니다.'];
+  const release = { version: '1.0.3', revision: 4, sha };
+  const body = apkReleaseNotes({ releaseNotes: notes }, release);
+  assert.ok(body.startsWith(`## 변경사항\n\n- ${notes[0]}`));
+  assert.ok(body.indexOf(notes[0]) < body.indexOf(sha));
+  assert.throws(() => apkReleaseNotes({}, release), /releaseNotes/);
 });

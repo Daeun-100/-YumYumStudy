@@ -9,13 +9,13 @@ import { baselineIdentity, inspectAdministrativeChanges, nativeInputReasons, nor
 const digest = 'd'.repeat(64);
 const baseline = { sha: 'a'.repeat(40), tag: 'v1.0.1', runtimeVersion: 'c'.repeat(40) };
 const report = () => ({ schema: 1, sourceCommit: 'b'.repeat(40), sourceTreeDigest: digest, baseline: baselineIdentity(baseline),
-  reviewer: { kind: 'interactive-codex' }, recommendation: 'update', rationale: 'JS changes, native runtime verified',
+  reviewer: { kind: 'interactive-codex' }, recommendation: 'update', releaseNotes: ['보유한 캐릭터 스킨을 프로필에서 적용하고 해제할 수 있습니다.'], rationale: 'JS changes, native runtime verified',
   evidence: ['Native fingerprint matches published APK after verified administrative normalization'], exemptions: [], blockers: [] });
 test('review is bound to exact source content, published APK and deterministic route', () => {
   const r = report();
   assert.equal(verifyReviewDecision(r, { digest, baseline, mode: 'update', exemptions: [] }), r);
   for (const patch of [{ sourceTreeDigest: 'e'.repeat(64) }, { schema: 2 }, { reviewer: { kind: 'ci-ai' } },
-    { recommendation: 'force-update' }, { evidence: [] }, { exemptions: ['ignore:package.json'] }, { baseline: {} }]) {
+    { recommendation: 'force-update' }, { releaseNotes: undefined }, { releaseNotes: [] }, { releaseNotes: [' '] }, { releaseNotes: ['x'.repeat(6001)] }, { evidence: [] }, { exemptions: ['ignore:package.json'] }, { baseline: {} }]) {
     assert.throws(() => validateReview({ ...r, ...patch }, digest));
   }
   for (const options of [{ baseline: { ...baseline, sha: 'f'.repeat(40) } }, { mode: 'apk' }, { exemptions: ['ignore-additions:.gitignore'] }]) {
