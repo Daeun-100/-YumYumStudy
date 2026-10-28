@@ -1,7 +1,7 @@
 import { decodeCharacter } from '../lib/characters.ts';
 import { decodeSkinId } from '../lib/skins.ts';
 import { StudyError, validateGoalWeek } from '../lib/contracts.ts';
-import type { DayRecord, GoalSettings, GoalWeek, LeaveState, LeaveStatus, Profile, RoomMember, Snapshot, StudySession, TodayData } from '../lib/contracts.ts';
+import type { DayRecord, GoalSettings, GoalWeek, LeaveGrant, LeaveState, LeaveStatus, Profile, RoomMember, Snapshot, StudySession, TodayData } from '../lib/contracts.ts';
 import { getStudyDayBounds } from '../lib/study-day.ts';
 
 function invalid(): never { throw new StudyError('UNKNOWN', '서버 기록 형식을 확인하지 못했습니다. 다시 조회해 주세요.'); }
@@ -86,9 +86,18 @@ export function decodeLeaveStatus(value: unknown): LeaveStatus {
   const row = record(value);
   if (!Array.isArray(row.grants)) return invalid();
   const weeks = new Set<string>();
-  const grants = row.grants.map((item) => {
+  const grants = row.grants.map((item): LeaveGrant => {
     const grant = record(item);
     const kind = grant.kind === undefined ? 'reward' : text(grant.kind);
+    if (kind === 'admin') {
+      const scheduledDate = text(grant.scheduledDate);
+      getStudyDayBounds(scheduledDate);
+      if (grant.earningWeek !== null || grant.expiresAt !== null || !['SCHEDULED', 'USED'].includes(String(grant.status))) return invalid();
+      const earnedAt = instant(grant.earnedAt);
+      const approvedAt = instant(grant.approvedAt);
+      if (Date.parse(approvedAt) < Date.parse(earnedAt)) return invalid();
+      return { id: text(grant.id), kind, earningWeek: null, expiresAt: null, earnedAt, approvedAt, scheduledDate, status: grant.status as 'SCHEDULED' | 'USED' };
+    }
     if (kind !== 'reward' && kind !== 'free') return invalid();
     const earningWeek = text(grant.earningWeek);
     const entitlement = `${earningWeek}:${kind}`;
@@ -114,6 +123,7 @@ export function decodeLeaveStatus(value: unknown): LeaveStatus {
   });
   const availableCount = seconds(row.availableCount);
   if (new Set(grants.map(g => g.id)).size !== grants.length
+    || new Set(grants.flatMap(g => g.scheduledDate === null ? [] : [g.scheduledDate])).size !== grants.filter(g => g.scheduledDate !== null).length
     || availableCount !== grants.filter(g => g.status === 'AVAILABLE').length) return invalid();
   return { revision: seconds(row.revision), availableCount, grants };
 }

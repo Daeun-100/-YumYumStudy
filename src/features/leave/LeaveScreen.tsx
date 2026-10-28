@@ -14,7 +14,7 @@ import { useStudy } from '../study/StudyProvider';
 import { ui } from '../study/StudyUI';
 import { LeaveView } from './LeaveView';
 import { useLeave } from './LeaveProvider';
-import { koreanDate, reservationReason, weeklyAchievement } from './model';
+import { leaveGrantView, reservationReason, weeklyAchievement } from './model';
 
 export function LeaveScreen() {
   const backRef = useRef<{ back(): boolean }>(null);
@@ -59,7 +59,7 @@ export function LeaveScreen() {
       status: reserved ? 'leave' as const : day?.isRestDay ? 'rest' as const : 'empty' as const, sessions: [] };
   });
   return <View style={ui.outer}><View style={ui.page}>
-    <LeaveView backRef={backRef} backBlocked={leave.busy} character={profile?.character ?? 'bunny'} today={today} grants={grants.map(grant => ({ id: grant.id, state: grant.status.toLowerCase() as 'available' | 'scheduled' | 'used' | 'expired', earned: koreanDate(grant.earnedAt), expires: koreanDate(grant.expiresAt), date: grant.scheduledDate ?? undefined }))}
+    <LeaveView backRef={backRef} backBlocked={leave.busy} character={profile?.character ?? 'bunny'} today={today} grants={grants.map(leaveGrantView)}
       state={!snapshot ? leave.error ? 'error' : 'loading' : 'ready'} busy={leave.busy || leave.actionFailed || !!error} error={leave.error || error} notice={notice || (weekly.cached || monthly.cached ? '저장된 공부 기록을 보여드리고 있어요. 최신 기록을 확인 중이에요.' : '')}
       weeklyDays={liveWeek ? weeklyAchievement(liveWeek) : null} weeklyLoading={!week && !error} calendarDays={calendarDays} calendarLoading={!calendar && !error}
       navigation={null} onClearNotice={() => setNotice('')} onMonthChange={changeMonth}

@@ -112,3 +112,7 @@
 - On verified OTA publication only, private YUMYUM_OTA_RUNTIME/YUMYUM_OTA_SOURCE child-process variables select the existing APK runtime in app.config.js. Master/CI/source guards and a second compatibility check run before publication. EAS native builds reject the override and retain the fingerprint policy.
 - `Deployment PR labels` reads PR JSON and Git tree data through GitHub APIs without checking out or running PR code in its pull_request_target job. It manages only deploy:eas-update, deploy:apk, deploy:skip and deploy:needs-review, preserving other labels. Labels show the reviewed candidate route; Check and production verification remain authoritative. This workflow becomes active after it is merged into master; the skill can label the initial PR using normal GitHub tools.
 - Review JSON, validation outcome and native compatibility evidence are included in Actions artifacts and deployment-history alongside the deployment plan, including rejected reviews. Console log retention remains 90 days. No PR, merge, release or actual EAS publication was performed while implementing this connection.
+
+## 관리자 연차 — 2026-10-28
+
+`20261028114338_admin_leave` 원격 마이그레이션 적용 및 이력 등록 완료. 기존 `leave_grants`에 admin 종류·비공개 reason을 추가했다. 관리자 SQL로 과거·오늘·미래 날짜에 즉시 적용하며 앱 변경·취소와 자동 선택은 차단한다. NULL 획득 주·만료일, 잔액 제외, 처리 버전·기록 캐시 갱신과 기존 출석·보상 계산을 연결했다. 앱은 아직 배포하지 않았고 실제 관리자 연차 지급도 없다. 이전 앱의 디코더 호환을 위해 앱 배포 후 실제 지급한다. 정책·운영 SQL·검증 및 제한은 `docs/ADMIN-LEAVE.md` 참고.
