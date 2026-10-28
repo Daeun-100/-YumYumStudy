@@ -20,6 +20,7 @@ const config: StorybookConfig = {
       extensions: ['.web.mjs', '.mjs', '.web.js', '.js', '.web.ts', '.ts', '.web.tsx', '.tsx', '.json'],
       alias: {
         'lucide-react-native': 'lucide-react',
+        'react-native-svg': resolve(process.cwd(), 'stories/support/svg.web.tsx'),
         '@react-native/assets-registry/registry': resolve(process.cwd(), 'node_modules/react-native-web/dist/modules/AssetRegistry/index.js'),
       },
     },
