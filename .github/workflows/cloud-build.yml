@@ -200,6 +200,9 @@ jobs:
   update:
     needs: [prepare, web]
     if: needs.prepare.outputs.mode == 'update'
+    permissions:
+      contents: write
+      actions: read
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 30
@@ -234,6 +237,8 @@ jobs:
         env:
           WEB_DEPLOYMENT_ID: ${{ needs.web.outputs.deployment_id }}
         run: node scripts/deployment.mjs promote-web
+      - name: Record successful update as a revision release
+        run: node scripts/update-release.mjs
       - name: Record update result
         if: always()
         env:

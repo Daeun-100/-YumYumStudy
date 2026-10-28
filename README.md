@@ -29,6 +29,13 @@ Expo Router와 Supabase 클라이언트, 자동 익명 UID 발급·세션 저장
 
 실제 DB 통합 검사: `node --env-file=.env.local scripts/check-study-core.mjs --run`. 테스트 사용자 2명과 종료 세션을 생성하므로 필요할 때만 실행한다. 일반 `npm test`는 외부 서비스에 쓰지 않는다.
 
+## 기능 개발 및 PR
+
+- 최신 `develop`을 기준으로 기능별 작업 브랜치를 만든다. Codex가 만드는 브랜치는 `codex/` 접두사를 사용한다.
+- 기능 구현은 작업 브랜치에서 진행하고, PR의 대상 브랜치(base)는 `develop`으로 지정한다.
+- PR을 올리기 전에 `npm run lint`와 `npm run typecheck`를 실행한다.
+- 운영 배포는 [버전 및 업데이트 운영](docs/RELEASES.md)의 `develop` → `master` 배포 PR 절차를 따른다.
+
 ## 환경 변수
 
 `.env.example`을 `.env.local`로 복사하고 Supabase 프로젝트의 URL과 publishable key를 입력한다. 시작 화면 실행에는 필요하지 않다. `EXPO_PUBLIC_` 변수는 앱에 공개되므로 service role/secret key를 넣지 않는다. DB 접근 권한은 RLS로 제한한다.

@@ -1,0 +1,6 @@
+interface:
+  display_name: "YumYumStudy 이슈 추가"
+  short_description: "요청한 버그나 개선 사항을 YumYumStudy GitHub 이슈로 등록"
+  default_prompt: "$yumyum-add-issue 이 내용을 이 프로젝트의 GitHub 이슈로 추가해줘."
+policy:
+  allow_implicit_invocation: true
