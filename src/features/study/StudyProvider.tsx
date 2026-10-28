@@ -26,6 +26,12 @@ export function StudyProvider({ children }: PropsWithChildren) {
   const identity = useIdentity();
   const [today, setToday] = useState<State['today']>(null);
   const [room, setRoom] = useState<State['room']>(null);
+  const updateProfile = identity.updateProfile;
+  const ownerId = identity.profile?.id;
+  useEffect(() => {
+    const mine = room?.data.find(member => member.profile.id === ownerId)?.profile;
+    if (mine) updateProfile(mine);
+  }, [room, ownerId, updateProfile]);
   const [time] = useState(createStudyClock);
   const setNow = time.set;
   const [loading, setLoading] = useState(false);

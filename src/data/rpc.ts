@@ -15,6 +15,9 @@ export async function callRpc(name: string, args?: Record<string, unknown>): Pro
   try {
     const { data, error } = await getSupabase().rpc(name, args).abortSignal(controller.signal);
     if (error) {
+      if (name === 'apply_my_skin' && error.code === '22023') {
+        throw new StudyError('VALIDATION', '보유한 스킨인지 다시 확인해 주세요. 목록을 새로 불러온 후 적용해 주세요.');
+      }
       if (error.code === '42501' || error.code === 'PGRST301' || error.code === 'PGRST302') {
         throw new StudyError('UNAUTHORIZED', '요청 권한을 확인하지 못했습니다. 본인 기록인지 확인해 주세요.');
       }

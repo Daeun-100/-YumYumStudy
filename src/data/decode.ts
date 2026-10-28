@@ -1,4 +1,5 @@
 import { decodeCharacter } from '../lib/characters.ts';
+import { decodeSkinId } from '../lib/skins.ts';
 import { StudyError, validateGoalWeek } from '../lib/contracts.ts';
 import type { DayRecord, GoalSettings, GoalWeek, LeaveState, LeaveStatus, Profile, RoomMember, Snapshot, StudySession, TodayData } from '../lib/contracts.ts';
 import { getStudyDayBounds } from '../lib/study-day.ts';
@@ -20,7 +21,9 @@ function seconds(value: unknown): number {
 }
 export function decodeProfile(value: unknown): Profile {
   const row = record(value);
-  return { id: text(row.id), displayName: text(row.displayName), character: decodeCharacter(row.character) };
+  return { id: text(row.id), displayName: text(row.displayName), character: decodeCharacter(row.character),
+    ...(row.activeSkinId !== undefined ? { activeSkinId: decodeSkinId(row.activeSkinId) } : {}),
+    ...(row.skinUpdatedAt ? { skinUpdatedAt: instant(row.skinUpdatedAt) } : {}) };
 }
 export function decodeSession(value: unknown): StudySession {
   const row = record(value);

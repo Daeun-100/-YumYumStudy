@@ -26,12 +26,12 @@ export function FocusScreen() {
   const sessionSeconds = data?.activeSession && study.today
     ? Math.max(0, Math.floor((Math.max(studyNow, Date.parse(study.today.serverNow)) - Date.parse(data.activeSession.startedAt)) / 1000))
     : null;
-  const members: FocusMember[] = profile ? [{ id: profile.id, name: profile.displayName, character: profile.character ?? 'bunny', time: '나', active: !!data?.activeSession, self: true }] : [];
+  const members: FocusMember[] = profile ? [{ id: profile.id, name: profile.displayName, character: profile.character ?? 'bunny', activeSkinId: profile.activeSkinId, time: '나', active: !!data?.activeSession, self: true }] : [];
   const friends = study.room?.data.filter(member => member.profile.id !== profile?.id).sort((a, b) => a.profile.id.localeCompare(b.profile.id)) ?? [];
   for (const member of friends) {
     const elapsed = displayedSeconds(member.today, member.activeSession, study.room!.serverNow, Math.max(studyNow, Date.parse(study.room!.serverNow)));
     const percent = progress(elapsed, member.today.goalMinutes);
-    members.push({ id: member.profile.id, name: member.profile.displayName, character: member.profile.character ?? 'bunny', active: !!member.activeSession, time: duration(elapsed, false), achieved: percent !== null && percent >= 100 });
+    members.push({ id: member.profile.id, name: member.profile.displayName, character: member.profile.character ?? 'bunny', activeSkinId: member.profile.activeSkinId, active: !!member.activeSession, time: duration(elapsed, false), achieved: percent !== null && percent >= 100 });
   }
   return <View style={ui.outer}><View style={ui.page}>
     <FocusView onWake={setCalledFriend} renderRoomOverlay={scene => <PostitOverlay scene={scene} />} members={members} memberCount={study.room ? study.room.data.length : null} seconds={seconds} sessionSeconds={sessionSeconds} goalMinutes={data?.day.goalMinutes ?? null} running={!!data?.activeSession} busy={study.busy} disabled={!data || !!identity.error} timerControl={<StudyControl round />} onBack={() => router.dismissTo('/')} onFriends={() => router.navigate('/friends')} onToggle={() => void study.toggle()} onAllowedApps={() => setAllowedAppsOpen(true)} />
