@@ -1,12 +1,6 @@
+import { resolveCharacterArtwork } from '../../design/skin-artwork';
 import type { ReactNode } from 'react';
 import roomBackground from '../../../assets/backgrounds/focus-background.png';
-import bunny from '../../../assets/characters/bunny/bunny-focus.png';
-import bear from '../../../assets/characters/bear/bear-focus.png';
-import cat from '../../../assets/characters/cat/cat-focus.png';
-import puppy from '../../../assets/characters/puppy/puppy-focus.png';
-import maltese from '../../../assets/characters/maltese/maltese-focus.png';
-import pomeranian from '../../../assets/characters/pomeranian/pomeranian-focus.png';
-import blackcat from '../../../assets/characters/black-cat/black-cat-focus.png';
 import { useMeasuredLayout } from '../../hooks/useMeasuredLayout';
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { AchievementBadge, Button, Card } from '../../design/components';
@@ -16,16 +10,8 @@ import { AchievementAura } from './AchievementAura';
 import { duration, goalLabel, progress, timer } from './presentation';
 
 const imageSource = (asset: number | string) => typeof asset === 'string' ? { uri: asset } : asset;
-const characterImages = {
-  bunny: imageSource(bunny),
-  bear: imageSource(bear),
-  cat: imageSource(cat),
-  puppy: imageSource(puppy),
-  maltese: imageSource(maltese),
-  pomeranian: imageSource(pomeranian),
-  blackcat: imageSource(blackcat),
-};
-export type FocusMember = { id: string; name: string; time: string; active: boolean; character: CharacterId; self?: boolean; achieved?: boolean };
+
+export type FocusMember = { id: string; name: string; time: string; active: boolean; character: CharacterId; activeSkinId?: string | null; self?: boolean; achieved?: boolean };
 export type FocusViewProps = {
   onWake?(member: FocusMember): void;
   wakeSentIds?: string[];
@@ -61,7 +47,7 @@ export function FocusView({ onWake, wakeSentIds = [], members, memberCount, seco
         const size = characterSize * (member?.character === 'bunny' ? 1.20 : 1);
         return <View key={member?.id ?? `empty-${index}`} style={s.seat}>{member && <>
           <Pressable accessibilityRole={onWake && !member.self && !member.active ? "button" : undefined} accessibilityLabel={onWake && !member.self && !member.active ? `${member.name} 부르기${wakeSentIds.includes(member.id) ? ", 부르기 알림 보냄" : ""}` : undefined} disabled={!onWake || member.self || member.active || wakeSentIds.includes(member.id)} onPress={() => onWake?.(member)} style={s.nameTag}><View style={s.tagRow}><View style={[s.dot, { backgroundColor: member.active ? colors.primary : colors.resting }]} /><Text numberOfLines={1} style={s.name}>{member.name}</Text></View><Text numberOfLines={1} style={s.caption}>{member.time}</Text></Pressable>
-          <View style={{ width: characterSize, height: characterSize, alignItems: 'center' }}>{(member.achieved ?? (member.self && achieved)) && <View style={{ position: 'absolute', width: size, height: size, bottom: -size * (1 - characterBottom[member.character] / 1254) + (['bunny', 'maltese', 'pomeranian', 'blackcat'].includes(member.character) ? 32 * scale : 0) }}><AchievementAura character={member.character} size={size} /></View>}<Image fadeDuration={0} source={characterImages[member.character]} resizeMode="contain" style={{ position: 'absolute', width: size, height: size, bottom: -size * (1 - characterBottom[member.character] / 1254) + (['bunny', 'maltese', 'pomeranian', 'blackcat'].includes(member.character) ? 32 * scale : 0) }} accessibilityLabel={`${member.name}${member.self ? ' (나)' : ''}, ${member.active ? '공부 중' : '쉬는 중'}`} /></View>
+          <View style={{ width: characterSize, height: characterSize, alignItems: 'center' }}>{(member.achieved ?? (member.self && achieved)) && <View style={{ position: 'absolute', width: size, height: size, bottom: -size * (1 - (resolveCharacterArtwork(member.character, member.activeSkinId).focusBottom ?? characterBottom[member.character]) / 1254) + (['bunny', 'maltese', 'pomeranian', 'blackcat'].includes(member.character) ? 32 * scale : 0) }}><AchievementAura character={member.character} size={size} /></View>}<Image fadeDuration={0} source={resolveCharacterArtwork(member.character, member.activeSkinId).focus} resizeMode="contain" style={{ position: 'absolute', width: size, height: size, bottom: -size * (1 - (resolveCharacterArtwork(member.character, member.activeSkinId).focusBottom ?? characterBottom[member.character]) / 1254) + (['bunny', 'maltese', 'pomeranian', 'blackcat'].includes(member.character) ? 32 * scale : 0) }} accessibilityLabel={`${member.name}${member.self ? ' (나)' : ''}, ${member.active ? '공부 중' : '쉬는 중'}`} /></View>
         </>}</View>;
       })}</View>
       </>}

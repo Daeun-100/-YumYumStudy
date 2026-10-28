@@ -2,7 +2,7 @@ import type { CharacterId } from './characters.ts';
 export type UID = string;
 export type StudyDate = string;
 
-export type Profile = { id: UID; displayName: string; character?: CharacterId };
+export type Profile = { id: UID; displayName: string; character?: CharacterId; activeSkinId?: string | null; skinUpdatedAt?: string };
 export type StudySession = {
   id: string;
   userId: UID;

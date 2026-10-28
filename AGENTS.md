@@ -50,6 +50,8 @@ Docs: https://docs.expo.dev/eas/index.md
 
 ## Rules
 
+- When adding or styling icons, ensure the same intended appearance and positioning work on both native apps and web, including Storybook. Storybook aliases `lucide-react-native` to `lucide-react`, so do not pass React Native transform arrays directly to icon components. Apply layout and transforms to a React Native `View` or `Pressable` wrapper; use shared icon props such as `size`, `color`, and `strokeWidth`. Verify the web preview visually and check native compatibility; do not claim native visual verification unless it was actually performed.
+
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
