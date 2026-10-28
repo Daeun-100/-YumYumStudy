@@ -4,7 +4,9 @@
 
 ## 서버 반영
 
-마이그레이션은 `supabase/migrations/20261028120826_character_event_skins.sql`이다. `character_skins`, `user_skins` 두 테이블과 `profiles.active_skin_id`, `profiles.skin_updated_at`을 추가한다. 관리자 작업 기록 테이블은 없다.
+2026-10-28 실제 서버 반영과 검증을 완료했다. 적용된 버전은 `20261028125054_character_event_skins`, `20261028125307_index_profile_skin`이며 로컬 파일명도 서버 이력과 맞췄다. 지급·착용 검증은 테스트방 프로필로 실행 후 롤백했다. 현재 `bunny-toothache`는 지급 비활성, 보유 내역과 착용자는 0명이다. 앱 배포는 별도다.
+
+마이그레이션은 `supabase/migrations/20261028125054_character_event_skins.sql`이다. `character_skins`, `user_skins` 두 테이블과 `profiles.active_skin_id`, `profiles.skin_updated_at`을 추가한다. 관리자 작업 기록 테이블은 없다.
 
 기존 프로필 응답에 필드를 추가하는 방식이며 기존 앱은 추가 필드를 무시할 수 있다. 앱보다 서버 변경을 먼저 반영한다. 기존에 적용된 레거시 마이그레이션 이력을 확인한 뒤 이번 파일만 적용하고, 기존 테이블이 있는 서버에 전체 초기화 명령을 실행하지 않는다.
 
