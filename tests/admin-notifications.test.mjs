@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { webcrypto } from 'node:crypto';
+import { authorized, parseInput, deliverAll } from '../supabase/functions/admin-notifications/core.ts';
+if(!globalThis.crypto)globalThis.crypto=webcrypto;
+const id='00000000-0000-4000-8000-000000000001';
+test('admin authentication rejects public/missing credentials',async()=>{assert.equal(await authorized(null,'a'.repeat(64)),false);assert.equal(await authorized('a'.repeat(64),undefined),false);assert.equal(await authorized('b'.repeat(64),'a'.repeat(64)),false);assert.equal(await authorized('a'.repeat(64),'a'.repeat(64)),true);});
+test('requires explicit valid action and audience',()=>{assert.throws(()=>parseInput({id,body:'x'}));assert.throws(()=>parseInput({id,action:'send',body:'x',userIds:[]}));assert.throws(()=>parseInput({id,action:'send',body:'x',roomId:2}));assert.throws(()=>parseInput({id,action:'send',body:'x'.repeat(161)}));assert.equal(parseInput({id,action:'preview',body:'테스트'}).roomId,1);assert.equal(parseInput({id,action:'status'}).action,'status');});
+test('reservation is persisted before external dispatch',async()=>{let persisted=false;const saved=[];const rows=await deliverAll([{id:'d1',user_id:'u1',provider:'web',address:{}}],async()=>{assert(persisted);return {status:'accepted'};},async results=>{persisted=true;saved.push(structuredClone(results));});assert.equal(saved[0][0].status,'unknown');assert.equal(rows[0].status,'accepted');});
+test('failed durable reservation prevents any send',async()=>{let calls=0;await assert.rejects(deliverAll([{id:'d1',user_id:'u1',provider:'web',address:{}}],async()=>{calls++;return{};},async()=>{throw Error('DB unavailable');}));assert.equal(calls,0);});
+test('network failure is unknown and is never retried',async()=>{let calls=0;const rows=await deliverAll([{id:'d1',user_id:'u1',provider:'web',address:{}}],async()=>{calls++;throw Error('timeout');},async()=>{});assert.equal(calls,1);assert.equal(rows[0].status,'unknown');assert(!('address' in rows[0]));});
+test('failed progress persistence stops later batches',async()=>{let writes=0,calls=0;await assert.rejects(deliverAll(Array.from({length:6},(_,i)=>({id:String(i),user_id:'u',provider:'web',address:{}})),async()=>{calls++;return{status:'accepted'};},async()=>{writes++;if(writes===2)throw Error('DB unavailable');}));assert.equal(calls,5);});

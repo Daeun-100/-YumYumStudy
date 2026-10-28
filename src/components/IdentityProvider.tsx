@@ -22,6 +22,11 @@ const IdentityContext = createContext<(IdentityState & { retry(): void; updatePr
 export function IdentityProvider({ children }: PropsWithChildren) {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<IdentityState>({ loading: true, uid: null, profile: null, step: null, error: null });
+  const updateProfile = useCallback((profile: Profile) => setState(value => {
+    if (value.profile?.skinUpdatedAt && (!profile.skinUpdatedAt || profile.skinUpdatedAt < value.profile.skinUpdatedAt)) return value;
+    if (JSON.stringify(value.profile) === JSON.stringify(profile)) return value;
+    return { ...value, profile };
+  }), []);
   const retry = useCallback(() => {
     setState((value) => ({ ...value, loading: true, error: null }));
     setAttempt((value) => value + 1);
@@ -70,7 +75,7 @@ export function IdentityProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  return <IdentityContext.Provider value={{ ...state, retry, updateProfile: profile => setState(value => ({ ...value, profile })) }}>{children}</IdentityContext.Provider>;
+  return <IdentityContext.Provider value={{ ...state, retry, updateProfile }}>{children}</IdentityContext.Provider>;
 }
 
 export function useIdentity() {

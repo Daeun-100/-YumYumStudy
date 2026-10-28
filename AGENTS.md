@@ -23,6 +23,20 @@ npx expo install --fix      # fix incompatible package versions
 
 Run lint and typecheck before declaring any task done.
 
+## Feature development workflow
+
+- Create feature branches from the latest `develop` branch. Use the `codex/` prefix for branches created by Codex.
+- Implement features on the feature branch and open a pull request targeting `develop`.
+- Run lint and typecheck before opening the pull request. Production releases follow the existing `develop` → `master` release PR workflow in `docs/RELEASES.md`.
+
+## Deployment versions
+
+- Keep `app.json` (`expo.version`) and `package.json` versions identical, using `X.Y.Z`. This is the APK version shown to users; never append a revision suffix to app config.
+- For a new production APK, increase Major for breaking changes, Minor for compatible features, or Patch for fixes, resetting lower positions. Increase Android `versionCode` too. APK releases use `vX.Y.Z`.
+- For an update compatible with the published APK, keep the app version and `versionCode` unchanged. After a successful production update, automation creates a GitHub Release/tag `vX.Y.Z-rN` on the deployed commit, starting at `r1` for each APK version.
+- Revision tags are deployment identifiers, not SemVer precedence. Never use them as an APK baseline or trigger APK download notices from them. Keep GitHub Latest pointing to the APK release.
+- Use the existing master deployment workflow and compatibility review. Do not manually move tags, reuse revision numbers, or publish production updates directly from a local checkout. See `docs/RELEASES.md`.
+
 ## Navigation & Routing
 
 - Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
@@ -35,6 +49,8 @@ Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submi
 Docs: https://docs.expo.dev/eas/index.md
 
 ## Rules
+
+- When adding or styling icons, ensure the same intended appearance and positioning work on both native apps and web, including Storybook. Storybook aliases `lucide-react-native` to `lucide-react`, so do not pass React Native transform arrays directly to icon components. Apply layout and transforms to a React Native `View` or `Pressable` wrapper; use shared icon props such as `size`, `color`, and `strokeWidth`. Verify the web preview visually and check native compatibility; do not claim native visual verification unless it was actually performed.
 
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.

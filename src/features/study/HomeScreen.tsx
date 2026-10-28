@@ -1,7 +1,7 @@
 import { useScreenNow } from './useScreenNow';
 import { useState } from 'react';
 import { AllowedAppsLauncher } from '../allowed-apps/AllowedAppsLauncher';
-import { characters } from '../profile/CharacterPicker';
+import { resolveCharacterArtwork } from '../../design/skin-artwork';
 import { useMeasuredLayout } from '../../hooks/useMeasuredLayout';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
@@ -42,9 +42,9 @@ export function HomeScreen() {
         <View style={s.goalRow}>{todayLeave ? <Pressable accessibilityRole="button" accessibilityLabel="연차 탭으로 이동" onPress={() => router.navigate('/leave')} style={({ pressed }) => [s.goal, { minHeight: 44, justifyContent: 'center', borderRadius: 12 }, pressed && { backgroundColor: colors.surfacePressed }]}><Text style={[s.secondary, { color: colors.leave }]}>✈  오늘 연차  ›</Text></Pressable> : <Button label={data ? `${goalLabel(data.day.goalMinutes)}  ›` : '오늘 목표 —'} variant="ghost" size="compact" onPress={() => router.navigate({ pathname: '/goals', params: { view: 'preview' } })} disabled={!data} style={s.goal} />}{percent !== null && percent >= 100 && <AchievementBadge label="달성 완료" />}</View>
       </View>
       <View onLayout={artwork.onLayout} style={s.scene}>
-        {height !== null && scene && <HomeArtwork character={identity.profile?.character ?? 'bunny'} width={scene.width} height={scene.height} />}
+        {height !== null && scene && <HomeArtwork activeSkinId={identity.profile?.activeSkinId} character={identity.profile?.character ?? 'bunny'} width={scene.width} height={scene.height} />}
         {!!activeFriends.length && !study.roomError && <View accessibilityLabel={friendMessage} style={s.friends}>
-          {!!activeFriends.length && <View style={s.avatars}>{activeFriends.slice(0, 3).map(member => <View key={member.profile.id} style={s.avatar}><Image fadeDuration={0} source={characters[member.profile.character ?? 'bunny'].image} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${member.profile.displayName} 캐릭터`} /></View>)}</View>}
+          {!!activeFriends.length && <View style={s.avatars}>{activeFriends.slice(0, 3).map(member => <View key={member.profile.id} style={s.avatar}><Image fadeDuration={0} source={resolveCharacterArtwork(member.profile.character, member.profile.activeSkinId).home} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${member.profile.displayName} 캐릭터`} /></View>)}</View>}
           <Text style={[s.secondary, { flex: 1, color: colors.text }]}>{friendMessage}</Text>
         </View>}
       </View>

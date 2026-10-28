@@ -4,7 +4,7 @@ import { Smartphone } from 'lucide-react-native';
 import { useMemoryQuery } from '../../data/useMemoryQuery';
 import { SkeletonRegion } from '../../design/Skeleton';
 import { useCallback } from 'react';
-import { Platform, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useIdentity } from '../../components/IdentityProvider';
 import { Button, InfoIcon } from '../../design/components';
@@ -14,7 +14,8 @@ import { goalText } from '../goals/model';
 import { shiftDate, weekStart } from '../records/model';
 import { Page, Status, ui } from '../study/StudyUI';
 import { useStudy } from '../study/StudyProvider';
-import { characterArtwork } from '../../design/character-artwork';
+import { ProfileIdentity } from './ProfileIdentity';
+import { getMySkins } from '../../data/skins';
 import { SettingsRow, WeeklyAchievement } from './ProfileComponents';
 import config from '../../../app.json';
 
@@ -29,7 +30,7 @@ export function ProfileScreen() {
     return { days: history.data, goals: goals.data };
   }, [study.today]);
   const { data: summary, error, retry } = useMemoryQuery(['profile-summary', today], loadSummary, { version: today ? recordQueryVersion(study.today?.data, weekStart(today), today) : '' });
-  const character = profile?.character ?? 'bunny';
+  const { data: collection } = useMemoryQuery(['skins'], getMySkins, { staleTime: 10000 });
   const days = today ? Array.from({ length: 7 }, (_, index) => {
     const date = shiftDate(weekStart(today), index);
     const day = date === today ? study.today?.data.day : summary?.days.find(item => item.studyDate === date);
@@ -40,10 +41,8 @@ export function ProfileScreen() {
   return <Page current="profile"><View style={s.content}>
     <Text accessibilityRole="header" style={ui.heading}>{profile?.displayName ?? '나'}님</Text>
     <Status showLoading={false} />
-    <Pressable accessibilityRole="button" accessibilityLabel={`${profile?.displayName ?? '내 프로필'}, 이름과 캐릭터 변경`} onPress={() => router.push('/profile-edit')} style={({ pressed }) => [s.profile, pressed && { backgroundColor: colors.surfacePressed }]}>
-      <View style={s.avatar}><Image source={characterArtwork[character].focus} resizeMode="contain" style={{ width: 76, height: 84 }} accessibilityLabel={`내 ${characterArtwork[character].label} 캐릭터`} /></View>
-      <Text style={[ui.title, { flex: 1 }]}>{profile?.displayName}</Text><Text style={s.edit}>수정 ›</Text>
-    </Pressable>
+    <ProfileIdentity profile={profile} count={collection?.skins.length} onEdit={() => router.push('/profile-edit')} onSkins={() => router.push('/skins')} />
+    <View style={s.rule} />
     {!!error && <><Text accessibilityRole="alert" style={ui.error}>{error}</Text><Button label="다시 불러오기" variant="secondary" onPress={() => retry()} /></>}
     <SkeletonRegion loading={!summary} label="이번 주 기록 불러오는 중"><WeeklyAchievement achievedWeekdays={days} /></SkeletonRegion>
     <View style={s.rule} />

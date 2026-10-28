@@ -237,7 +237,8 @@ async function main() {
       `- Runtime: ${plan?.runtimeVersion ?? 'n/a'}`,
       `- Published APK: ${plan?.baseline?.tag ?? 'none / not inspected'}`,
       `- Result: ${record ? 'EAS Update published' : process.env.DEPLOY_JOB_STATUS ?? 'not published'}`,
-      ...(record ? [`- Update: [${record.groupId}](${record.url})`, `- Published at: ${record.createdAt}`] : []), '',
+      ...(record ? [`- Update: [${record.groupId}](${record.url})`, `- Published at: ${record.createdAt}`,
+        ...(record.releaseTag ? [`- Release: [${record.releaseTag}](${record.releaseUrl})`] : [])] : []), '',
     ].join('\n'));
   } else throw new Error('Expected check, plan, publish or summary');
 }

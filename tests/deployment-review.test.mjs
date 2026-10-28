@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { baselineIdentity, inspectAdministrativeChanges, normalizationHook, safeIgnoreAdditions, sourceSnapshot, treeDigest,
+import { baselineIdentity, inspectAdministrativeChanges, nativeInputReasons, normalizationHook, safeIgnoreAdditions, sourceSnapshot, treeDigest,
   validateReview, verifyReviewDecision } from '../scripts/deployment-review.mjs';
 const digest = 'd'.repeat(64);
 const baseline = { sha: 'a'.repeat(40), tag: 'v1.0.1', runtimeVersion: 'c'.repeat(40) };
@@ -79,4 +79,18 @@ test('the committed review is not hidden by generated-record ignore patterns', a
   assert.equal(result.status, 1, 'The release review must be trackable without git add --force');
   assert.equal(safeIgnoreAdditions('node_modules/\n', 'node_modules/\n/deployment-review.json\n'), true);
   assert.equal(safeIgnoreAdditions('node_modules/\n', 'node_modules/\n/plugins/\n'), false);
+});
+
+
+test('operator tools do not require an APK but native inputs and hook callers still do', () => {
+  const tools = ['scripts/admin-notifications.mjs', 'scripts/update-release.mjs'];
+  assert.deepEqual(nativeInputReasons(tools, { 'eas-build-on-success': 'node scripts/save-local-build-env.cjs' }), []);
+  for (const path of ['scripts/new-tool.mjs', 'scripts/save-local-build-env.cjs', 'plugins/change.js',
+    'modules/example/android/Module.kt', 'android/app/build.gradle', 'ios/Podfile', 'eas.json',
+    'package-lock.json', '.fingerprintignore', 'fingerprint.config.js']) {
+    assert.ok(nativeInputReasons([path], {}).length > 0, path);
+  }
+  for (const path of tools) for (const hook of ['preinstall', 'install', 'postinstall', 'prepare', 'prebuild', 'eas-build-pre-install']) {
+    assert.ok(nativeInputReasons([path], { [hook]: `node ${path}` }).some(reason => reason.includes('native build hook')), `${hook}: ${path}`);
+  }
 });

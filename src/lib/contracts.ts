@@ -2,7 +2,7 @@ import type { CharacterId } from './characters.ts';
 export type UID = string;
 export type StudyDate = string;
 
-export type Profile = { id: UID; displayName: string; character?: CharacterId };
+export type Profile = { id: UID; displayName: string; character?: CharacterId; activeSkinId?: string | null; skinUpdatedAt?: string };
 export type StudySession = {
   id: string;
   userId: UID;
@@ -23,7 +23,10 @@ export type DayRecord = {
 export type GoalSettings = { isFirstSetup?: boolean; current: GoalWeek; scheduled: GoalWeek | null; effectiveDate: StudyDate | null };
 export type LeaveState = 'AVAILABLE' | 'SCHEDULED' | 'USED' | 'EXPIRED';
 // Missing kind in older server responses means reward.
-export type LeaveGrant = { approvedAt?: string | null; kind?: 'reward' | 'free'; status: LeaveState; scheduledDate: StudyDate | null; id: string; earningWeek: StudyDate; earnedAt: string; expiresAt: string };
+export type LeaveGrant = { approvedAt?: string | null; status: LeaveState; scheduledDate: StudyDate | null; id: string; earnedAt: string } & (
+  { kind?: 'reward' | 'free'; earningWeek: StudyDate; expiresAt: string }
+  | { kind: 'admin'; earningWeek: null; expiresAt: null }
+);
 // Each grant belongs to exactly one state; only AVAILABLE contributes to the balance.
 export type LeaveStatus = { revision: number; availableCount: number; grants: LeaveGrant[] };
 export type RoomMember = { profile: Profile; today: DayRecord; activeSession: StudySession | null };

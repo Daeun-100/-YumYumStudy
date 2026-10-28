@@ -114,3 +114,11 @@ Supabase를 변경하지 않는다. APK·웹을 함께 공개할 때는 Release 
 - 코드·타입 검사와 자동 테스트, test / production 웹 export를 검증한다.
 - EAS 실제 APK 빌드, Hosting 후보 생성, GitHub 수동 실행과 branch protection은 외부 연결 후 추가 검증 필요.
 - Expo 계정 로그인만으로 GitHub Actions가 인증되는 것은 아니다.
+
+## 배포 버전 식별
+
+APK는 `vX.Y.Z`, 같은 APK에 대한 운영 업데이트는 `vX.Y.Z-rN`으로 기록한다.
+사용자에게는 기본 버전만 표시한다. 운영 업데이트가 성공하면 Cloud Build의 update 작업이
+Release와 태그를 만들고 배포 JSON을 첨부한다. 업데이트 Release는 Latest로 지정하지 않으며
+APK 공개·다운로드 공지 워크플로에서 제외한다. 자세한 규칙은 [RELEASES.md](RELEASES.md)의
+‘현재 버전관리 규칙’을 따른다.

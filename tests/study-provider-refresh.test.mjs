@@ -26,7 +26,7 @@ function mount() {
   const timers = new Map();
   const intervals = new Map();
   let onChange;
-  const identity = { profile: { id: 'owner' }, loading: false, error: null };
+  const identity = { profile: { id: 'owner' }, loading: false, error: null, updateProfile: profile => { identity.profile = profile; } };
   const calls = { recover: 0, today: 0, room: 0, start: 0 };
   const data = {
     resumePendingStudyStart: async () => { calls.recover++; return null; },
@@ -92,7 +92,7 @@ function mount() {
     const pending = effects; effects = []; pending.forEach(effect => effect());
     return value;
   };
-  return { render, calls, data, change: () => onChange?.(), pollRoom: () => { for (const value of intervals.values()) if (value.ms === 10000) value.callback(); }, runTimers: () => { const callbacks = [...timers.values()]; timers.clear(); callbacks.forEach(callback => callback()); } };
+  return { render, calls, data, identity, change: () => onChange?.(), pollRoom: () => { for (const value of intervals.values()) if (value.ms === 10000) value.callback(); }, runTimers: () => { const callbacks = [...timers.values()]; timers.clear(); callbacks.forEach(callback => callback()); } };
 }
 
 test('startup recovers once before one initial snapshot read, and concurrent retries share it', async () => {
@@ -196,9 +196,9 @@ test('friend snapshot from before a start cannot replace the post-start friend s
   await state.retryStartup();
   state = app.render();
   await state.toggle();
-  fresh.resolve({ serverNow: '2026-10-27T00:00:01Z', data: [{ marker: 'fresh' }] });
+  fresh.resolve({ serverNow: '2026-10-27T00:00:01Z', data: [{ profile: { id: 'friend' }, marker: 'fresh' }] });
   await app.render().refreshRoom();
-  old.resolve({ serverNow: '2026-10-27T00:00:00Z', data: [{ marker: 'old' }] });
+  old.resolve({ serverNow: '2026-10-27T00:00:00Z', data: [{ profile: { id: 'friend' }, marker: 'old' }] });
   for (let i = 0; i < 5; i++) await Promise.resolve();
   assert.equal(app.render().room.data[0].marker, 'fresh');
 });
@@ -227,7 +227,7 @@ test('friend events during a read queue a fresh snapshot instead of losing the c
   app.render();
   const old = deferred();
   let reads = 0;
-  app.data.getRoom = () => ++reads === 1 ? old.promise : Promise.resolve({ serverNow: '2026-10-27T00:00:02Z', data: [{ marker: 'joined-and-started' }] });
+  app.data.getRoom = () => ++reads === 1 ? old.promise : Promise.resolve({ serverNow: '2026-10-27T00:00:02Z', data: [{ profile: { id: 'friend' }, marker: 'joined-and-started' }] });
   app.change();
   await Promise.resolve();
   app.change();
@@ -242,9 +242,20 @@ test('missed friend events recover through the ten-second friend-only poll', asy
   await app.render().retryStartup();
   app.render();
   const ownerReads = app.calls.today;
-  app.data.getRoom = async () => ({ serverNow: '2026-10-27T00:00:10Z', data: [{ marker: 'polled' }] });
+  app.data.getRoom = async () => ({ serverNow: '2026-10-27T00:00:10Z', data: [{ profile: { id: 'friend' }, marker: 'polled' }] });
   app.pollRoom();
   await app.render().refreshRoom();
   assert.equal(app.calls.today, ownerReads);
   assert.equal(app.render().room.data[0].marker, 'polled');
+});
+
+test('room refresh carries remote skin changes into the authenticated profile', async () => {
+  const app = mount();
+  await app.render().retryStartup();
+  const changed = { id: 'owner', displayName: '친구', character: 'bunny', activeSkinId: 'bunny-toothache', skinUpdatedAt: '2026-10-28T00:00:00Z' };
+  app.data.getRoom = async () => ({ serverNow: '2026-10-28T00:00:00Z', data: [{ profile: changed }] });
+  await app.render().refreshRoom();
+  app.render();
+  assert.equal(app.identity.profile.activeSkinId, 'bunny-toothache');
+  assert.equal(app.identity.profile.character, 'bunny');
 });

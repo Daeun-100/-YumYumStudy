@@ -1,3 +1,4 @@
+import { resolveCharacterArtwork } from '../../design/skin-artwork';
 import { useScreenNow } from '../study/useScreenNow';
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -8,15 +9,7 @@ import { useStudy } from '../study/StudyProvider';
 import { displayedSeconds, duration, progress, timer } from '../study/presentation';
 import { FriendRecords } from './FriendRecords';
 
-const focusImages = {
-  bunny: require('../../../assets/characters/bunny/bunny-focus.png'),
-  bear: require('../../../assets/characters/bear/bear-focus.png'),
-  cat: require('../../../assets/characters/cat/cat-focus.png'),
-  puppy: require('../../../assets/characters/puppy/puppy-focus.png'),
-  maltese: require('../../../assets/characters/maltese/maltese-focus.png'),
-  pomeranian: require('../../../assets/characters/pomeranian/pomeranian-focus.png'),
-  blackcat: require('../../../assets/characters/black-cat/black-cat-focus.png'),
-};
+
 
 export function FriendsScreen() {
   const study = useStudy();
@@ -37,7 +30,7 @@ export function FriendsScreen() {
       const percent = progress(seconds, member.today.goalMinutes);
       const goal = member.today.goalMinutes;
       return <Pressable key={member.profile.id} accessibilityRole="button" accessibilityLabel={`${member.profile.displayName} 공부 기록 보기`} onPress={() => setSelectedId(member.profile.id)} style={({ pressed }) => [s.member, pressed && { backgroundColor: colors.surfacePressed }]}>
-        <View style={[s.avatar, { backgroundColor: member.activeSession ? colors.soft : colors.emptyBackground }]}><Image source={focusImages[member.profile.character ?? 'bunny']} resizeMode="contain" style={s.character} accessibilityLabel={`${member.profile.displayName} 집중 캐릭터`} /></View>
+        <View style={[s.avatar, { backgroundColor: member.activeSession ? colors.soft : colors.emptyBackground }]}><Image source={resolveCharacterArtwork(member.profile.character, member.profile.activeSkinId).focus} resizeMode="contain" style={s.character} accessibilityLabel={`${member.profile.displayName} 집중 캐릭터`} /></View>
         <View style={s.details}><View style={s.row}><View style={s.identity}><Text style={s.name}>{member.profile.displayName}</Text><View style={s.status}><View style={[s.dot, { backgroundColor: member.activeSession ? colors.primary : colors.resting }]} /><Text style={s.caption}>{member.today.attendance === 'leave' ? member.activeSession ? '연차 · 공부 중' : '연차 사용 중' : member.activeSession ? '공부 중' : '쉬는 중'}{stale ? ' · 마지막 확인' : ''}</Text></View></View><Text style={s.chevron}>›</Text></View>
         <View style={s.metrics}><View style={s.status}><Text style={s.time}>{timer(seconds)}</Text>{percent !== null && percent >= 100 && <AchievementBadge compact />}</View><Text style={s.caption}>{goal === null ? '목표 미설정' : goal === 0 ? '오늘은 휴무' : `목표 ${duration(goal * 60, false)}`}</Text></View>
         {percent !== null && <View style={s.row}><View accessibilityRole="progressbar" accessibilityLabel={`${member.profile.displayName} 오늘 목표 달성률`} accessibilityValue={{ min: 0, max: 100, now: Math.min(percent, 100), text: `${percent}%` }} style={s.track}><View style={[s.fill, { width: `${Math.min(percent, 100)}%` }]} /></View><Text style={[s.percent, percent >= 100 && { color: colors.primary }]}>{percent}%</Text></View>}
