@@ -37,6 +37,11 @@ function strings(values, name, required = false) {
   assert.ok(values.every(value => typeof value === 'string' && value.trim() && value.length <= 4000), `Invalid ${name}`);
   assert.equal(new Set(values).size, values.length, `Duplicate ${name}`);
 }
+export function releaseSummary(review) {
+  strings(review?.releaseNotes, 'releaseNotes', true);
+  assert.ok(review.releaseNotes.join('\n').length <= 6000, 'Release notes exceed 6000 characters');
+  return `## 변경사항\n\n${review.releaseNotes.map(note => `- ${note.trim()}`).join('\n')}`;
+}
 export function validateReview(review, digest) {
   assert.equal(review.schema, 1, 'Unsupported deployment review schema');
   assert.match(review.sourceCommit, /^[a-f0-9]{40}$/);
@@ -48,6 +53,7 @@ export function validateReview(review, digest) {
   strings(review.evidence, 'evidence', true);
   strings(review.exemptions, 'exemptions');
   strings(review.blockers, 'blockers');
+  releaseSummary(review);
   for (const exemption of review.exemptions) assert.ok([
     ...scriptsAllowed.map(name => `package-script:${name}`), 'ignore-additions:.gitignore', 'ignore-additions:.easignore',
   ].includes(exemption), `Unsupported exemption: ${exemption}`);
