@@ -4,16 +4,17 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { StickyNote, Trash2 } from 'lucide-react-native';
 import { Button } from '../../design/components';
 import { Dialog, DialogCloseButton } from '../../design/Dialog';
-import { colors, spacing, typography } from '../../design/theme';
+import { colors, typography } from '../../design/theme';
 import { postitColors, type Postit } from './model';
 import type { PostitArtwork } from './designs';
-import { PostitPaper } from './PostitPaper';
+import { POSTIT_PAPER_ASPECT_RATIO, PostitSheet } from './PostitSheet';
+import { PostitPaper, type PostitImagePart } from './PostitPaper';
 
 type BoardProps = {
   createId(): string;
   scene: { width: number; height: number }; notes: Postit[]; error?: string | null;
   add(id: string, text: string, color: string, x: number, y: number, designId?: string): Promise<void>;
-  designs?: PostitArtwork[]; visibleDesigns?: PostitArtwork[]; designError?: string | null; onOpen?(): void; imageUrl?(a: PostitArtwork): string;
+  designs?: PostitArtwork[]; visibleDesigns?: PostitArtwork[]; designError?: string | null; onOpen?(): void; imageUrl?(a: PostitArtwork, part?: PostitImagePart): string;
   remove(id: string): Promise<void>;
   noteBorder?: boolean; embedded?: boolean; initialOpen?: boolean; initialPlacement?: boolean;
 };
@@ -57,7 +58,7 @@ export function PostitBoard({ createId, scene, notes, add, remove, error, noteBo
   return <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       {notes.map(note => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={`${note.author}의 포스트잇 열기`} disabled={placing} onPress={() => setSelected(note)} style={[s.noteTarget, { left: Math.max(0, Math.min(scene.width - 44, note.x * scene.width - 22)), top: Math.max(0, Math.min(scene.height - 44, note.y * scene.height - 22)) }]}>
-        <View style={[s.note, !note.design_revision && noteBorder && s.noteBorder, { transform: [{ rotate: note.id.charCodeAt(0) % 2 ? '-7deg' : '6deg' }] }, !!note.design_revision && { width: 32, height: 32 }]}><PostitPaper artwork={lookup(note.design_revision)} color={note.color} imageUrl={imageUrl} />{!note.design_revision && <View style={s.fold} />}</View>
+        <View style={[s.note, !note.design_revision && noteBorder && s.noteBorder, { transform: [{ rotate: note.id.charCodeAt(0) % 2 ? '-7deg' : '6deg' }] }, { width: 30, height: 30 / POSTIT_PAPER_ASPECT_RATIO }]}><PostitPaper artwork={lookup(note.design_revision)} color={note.color} imageUrl={imageUrl} />{!note.design_revision && <View style={s.fold} />}</View>
       </Pressable>)}
       {placing ? <>
         <Pressable accessibilityRole="button" accessibilityLabel="공부방에서 포스트잇을 붙일 위치 선택" disabled={busy} style={StyleSheet.absoluteFill} onPress={({ nativeEvent }) => {
@@ -73,35 +74,34 @@ export function PostitBoard({ createId, scene, notes, add, remove, error, noteBo
       </> : <View style={s.add}><Pressable accessibilityRole="button" accessibilityLabel="포스트잇 쓰기" onPress={() => { onOpen?.(); setWriting(true); }} style={({ pressed }) => [s.quietAdd, pressed && { backgroundColor: 'rgba(255,253,246,0.94)' }]}><StickyNote size={17} color="#4B554C" strokeWidth={1.6} /><Text style={s.addLabel}>붙이기</Text></Pressable></View>}
     </View>
     <Dialog visible={selected !== null} label="공유 포스트잇" embedded={embedded} busy={busy} onClose={() => setSelected(null)}>
-      <View style={[s.reading, { backgroundColor: colors.surface }]}>
-        <View style={s.noteHeader}><View style={s.authorRow}><Text numberOfLines={1} style={s.author}>{selected?.author}</Text></View><DialogCloseButton label="×" accessibilityLabel="포스트잇 닫기" size="icon" variant="ghost" style={s.closeButton} /></View>
-        <View style={[s.paper, s.squarePaper]}><PostitPaper artwork={selectedArtwork} color={selected?.color ?? postitColors[0]} imageUrl={imageUrl} onImageError={() => failImage(selectedArtwork)} /><ScrollView style={{ flex: 1, zIndex: 1 }} contentContainerStyle={s.paperContent}><Text style={[s.message, { color: textColor(selectedArtwork) }]}>{selected?.text}</Text></ScrollView></View>
+      <PostitSheet artwork={selectedArtwork} color={selected?.color ?? postitColors[0]} imageUrl={imageUrl} onImageError={() => failImage(selectedArtwork)}>
+        <View style={s.noteHeader}><Text numberOfLines={1} style={[s.author, !!selectedArtwork && s.artworkHeading]}>{selected?.author}</Text><DialogCloseButton label="×" accessibilityLabel="포스트잇 닫기" size="icon" variant="ghost" /></View>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={s.readingContent}><Text style={[s.message, { color: textColor(selectedArtwork) }]}>{selected?.text}</Text></ScrollView>
         {!!actionError && <Text accessibilityRole="alert" style={s.error}>{actionError}</Text>}
         <View style={s.noteFooter}><Pressable accessibilityRole="button" accessibilityLabel="포스트잇 지우기" disabled={busy} onPress={() => void deleteSelected()} style={({ pressed }) => [s.delete, pressed && { opacity: .6 }]}><Trash2 size={16} color="#BE6573" strokeWidth={1.5} /><Text style={[s.smallCaption, { color: '#BE6573' }]}>지우기</Text></Pressable></View>
-      </View>
+      </PostitSheet>
     </Dialog>
     <Dialog visible={writing} label="포스트잇 쓰기" embedded={embedded} busy={busy} onClose={() => setWriting(false)}>
-      <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1, backgroundColor: colors.surface, borderRadius: 6 }} contentContainerStyle={s.editor}>
-        <Text style={s.title}>포스트잇 쓰기</Text>
-        <View style={s.squarePaper}><PostitPaper artwork={design} color={color} imageUrl={imageUrl} onImageError={() => failImage(design)} /><TextInput accessibilityLabel="포스트잇 내용" placeholder="짧은 한마디를 남겨주세요" multiline maxLength={50} value={draft} onChangeText={setDraft} style={[s.input, { color: textColor(design) }]} /></View>
-        <View style={s.between}><Text style={s.caption}>종이 디자인</Text><Text style={s.caption}>{draft.length}/50</Text></View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      <PostitSheet artwork={design} color={color} imageUrl={imageUrl} onImageError={() => failImage(design)}>
+        <View style={s.noteHeader}><Text style={[s.title, !!design && s.artworkHeading]}>포스트잇 쓰기</Text><DialogCloseButton label="×" accessibilityLabel="포스트잇 쓰기 창 닫기" size="icon" variant="ghost" /></View>
+        <TextInput accessibilityLabel="포스트잇 내용" placeholder="짧은 한마디를 남겨주세요" placeholderTextColor={colors.secondary} multiline maxLength={50} value={draft} onChangeText={setDraft} style={[s.input, { color: textColor(design) }]} />
+        <View style={s.between}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ gap: 8 }}>
           <View accessibilityRole="radiogroup" accessibilityLabel="종이 디자인" style={{ flexDirection: 'row', gap: 8 }}>
             {postitColors.map((value, index) => <Pressable key={value} accessibilityRole="radio" accessibilityLabel={['노랑', '분홍', '연두'][index]} accessibilityState={{ checked: !design && value === color }} aria-checked={!design && value === color} onPress={() => { setColor(value); setDesignId(undefined); }} style={[s.swatch, { backgroundColor: value, borderColor: !design && value === color ? colors.primary : 'transparent' }]} />)}
-            {designs.map(item => <Pressable key={item.id} accessibilityRole="radio" accessibilityLabel={item.name} accessibilityState={{ checked: design?.id === item.id }} aria-checked={design?.id === item.id} onPress={() => setDesignId(item.id)} style={[s.swatch, { backgroundColor: item.fallbackColor, borderColor: design?.id === item.id ? colors.primary : 'transparent' }]}><View pointerEvents="none" style={s.designSwatch}><View style={s.designCrop}><PostitPaper artwork={item} color={item.fallbackColor} imageUrl={imageUrl} /></View></View></Pressable>)}
+            {designs.map(item => <Pressable key={item.id} accessibilityRole="radio" accessibilityLabel={item.name} accessibilityState={{ checked: design?.id === item.id }} aria-checked={design?.id === item.id} onPress={() => setDesignId(item.id)} style={[s.swatch, { backgroundColor: item.preview ? 'transparent' : item.fallbackColor, borderColor: design?.id === item.id ? colors.primary : 'transparent' }]}><View pointerEvents="none" style={s.designSwatch}><View style={item.preview ? StyleSheet.absoluteFill : s.designCrop}><PostitPaper artwork={item} color={item.fallbackColor} imageUrl={imageUrl} part={item.preview ? 'preview' : 'paper'} /></View></View></Pressable>)}
           </View>
-        </ScrollView>
+        </ScrollView><Text style={s.caption}>{draft.length}/50</Text></View>
         {!!designError && <Pressable accessibilityRole="button" accessibilityLabel="종이 디자인 다시 불러오기" onPress={onOpen}><Text style={s.error}>{designError} 다시 불러오기</Text></Pressable>}
         <Button label="붙일 위치 고르기" disabled={!draft.trim()} onPress={() => { setWriting(false); setPlacing(true); setActionError(null); }} />
-        <DialogCloseButton label="취소" variant="ghost" size="compact" />
-      </ScrollView>
+      </PostitSheet>
     </Dialog>
     {!!(actionError && placing || error) && <View pointerEvents="none" style={{ position: 'absolute', bottom: 12, left: 16, right: 16 }}><Text accessibilityRole="alert" style={s.error}>{actionError && placing ? actionError : error}</Text></View>}
   </View>;
 }
 const s = StyleSheet.create({
   error: { ...typography.caption, color: '#A33F50' },
-  title: { ...typography.title, color: colors.text }, caption: { ...typography.secondary, color: colors.secondary },
+  title: { ...typography.title, color: colors.text, flex: 1 }, caption: { ...typography.secondary, color: colors.secondary },
   noteTarget: { position: 'absolute', width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   note: { width: 30, height: 32, borderRadius: 2, boxShadow: '0px 2px 4px rgba(60, 40, 20, 0.20)', overflow: 'hidden' },
   noteBorder: { borderWidth: 1.5, borderColor: '#776745' },
@@ -109,16 +109,11 @@ const s = StyleSheet.create({
   add: { position: 'absolute', top: 16, right: 16 },
   quietAdd: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 22, backgroundColor: 'rgba(255,253,246,0.70)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.45)' },
   addLabel: { ...typography.caption, fontWeight: '500', color: '#4B554C' },
-  reading: { borderRadius: 6, padding: 24, paddingTop: 12, paddingBottom: 12, gap: 12 },
-  noteHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 44 },
-  closeButton: { flexShrink: 0, marginRight: -12 },
+  noteHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
   noteFooter: { alignItems: 'flex-end' },
-  authorRow: { flex: 1, minWidth: 0, gap: 2 },
-  author: { ...typography.link, color: colors.text },
-  editor: { padding: 24, borderRadius: 6, gap: spacing.lg },
-  paper: { justifyContent: 'center' },
-  squarePaper: { width: '100%', aspectRatio: 1, overflow: 'hidden', borderRadius: 3 },
-  paperContent: { flexGrow: 1, justifyContent: 'center', padding: 28 },
+  author: { ...typography.link, color: colors.text, flex: 1 },
+  artworkHeading: { textAlign: 'center' },
+  readingContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 12 },
   designSwatch: { width: 36, height: 36, borderRadius: 18, overflow: 'hidden' },
   designCrop: { position: 'absolute', width: 88, height: 88, top: 0, left: 0 },
   smallCaption: { ...typography.caption, color: colors.secondary, flexShrink: 1 },
@@ -126,7 +121,7 @@ const s = StyleSheet.create({
   placeHint: { position: 'absolute', top: 12, left: 12, right: 12, backgroundColor: colors.surface, borderRadius: 16, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   hint: { ...typography.secondary, color: colors.text, flexShrink: 1 },
   message: { ...typography.body, fontSize: 19, fontWeight: '500', lineHeight: 31, color: '#453F30' },
-  input: { position: 'relative', zIndex: 1, ...typography.body, color: colors.text, flex: 1, borderRadius: 8, padding: 28, textAlignVertical: 'top' },
+  input: { position: 'relative', zIndex: 1, ...typography.body, color: colors.text, flex: 1, minHeight: 0, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, textAlignVertical: 'top' },
   between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   swatch: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
 });

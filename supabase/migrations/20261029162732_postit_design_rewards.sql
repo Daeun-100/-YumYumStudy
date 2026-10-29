@@ -44,23 +44,29 @@ create index room_postits_design_revision_idx on public.room_postits(design_revi
 create index room_postits_design_idx on public.room_postits(design_id) where design_id is not null;
 
 create function private.validate_postit_definition(m jsonb) returns void language plpgsql set search_path='' as $$
-declare a jsonb;
+declare a jsonb; part text; w numeric; h numeric;
 begin
  if jsonb_typeof(m) is distinct from 'object' or m->'schemaVersion' is distinct from '2'::jsonb or m->>'kind' is distinct from 'postit'
   or jsonb_typeof(m->'id') is distinct from 'string' or coalesce(m->>'id','') !~ '^[a-z0-9][a-z0-9_-]{0,79}$'
   or jsonb_typeof(m->'theme') is distinct from 'string' or coalesce(m->>'theme','') !~ '^[a-z0-9][a-z0-9_-]{0,79}$'
   or jsonb_typeof(m->'name') is distinct from 'string' or coalesce(length(btrim(m->>'name')),0) not between 1 and 60
   or coalesce(m->>'fallbackColor','') not in ('#F9E8A0','#F7CED4','#DAE8BE') or coalesce(m->>'textColor','') !~ '^#[0-9A-Fa-f]{6}$'
-  or exists(select 1 from jsonb_object_keys(m) k where k not in ('schemaVersion','kind','id','name','theme','paper','fallbackColor','textColor'))
+  or exists(select 1 from jsonb_object_keys(m) k where k not in ('schemaVersion','kind','id','name','theme','paper','preview','fallbackColor','textColor'))
  then raise exception 'Invalid postit definition; use theme/path without image revisions' using errcode='22023';end if;
- a:=m->'paper';
+ foreach part in array array['paper','preview'] loop
+ if part='preview' and not (m ? 'preview') then continue;end if;
+ a:=m->part;
  if jsonb_typeof(a) is distinct from 'object' or coalesce(a->>'path','') !~ ('^'||(m->>'theme')||'/postits/([a-z0-9][a-z0-9_-]{0,79}/)*[a-z0-9][a-z0-9_-]{0,79}[.]png$') or length(a->>'path')>240
   or jsonb_typeof(a->'sha256') is distinct from 'string' or coalesce(a->>'sha256','') !~ '^[a-f0-9]{64}$'
-  or a->'width' is distinct from '1024'::jsonb or a->'height' is distinct from '1024'::jsonb
+  or jsonb_typeof(a->'width') is distinct from 'number' or jsonb_typeof(a->'height') is distinct from 'number'
   or jsonb_typeof(a->'bytes') is distinct from 'number' or coalesce((a->>'bytes')::numeric,0) not between 1 and 2097152 or (a->>'bytes')::numeric<>trunc((a->>'bytes')::numeric)
  then raise exception 'Invalid postit PNG' using errcode='22023';end if;
+ w:=(a->>'width')::numeric;h:=(a->>'height')::numeric;
+ if w not between 512 and 2048 or h not between 512 and 2048 or w<>trunc(w) or h<>trunc(h)
+  or (part='preview' and w<>h) or (part='paper' and (w>h*2 or h>w*2)) then raise exception 'Invalid postit PNG dimensions' using errcode='22023';end if;
  if not exists(select 1 from storage.objects o where o.bucket_id='event-artwork' and o.name=a->>'path' and o.metadata->>'mimetype'='image/png' and (o.metadata->>'size')::bigint=(a->>'bytes')::bigint)
  then raise exception 'Upload verified postit PNG first' using errcode='22023';end if;
+ end loop;
 end $$;
 revoke all on function private.validate_postit_definition(jsonb) from public,anon,authenticated,service_role;
 alter table private.artwork_library drop constraint artwork_library_kind_check;

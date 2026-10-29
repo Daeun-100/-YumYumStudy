@@ -42,11 +42,13 @@ export function PostitDesignProvider({ children }: PropsWithChildren) {
         setSchedule(typeof wait === 'number' && Number.isFinite(wait) && wait > 0 ? { scope, at: Date.now() + Math.ceil(wait * 1000) + 250 } : null);
         void AsyncStorage.setItem(`postit-designs-v1:${scope}`, JSON.stringify({ owned, visible })).catch(() => {});
         for (const m of [...owned.map(x => x.artwork), ...visible]) {
-          const key = `${m.paper.path}:${m.paper.sha256}`;
-          if (!prepared.current.has(key)) void prepareArtworkFile(m.paper).then(() => {
+          for (const file of [m.paper, ...(m.preview ? [m.preview] : [])]) {
+          const key = `${file.path}:${file.sha256}`;
+          if (!prepared.current.has(key)) void prepareArtworkFile(file).then(() => {
             prepared.current.add(key);
             if (prepared.current.size > 200) prepared.current.delete(prepared.current.values().next().value!);
           }).catch(() => {});
+          }
         }
       } catch {
         if (current.current.scope === scope && epoch.current === version) setData(old => ({ ...(old.scope === scope ? old : { scope, ...empty }), error: '종이 디자인을 불러오지 못했어요. 다시 시도해 주세요.' }));

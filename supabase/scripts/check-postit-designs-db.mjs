@@ -19,7 +19,7 @@ try{
  const m=manifest();
  await assert.rejects(()=>call('admin_register_artwork',[JSON.stringify(m),true]),/Upload verified/);
  await upload(m);
- await assert.rejects(()=>call('admin_register_artwork',[JSON.stringify({...m,paper:{...m.paper,width:512}}),true]),/Invalid postit PNG/);
+ await assert.rejects(()=>call('admin_register_artwork',[JSON.stringify({...m,paper:{...m.paper,width:0}}),true]),/Invalid postit PNG/);
  await assert.rejects(()=>call('admin_register_artwork',[JSON.stringify({...m,revision:randomUUID()}),true]),/without image revisions/);
  const {request,result}=await rule(m);
  assert.equal((await call('admin_configure_postit_reward',[JSON.stringify(request)])).id,result.id);
@@ -90,6 +90,13 @@ try{
  assert.notEqual(themeUpdate.owned.find(x=>x.artwork.id==='themed-paper').artwork.revision,themedNote.design_revision);
  assert.equal(themeUpdate.visible.find(x=>x.revision===themedNote.design_revision).textColor,'#453F30');
  await db.exec('reset role');
+ const twoFiles={...themed,id:'ghost-original',paper:{...themed.paper,path:'halloween/postits/ghost-original/paper.png',width:1122,height:1402},preview:{...themed.paper,path:'halloween/postits/ghost-original/preview.png',width:1254,height:1254}};
+ await db.query("insert into storage.objects(bucket_id,name,metadata) values('event-artwork',$1,$2)",[twoFiles.paper.path,JSON.stringify({size:100,mimetype:'image/png'})]);
+ await assert.rejects(()=>call('admin_register_artwork',[JSON.stringify(twoFiles),false]),/Upload verified/);
+ await db.query("insert into storage.objects(bucket_id,name,metadata) values('event-artwork',$1,$2)",[twoFiles.preview.path,JSON.stringify({size:100,mimetype:'image/png'})]);
+ await call('admin_register_artwork',[JSON.stringify(twoFiles),false]);
+ assert.equal((await call('admin_artwork_library',['halloween'])).find(x=>x.content_id==='ghost-original').definition.preview.width,1254);
+ await assert.rejects(()=>call('admin_register_artwork',[JSON.stringify({...twoFiles,preview:{...twoFiles.preview,height:1402}}),false]),/dimensions/);
  const permissions=(await db.query("select p.proname,has_function_privilege('anon',p.oid,'execute') anon,has_function_privilege('authenticated',p.oid,'execute') app from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('private','public') and p.proname like '%postit%'")).rows;
  assert.ok(permissions.every(p=>!p.anon));assert.ok(permissions.filter(p=>p.proname.startsWith('admin_')).every(p=>!p.app));
  console.log('PASS: themed PNG registration, preserved paper snapshots, enabled rules, 1799/1800-second split sessions, running time, duplicate grants, retry preservation, room/ownership rights, legacy colors, pinned revisions, ended-event recovery, cancellation and function permissions. Storage is an isolated substitute.');

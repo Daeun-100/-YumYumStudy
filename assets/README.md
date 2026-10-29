@@ -25,3 +25,5 @@
 파일 이름이나 위치를 바꾸면 앱, Storybook, Expo 설정(`app.json`), 문서의 참조도 함께 수정한다. React Native가 번들에 포함할 수 있도록 이미지 경로는 정적인 import 또는 require로 작성한다. 생성 결과물(`dist/`, `storybook-static/`)은 직접 수정하지 않고 다시 빌드한다.
 
 변경 뒤에는 lint, 타입 검사와 영향을 받는 앱/Storybook 빌드를 확인한다.
+
+Postit original artwork, circular preview and compact Halloween redraw: [postits/README.md](postits/README.md).

@@ -6,7 +6,8 @@ function crc(bytes){let n=0xffffffff;for(const b of bytes)n=crcTable[(n^b)&255]^
 export function inspectPng(bytes,{kind,screen}){
  if(!Buffer.isBuffer(bytes)||bytes.length>(kind==='postit'?2097152:5242880)||bytes.length<45||!bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error('PNG up to 5 MiB required.');
  const width=bytes.readUInt32BE(16),height=bytes.readUInt32BE(20),depth=bytes[24],color=bytes[25];
- const expected=kind==='postit'?[1024,1024]:screen==='home'?[1536,1024]:kind==='skin'?[1254,1254]:[1024,1536];
+ const expected=kind==='postit'?[width,height]:screen==='home'?[1536,1024]:kind==='skin'?[1254,1254]:[1024,1536];
+ if(kind==='postit'&&(width<512||width>2048||height<512||height>2048||(screen==='preview'?width!==height:width>height*2||height>width*2)))throw Error('Expected 512–2048 px paper with a 1:2–2:1 aspect ratio or square preview PNG.');
  if(width!==expected[0]||height!==expected[1]||depth!==8||![2,6].includes(color)||bytes[26]!==0||bytes[27]!==0||bytes[28]!==0)throw Error(`Expected non-interlaced 8-bit ${expected.join('x')} RGB/RGBA PNG.`);
  if(kind==='skin'&&color!==6)throw Error('Skin PNG needs transparent RGBA.');
  let at=8,ended=false;const idat=[];

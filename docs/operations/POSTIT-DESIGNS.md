@@ -11,7 +11,9 @@
 
 ## 디자인 PNG
 
-종이·장식만 있는 1024×1024 PNG 한 장, 8비트 RGB/RGBA·비인터레이스, 2 MiB 이하. 글씨는 앱이 덧그리므로 중앙을 비우고 본문과 색상 대비를 확보한다. 선택 버튼에서는 좌측 상단 쪽 일부가 원형 견본으로 보이고 실제 종이에서는 전체가 표시된다.
+종이 PNG는 가로·세로 각각 512–2048 px, 가로:세로 비율 1:2–2:1을 지원한다. 별도 원형 선택 이미지 preview는 선택 사항이며 정사각 PNG로 등록한다. 각 파일은 8비트 RGB/RGBA·비인터레이스, 2 MiB 이하다. 별도 preview가 없으면 종이 일부를 원형으로 잘라 표시한다. 글씨는 앱이 덧그리므로 중앙을 비우고 본문과 색상 대비를 확보한다.
+
+현재 할로윈 배경은 assets/postits/halloween-paper-landscape.png (1437×1095), 선택 이미지는 사용자가 제공한 assets/postits/halloween-preview.png (1254×1254)다. 원래 세로 종이는 보존했다. 작성·읽기 종이는 공통 PostitSheet로 최대 가로 420, 가로:세로 21:16 고정 비율을 사용하며 작은 화면에서는 세로도 함께 줄인다. 배경은 원본 비율을 유지해 채운다. 작성 취소는 우측 상단 ×로 제공한다. 집중 화면의 모달은 타이머까지 포함한 전체 화면을 덮는다.
 
 운영 환경에서 `SUPABASE_URL`과 비공개 `SUPABASE_SERVICE_ROLE_KEY`를 사용한다. 키는 명령 인자나 JSON에 넣지 않는다. 모든 명령은 저장소 루트에서 실행한다.
 
@@ -31,10 +33,10 @@
 
 ```sh
 # 검사·manifest 생성만 수행한다. 이미지 버전 UUID는 입력하지 않는다.
-node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs prepare --definition /private/tmp/postit-definition.json --paper /absolute/path/paper.png --out /private/tmp/postit-manifest.json
+node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs prepare --definition /private/tmp/postit-definition.json --paper /absolute/path/paper.png --preview /absolute/path/preview.png --out /private/tmp/postit-manifest.json
 
 # 업로드·공개 다운로드 해시 확인·독립 라이브러리 등록. 사용자 지급은 하지 않는다.
-node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs upload --definition /private/tmp/postit-definition.json --paper /absolute/path/paper.png
+node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs upload --definition /private/tmp/postit-definition.json --paper /absolute/path/paper.png --preview /absolute/path/preview.png
 
 # 업로드된 PNG를 확인한 뒤 지급 가능 상태로 등록한다.
 node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs register --definition /private/tmp/postit-manifest.json --activate
