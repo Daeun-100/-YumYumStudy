@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { randomUUID } from 'expo-crypto';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type PropsWithChildren } from 'react';
 import { Platform } from 'react-native';
 import { useIdentity } from '../../components/IdentityProvider';
 import { useStartupVisible } from '../../components/StartupBoundary';
@@ -17,6 +17,17 @@ import { useCampaigns } from './useCampaigns';
 import { UpdateToastAction } from './UpdateToast';
 import { UpdateDestinationProvider, useUpdateDestination } from './UpdateDestination';
 
+// Read on every render, but only subscribe to ticks while an unfinished notice needs time checks.
+const readClock = () => Math.floor(performance.now() / 1000) * 1000;
+function useToastClock(observe: boolean) {
+  const subscribe = useCallback((notify: () => void) => {
+    if (!observe) return () => {};
+    const timer = setInterval(notify, 1000);
+    return () => clearInterval(timer);
+  }, [observe]);
+  return useSyncExternalStore(subscribe, readClock, readClock);
+}
+
 const history = createToastHistory(AsyncStorage, randomUUID);
 export function AdminToastProvider({ children }: PropsWithChildren) {
   return <UpdateDestinationProvider>{children}<AdminToasts /></UpdateDestinationProvider>;
@@ -27,7 +38,7 @@ function AdminToasts() {
   const scope = `${studyRoomId}:${identity.uid ?? ''}`;
   const enabled = startup && !!identity.uid && !!identity.profile && !identity.loading && !identity.error;
   const snapshot = useCampaigns(scope, studyRoomId, enabled);
-  const [clock, setClock] = useState(() => performance.now()), [active, setActive] = useState<Campaign | null>(null);
+  const [active, setActive] = useState<Campaign | null>(null);
   const [loaded, setLoaded] = useState<{ scope: string; completed: Map<string, number>; installation: string } | null>(null);
   useEffect(() => {
     if (!enabled) return;
@@ -35,18 +46,15 @@ function AdminToasts() {
     void Promise.all([history.load(scope), history.installationId()]).then(([completed, installation]) => { if (alive) setLoaded({ scope, completed, installation }); });
     return () => { alive = false; };
   }, [enabled, scope]);
-  useEffect(() => {
-    if (!enabled || !toast.environment.active) return;
-    const timer = setInterval(() => setClock(performance.now()), 1000);
-    return () => clearInterval(timer);
-  }, [enabled, toast.environment.active]);
+  const context = { room: studyRoomId, platform: Platform.OS, variant: isTestBuild ? 'test' : 'production', ota: ota.target };
+  const hasPending = loaded?.scope === scope && !!snapshot?.campaigns.some(c =>
+    (active?.id === c.id || !loaded.completed.has(c.id)) && eligible(c, { ...context, now: Date.parse(c.starts_at) }));
+  const clock = useToastClock(enabled && toast.environment.active && hasPending);
   const age = snapshot ? Math.max(0, clock - snapshot.observedAt) : Infinity;
   const ready = enabled && loaded?.scope === scope && toast.environment.ready && toast.environment.active && !toast.environment.blocked
     && study.startupReady && !!study.today && !study.today.data.activeSession && !study.busy && !study.error && !study.actionFailed && !study.startupError
     && !leave.busy && !leave.error && !leave.actionFailed && !roomSwitching && activeRoomOperations === 0 && !isUpdateReloading() && age < 90000;
-  const candidates = ready && snapshot ? orderCampaigns(snapshot.campaigns).filter(c => eligible(c, {
-    room: studyRoomId, platform: Platform.OS, variant: isTestBuild ? 'test' : 'production', now: snapshot.serverNow + age, ota: ota.target,
-  })) : [];
+  const candidates = ready && snapshot ? orderCampaigns(snapshot.campaigns).filter(c => eligible(c, { ...context, now: snapshot.serverNow + age })) : [];
   const current = active && candidates.find(c => c.id === active.id);
   const candidate = current ?? candidates.find(c => !loaded?.completed.has(c.id));
   if (active?.id !== candidate?.id) setActive(candidate ?? null);
@@ -68,12 +76,12 @@ function AdminToasts() {
   };
   return <CampaignToast key={`${scope}:${current.id}`} campaign={current} onShown={() => {
     if (current.kind === 'info_notice') void complete('shown'); else report('shown');
-  }} onComplete={complete} onFinish={() => { setActive(null); setClock(performance.now()); }} />;
+  }} onComplete={complete} onFinish={() => setActive(null)} />;
 }
 function CampaignToast({ campaign, onShown, onComplete, onFinish }: {
   campaign: Campaign; onShown(): void; onComplete(reason: 'shown' | 'close' | 'destination'): Promise<void>; onFinish(): void;
 }) {
-  const { show, update, dismiss } = useToast();
+  const { show, dismiss } = useToast();
   const destination = useUpdateDestination();
   const latest = useRef({ onShown, onComplete, onFinish, destination });
   useLayoutEffect(() => { latest.current = { onShown, onComplete, onFinish, destination }; }, [onShown, onComplete, onFinish, destination]);
@@ -101,7 +109,5 @@ function CampaignToast({ campaign, onShown, onComplete, onFinish }: {
     if (!registered) retry = setTimeout(() => { if (alive) setAttempt(a => a + 1); }, 1000);
     return () => { alive = false; clearTimeout(retry); latest.current.destination.cancel(campaignId); if (registered) dismiss(registered); };
   }, [campaignId, kind, title, message, id, show, dismiss, attempt]);
-  // Update payloads are immutable; no render replacement on the one-second observation tick.
-  useEffect(() => { if (campaign.kind === 'info_notice') update(id, { title: campaign.payload.title, message: campaign.payload.message }); }, [campaign, id, update]);
   return null;
 }

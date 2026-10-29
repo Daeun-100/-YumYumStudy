@@ -17,12 +17,12 @@ function mount() {
   snapshot = { campaigns: [row], serverNow: Date.now(), observedAt: now };
   const identity = { uid: 'user', profile: {}, loading: false }, study = { startupReady: true, today: { data: {} } }, leave = {}, room = { studyRoomId: 1, isTestBuild: false, activeRoomOperations: 0 };
   const environment = { ready: true, active: true, blocked: false };
-  const toast = { environment, show: options => { registrations.push(options); return options.id; }, update: () => {}, dismiss: () => {} };
+  const toast = { environment, show: options => { registrations.push(options); return options.id; }, dismiss: () => {} };
   const storage = { getItem: async k => stored.get(k) ?? null, setItem: async (k, v) => stored.set(k, v) };
   const destination = { open: async () => {}, cancel: () => {} };
   const ota = { target: { enabled: true, pending: true, downloadedId: id, runningId: 'old', channel: 'production', runtime: 'r' } };
   const modules = {
-    react: hooks.react, 'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
+    react: { ...hooks.react, useSyncExternalStore(subscribe, read) { hooks.react.useEffect(() => subscribe(() => {}), [subscribe]); return read(); } }, 'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     'react-native': { Platform: { OS: 'android' } }, 'expo-crypto': { randomUUID: () => id },
     '@react-native-async-storage/async-storage': { __esModule: true, default: storage },
     '../../components/IdentityProvider': { useIdentity: () => identity }, '../../components/StartupBoundary': { useStartupVisible: () => true },
@@ -36,7 +36,7 @@ function mount() {
   const context = { exports: {}, require: name => { assert.ok(name in modules, name); return modules[name]; },
     performance: { now: () => now }, console, setTimeout, clearTimeout, setInterval: fn => { timers.add(fn); return fn; }, clearInterval: fn => timers.delete(fn) };
   vm.runInNewContext(source, context);
-  return { identity, study, environment, ota, reports, registrations, row, context, hooks, toast,
+  return { identity, study, environment, ota, reports, registrations, row, context, hooks, toast, timerCount: () => timers.size,
     render: () => hooks.render(() => context.exports.AdminToasts()), flush, dispose: hooks.dispose,
     changeSnapshot: value => { snapshot = value; }, advance: ms => { now += ms; timers.forEach(fn => fn()); },
   };
@@ -83,4 +83,35 @@ test('a full common queue retries without recording display or completion', () =
   assert.equal(shown, 0); assert.equal(completed, 0); assert.ok(retry);
   accepted = true; retry(); app.hooks.render(() => app.context.exports.CampaignToast(props));
   assert.equal(shown, 0); assert.equal(completed, 0); app.dispose();
+});
+
+test('clock subscribes only while an unfinished notice can be displayed', async () => {
+  const app = mount(); app.changeSnapshot({ campaigns: [], serverNow: Date.now(), observedAt: 1000 });
+  app.render(); await app.flush(); assert.equal(app.render(), null); assert.equal(app.timerCount(), 0);
+  app.changeSnapshot({ campaigns: [app.row], serverNow: Date.now(), observedAt: 1000 });
+  const visible = app.render(); assert.ok(visible); assert.equal(app.timerCount(), 1);
+  await visible.props.onComplete('close'); visible.props.onFinish(); app.render();
+  assert.equal(app.timerCount(), 0); app.dispose();
+});
+test('idle clock still reads current time when a stale notice becomes available', async () => {
+  const app = mount(); app.changeSnapshot({ campaigns: [], serverNow: Date.now(), observedAt: 1000 });
+  app.render(); await app.flush(); app.render(); assert.equal(app.timerCount(), 0);
+  app.advance(91000);
+  app.changeSnapshot({ campaigns: [app.row], serverNow: Date.now(), observedAt: 1000 });
+  assert.equal(app.render(), null, 'do not briefly show a notice using a frozen idle timestamp'); app.dispose();
+});
+
+test('a displayed general notice stays mounted until its host dismisses it, then stops ticking', async () => {
+  const app = mount(); app.row.kind = 'info_notice'; app.row.payload = { title: '안내' };
+  app.render(); await app.flush(); const visible = app.render();
+  visible.props.onShown(); await app.flush();
+  assert.equal(app.render().props.campaign.id, id); assert.equal(app.timerCount(), 1);
+  visible.props.onFinish(); assert.equal(app.render(), null); assert.equal(app.timerCount(), 0); app.dispose();
+});
+test('general notice registers its title and lifetime without a content-update API', () => {
+  const app = mount();
+  const props = { campaign: { ...app.row, kind: 'info_notice', payload: { title: '공지', message: '본문' } }, onShown() {}, onComplete: async () => {}, onFinish() {} };
+  app.hooks.render(() => app.context.exports.CampaignToast(props));
+  assert.equal(app.registrations[0].title, '공지'); assert.equal(app.registrations[0].message, '본문');
+  assert.equal(app.registrations[0].durationMs, 6000); app.dispose();
 });

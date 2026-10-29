@@ -62,13 +62,12 @@ preview 출력 전체를 보관한 뒤 create에 그대로 입력한다. 출력�
 
 ## 안내 삭제와 다시 보내기
 
-`delete`는 다음 파일을 입력한다. requestId는 이 삭제 작업의 새 UUID이고 campaignId와 revision은 status에서 읽는다.
+`delete`는 다음 파일을 입력한다. requestId는 이 삭제 작업의 새 UUID이고 campaignId는 발송 결과나 status에서 읽는다. 삭제에 버전 번호는 필요하지 않다.
 
 ```json
 {
   "requestId": "<이번 삭제 UUID>",
-  "campaignId": "<안내 UUID>",
-  "expectedRevision": 1
+  "campaignId": "<안내 UUID>"
 }
 ```
 
@@ -90,7 +89,7 @@ node --experimental-strip-types scripts/admin-toasts.mjs delete /private/tmp/toa
 - 같은 사용자라도 다른 설치에서 다시 표시될 수 있다. 설치 삭제·저장소 초기화·저장 실패까지 포함한 정확히 한 번 표시는 보장하지 않는다.
 - `shownInstallations`, `completedInstallations`, `shownUsers`는 앱 보고치다. 미보고가 미표시를 증명하지는 않는다.
 - 타임아웃·5xx·연결 종료가 나면 같은 요청 UUID의 status부터 조회한다. `not_found`라면 저장한 입력과 같은 UUID로 재시도한다. 새 UUID로 재발송하지 않는다.
-- 409는 같은 UUID의 다른 입력 또는 revision 충돌이다. status를 읽고 사용자가 요청한 변경이 여전히 유효한지 판단한다.
+- 409는 같은 UUID로 다른 입력을 보낸 경우다. status를 읽고 사용자가 요청한 변경이 여전히 유효한지 판단한다.
 - 관리자 삭제·만료는 재조회한 앱의 표시·대기 안내를 제거한다. 오프라인 기기에 즉시 강제할 수 없으므로 마지막 조회 후 90초가 지나면 앱이 안내를 숨긴다.
 - 관리자 안내를 삭제해도 OTA 다운로드와 수동 적용은 유지된다. 이 도구는 OS 푸시를 발송하지 않는다.
 
@@ -122,3 +121,9 @@ PGLITE_MODULE=/private/tmp/toast-db-tests/node_modules/@electric-sql/pglite/dist
 - 관리자 API의 테스트 방 목록 조회 HTTP 200, 앱 역할의 관리자 RPC 실행 거부, anon 조회 거부, 정리 작업 활성 상태 확인.
 - 안내 데이터는 0건이며 실제 사용자 토스트는 발송하지 않았다. 실제 휴대폰에서 수신·표시·삭제 및 OTA 조건 확인은 사용자 테스트 단계다.
 - 보안 advisor의 익명 인증 관련 안내는 프로젝트의 익명 로그인·방 입장 구조에 해당한다. 읽기 정책은 현재 입장한 방·본인 대상 조건을 유지하며 관리자 쓰기는 앱에서 허용하지 않는다. 비공개 요청·감사 테이블은 의도적으로 일반 사용자 정책 없이 차단한다. [Supabase 익명 인증 정책 진단 설명](https://supabase.com/docs/guides/database/database-advisors?queryGroups=lint&lint=0012_auth_allow_anonymous_sign_ins)을 기준으로 입장 검증과 역할 권한을 확인했다.
+
+## 후속 단순화 적용
+
+삭제 요청은 안내 ID와 요청 ID만 사용한다. 이 API를 서버에 반영할 때 추가 migration `simplify_toast_delete`와 최신 `admin-toasts` 함수를 함께 배포한다. 기존 적용 migration은 변경하지 않는다. 예전 요청의 재시도를 위해 전달된 expectedRevision은 입력 해시 보존에만 사용하고 삭제 조건으로 검사하지 않는다. 기존 앱이 읽는 revision 응답 필드는 유지한다.
+
+앱의 1초 갱신은 미완료 안내가 있을 때만 구독한다. 구독이 중단된 동안에도 다음 렌더에서 현재 시간을 읽어 오래된 설정을 잘못 표시하지 않는다. 일반 안내의 제목·본문은 최초 등록 시에만 전달하며 중복 갱신하지 않는다.

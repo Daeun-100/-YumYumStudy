@@ -59,10 +59,11 @@ test('deployment resolution refuses mismatched EAS IDs, runtime and failed publi
 });
 
 test('operator API only sends or deletes; deleted notices never become display candidates', () => {
-  const input = { action: 'delete', requestId: id, campaignId: group, expectedRevision: 1 };
-  assert.equal(parseInput(input).action, 'delete');
+  const input = { action: 'delete', requestId: id, campaignId: group };
+  assert.deepEqual(parseInput(input), input);
   for (const action of ['set_enabled', 'resend', 'restore']) assert.throws(() => parseInput({ ...input, action }));
-  assert.throws(() => parseInput({ ...input, expectedRevision: 0 }));
+  assert.equal(parseInput({ ...input, expectedRevision: 1 }).expectedRevision, 1, 'legacy request hash stays stable');
+  assert.throws(() => parseInput({ action: 'delete', requestId: id }));
   const prepared = prepare({ roomId: 1, kind: 'info_notice', appVariant: 'production', payload: { title: '안내' } });
   assert.equal('enabled' in prepared, false);
   assert.throws(() => parseInput({ ...prepared, enabled: false }));

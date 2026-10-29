@@ -24,6 +24,7 @@ test('admin toast SQL authorization, transactions, idempotency and terminal dele
       grant select on public.profiles to service_role;
       insert into public.profiles values('${user}',1,true,now()),('${other}',1,true,now()),('${outsider}',0,true,now());`);
     await db.exec(readFileSync(new URL('../supabase/migrations/20261029154511_admin_toasts.sql', import.meta.url), 'utf8'));
+    await db.exec(readFileSync(new URL('../supabase/migrations/20261029160622_simplify_toast_delete.sql', import.meta.url), 'utf8'));
     const call = async input => (await db.query('select public.manage_admin_toasts($1::jsonb) as result', [JSON.stringify(input)])).rows[0].result;
     await db.exec('set role service_role');
     const base = { action: 'create', requestId, campaignId: id, kind: 'info_notice', roomId: 1, userIds: [user],
@@ -49,12 +50,11 @@ test('admin toast SQL authorization, transactions, idempotency and terminal dele
     await db.exec(`select set_config('test.uid','${outsider}',false)`);
     assert.equal((await db.query('select public.get_admin_toasts() as x')).rows[0].x.campaigns.length, 0);
     await db.exec('reset role; set role service_role');
-    await assert.rejects(call({ action: 'delete', requestId: outsider, campaignId: id, expectedRevision: 2 }), /Revision conflict/);
-    const deletion = { action: 'delete', requestId: outsider, campaignId: id, expectedRevision: 1 };
+    const deletion = { action: 'delete', requestId: outsider, campaignId: id };
     const deleted = await call(deletion);
     assert.equal(deleted.status, 'deleted'); assert.ok(deleted.campaign.deleted_at); assert.equal(deleted.campaign.revision, 2);
     assert.deepEqual(await call(deletion), deleted, 'same request recovers the same deletion result');
-    const repeated = await call({ ...deletion, requestId: randomUUID() });
+    const repeated = await call({ ...deletion, requestId: randomUUID(), expectedRevision: 999 });
     assert.equal(repeated.campaign.deleted_at, deleted.campaign.deleted_at); assert.equal(repeated.campaign.revision, 2);
     await assert.rejects(db.query('update public.admin_toast_campaigns set deleted_at=null where id=$1',[id]), /cannot be restored/);
     await assert.rejects(call({ ...deletion, requestId: randomUUID(), action: 'set_enabled', enabled: true }), /cannot be re-enabled/);

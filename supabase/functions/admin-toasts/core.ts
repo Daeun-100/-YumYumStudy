@@ -14,8 +14,9 @@ export function parseInput(raw: unknown, now = Date.now()): Input {
   }
   if (v.action === 'status') return result;
   if (v.action === 'delete') {
-    if (!result.campaignId || !Number.isSafeInteger(v.expectedRevision) || Number(v.expectedRevision) < 1) throw Error('Campaign and revision required');
-    return { ...result, expectedRevision: v.expectedRevision };
+    if (!result.campaignId) throw Error('Campaign required');
+    // Preserve legacy inputs only so an in-flight request keeps its original idempotency hash.
+    return { ...result, ...(v.expectedRevision !== undefined ? { expectedRevision: v.expectedRevision } : {}) };
   }
   if (![0, 1].includes(Number(v.roomId)) || typeof v.roomId !== 'number') throw Error('Room required');
   result.roomId = v.roomId;
