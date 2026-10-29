@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { LeaveLayout } from './LeaveLayout';
 
 const meta = {
-  title: '화면 시안/연차', component: LeaveLayout,
+  title: '화면/연차', component: LeaveLayout,
   parameters: { screenLayout: true, layout: 'fullscreen', docs: { description: { component: '메인과 달력, 두 화면으로 구성한 연차 UI 시안입니다. 메인은 잔액 카드만 유지하고 주간 달성과 예약을 구분선으로 정리한 고정 화면입니다. 만료 내역과 이용 안내는 별도 창에서 확인하고, 달력에서 연차 사용·날짜 변경·취소와 지난 사용일을 확인합니다. 모든 동작은 샘플 데이터만 변경하며 앱·서버·저장소와 연결하지 않습니다.' } } },
   args: { character: 'bunny', initialScreen: 'home', state: 'ready', weeklyDays: 4, width: 390, height: 844, initialConfirmation: false, initialChanging: false },
   argTypes: { character: { control: 'select', options: characterIds },

@@ -1,6 +1,5 @@
 import { Dialog, DialogCloseButton } from '../../src/design/Dialog';
 import { BottomTabs } from '../../src/features/navigation/BottomTabs';
-export { BottomTabs } from '../../src/features/navigation/BottomTabs';
 import { StudyControlView } from '../../src/features/study/StudyControlView';
 import { HomeArtwork } from '../../src/features/study/HomeArtwork';
 import { FocusView } from '../../src/features/study/FocusView';

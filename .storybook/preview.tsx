@@ -9,7 +9,7 @@ const preview: Preview = {
   parameters: {
     layout: 'fullscreen',
     controls: { expanded: true },
-    options: { storySort: { order: ['에셋 확인', '시작하기', '기본 스타일', '공통 컴포넌트'] } },
+    options: { storySort: { order: ['화면', '공통 컴포넌트', '기본 스타일'] } },
     backgrounds: { options: { cream: { name: '크림', value: colors.background }, white: { name: '흰색', value: '#FFFFFF' } } },
   },
 };
