@@ -12,6 +12,8 @@ function mount(study) {
   const jsx = (type, props) => ({ type, props });
   const modules = {
     react: {
+      createContext: () => ({ Provider: 'StartupVisibility' }),
+      useContext: () => false,
       useState: initial => {
         const index = cursor++;
         if (!(index in slots)) slots[index] = typeof initial === 'function' ? initial() : initial;
@@ -54,13 +56,16 @@ test('live owner readiness reveals navigation despite missing friends or friend 
     app.render(); app.paint();
     const tree = app.render();
     assert.equal(tree.props.children[0].props.pointerEvents, 'auto');
-    assert.equal(tree.props.children[0].props.children, 'navigation');
+    assert.equal(tree.props.children[0].props.children.props.children, 'navigation');
+    assert.equal(tree.props.children[0].props.children.props.value, true);
   }
 });
 test('missing live owner snapshot or unfinished request recovery keeps navigation locked', () => {
   for (const state of [{ today: null, startupReady: true }, { today: { data: {} }, startupReady: false }]) {
     const app = mount({ ...state, room: { data: [] }, loading: false });
     app.render(); app.paint();
-    assert.equal(app.render().props.children[0].props.pointerEvents, 'none');
+    const tree = app.render();
+    assert.equal(tree.props.children[0].props.pointerEvents, 'none');
+    assert.equal(tree.props.children[0].props.children.props.value, false);
   }
 });

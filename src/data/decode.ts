@@ -1,7 +1,7 @@
 import { decodeCharacter } from '../lib/characters.ts';
 import { decodeSkinId } from '../lib/skins.ts';
 import { StudyError, validateGoalWeek } from '../lib/contracts.ts';
-import type { DayRecord, GoalSettings, GoalWeek, LeaveGrant, LeaveState, LeaveStatus, Profile, RoomMember, Snapshot, StudySession, TodayData } from '../lib/contracts.ts';
+import type { DayRecord, GoalSettings, GoalWeek, LeaveGrant, LeaveState, LeaveStatus, Profile, RoomMember, Snapshot, StudySession, TodayData, WatermelonBalance } from '../lib/contracts.ts';
 import { getStudyDayBounds } from '../lib/study-day.ts';
 
 function invalid(): never { throw new StudyError('UNKNOWN', '서버 기록 형식을 확인하지 못했습니다. 다시 조회해 주세요.'); }
@@ -18,6 +18,10 @@ function instant(value: unknown): string {
 function seconds(value: unknown): number {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) return invalid();
   return value;
+}
+export function decodeWatermelonBalance(value: unknown): WatermelonBalance {
+  const row = record(value);
+  return { normalBalance: seconds(row.normalBalance), superBalance: seconds(row.superBalance) };
 }
 export function decodeProfile(value: unknown): Profile {
   const row = record(value);
@@ -40,11 +44,14 @@ export function decodeDay(value: unknown): DayRecord {
     || typeof row.isRestDay !== 'boolean'
     || (row.goalAchieved !== null && typeof row.goalAchieved !== 'boolean')) return invalid();
   const goalMinutes = row.goalMinutes === null ? null : seconds(row.goalMinutes);
+  if (row.superWatermelon !== undefined && typeof row.superWatermelon !== 'boolean') return invalid();
+  if (row.superWatermelon === true && new Date(`${studyDate}T00:00:00Z`).getUTCDay() !== 0) return invalid();
   if (goalMinutes !== null && goalMinutes > 1440) return invalid();
   return {
     studyDate, closedSeconds: seconds(row.closedSeconds), runningSeconds: seconds(row.runningSeconds),
     goalMinutes, attendance: row.attendance as DayRecord['attendance'],
     isRestDay: row.isRestDay, goalAchieved: row.goalAchieved,
+    ...(row.superWatermelon !== undefined ? { superWatermelon: row.superWatermelon as boolean } : {}),
   };
 }
 export function decodeGoals(value: unknown): GoalWeek {

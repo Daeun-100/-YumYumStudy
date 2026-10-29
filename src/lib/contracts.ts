@@ -10,7 +10,9 @@ export type StudySession = {
   endedAt: string | null;
 };
 export type GoalWeek = [number | null, number | null, number | null, number | null, number | null, number | null, number | null];
+export type WatermelonBalance = { normalBalance: number; superBalance: number };
 export type DayRecord = {
+  superWatermelon?: boolean;
   studyDate: StudyDate;
   closedSeconds: number;
   // Snapshot-only portion of an unclosed session; never include in closedSeconds.

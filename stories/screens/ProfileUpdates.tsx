@@ -1,3 +1,4 @@
+import { ToastProvider, useToast } from '../../src/design/toast';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Info, RefreshCw, Smartphone } from 'lucide-react-native';
@@ -10,18 +11,23 @@ import { BottomTabs } from '../../src/features/navigation/BottomTabs';
 export type UpdatePreviewState = 'latest' | 'checking' | 'downloading' | 'ready' | 'studying' | 'saving' | 'applying' | 'error';
 export type ProfileUpdatesProps = { initialState?: UpdatePreviewState; sectionOnly?: boolean; width?: number; height?: number };
 
+export function ProfileUpdates(props: ProfileUpdatesProps) {
+  const { sectionOnly = false, width = 390, height = 844 } = props;
+  return <View style={[sectionOnly ? s.sectionPreview : s.phone, { width }, !sectionOnly && { height }]}>
+    <ToastProvider scope="storybook-profile-updates"><ProfileUpdatesContent {...props} /></ToastProvider>
+  </View>;
+}
+
 // Storybook simulation only: no OTA requests, router, study timers or persistent writes.
-export function ProfileUpdates({ initialState = 'ready', sectionOnly = false, width = 390, height = 844 }: ProfileUpdatesProps) {
+function ProfileUpdatesContent({ initialState = 'ready', sectionOnly = false }: ProfileUpdatesProps) {
   const [state, setState] = useState(initialState);
-  const [notice, setNotice] = useState('');
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toast = useToast();
   function notify(message: string) {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setNotice(message);
-    toastTimer.current = setTimeout(() => setNotice(''), 2500);
+    toast.clear();
+    toast.show({ message, showIcon: false, tone: 'info', durationMs: 2500 });
   }
   const scheduled = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (scheduled.current) clearTimeout(scheduled.current); if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+  useEffect(() => () => { if (scheduled.current) clearTimeout(scheduled.current); }, []);
   function check() {
     setState('checking');
     scheduled.current = setTimeout(() => setState('downloading'), 700);
@@ -56,10 +62,8 @@ export function ProfileUpdates({ initialState = 'ready', sectionOnly = false, wi
     </View>
     <SettingsRow icon={<Info size={20} color={colors.primary} strokeWidth={1.8} />} label="앱 정보" value="1.0.2" onPress={() => {}} />
   </View>;
-  // Temporary toast presentation for this story only; the shared toast lives on another branch.
-  const toast = notice ? <View pointerEvents="none" style={s.toast}><Text accessibilityRole="alert" style={s.toastText}>{notice}</Text></View> : null;
-  if (sectionOnly) return <View style={[s.sectionPreview, { width }]}>{section}{toast}</View>;
-  return <View style={[s.phone, { width, height }]}>
+  if (sectionOnly) return section;
+  return <>
     <View style={s.statusBar}><Text style={s.time}>9:41</Text><Text style={s.state}>● ● ▰</Text></View>
     <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
       <Text accessibilityRole="header" style={s.heading}>다이앤님</Text>
@@ -73,8 +77,7 @@ export function ProfileUpdates({ initialState = 'ready', sectionOnly = false, wi
       {section}
     </ScrollView>
     <BottomTabs selected="나" onSelect={() => {}} />
-    {toast}
-  </View>;
+  </>;
 }
 const s = StyleSheet.create({
   phone: { maxWidth: '100%', borderRadius: 28, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', backgroundColor: colors.background },
@@ -94,6 +97,4 @@ const s = StyleSheet.create({
   statusButton: { paddingHorizontal: 0, alignItems: 'flex-end' },
   statusText: { ...typography.body, fontWeight: '400', textAlign: 'right' },
   progress: { height: 44, borderRadius: 22, backgroundColor: colors.soft, justifyContent: 'center', alignItems: 'center' },
-  toast: { position: 'absolute', left: 16, right: 16, bottom: 20, backgroundColor: colors.text, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12 },
-  toastText: { ...typography.caption, color: colors.onPrimary, textAlign: 'center' },
 });

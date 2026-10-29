@@ -25,7 +25,7 @@ import { createServerClock } from '../../lib/clock';
 import { getStudyDate } from '../../lib/study-day';
 import { toStudyError, type RoomMember, type Snapshot, type TodayData } from '../../lib/contracts';
 
-type State = { today: Snapshot<TodayData> | null; room: Snapshot<RoomMember[]> | null; loading: boolean; roomLoading: boolean; busy: boolean; error: string | null; roomError: string | null; actionFailed: boolean; startupReady: boolean; startupError: string | null; prepareUpdateReload(): Promise<boolean>; retryStartup(): Promise<void>; refresh(): Promise<void>; refreshRoom(): Promise<void>; toggle(): Promise<boolean> };
+type State = { today: Snapshot<TodayData> | null; room: Snapshot<RoomMember[]> | null; loading: boolean; roomLoading: boolean; busy: boolean; error: string | null; roomError: string | null; actionFailed: boolean; startupReady: boolean; canCelebrateLive: boolean; startupError: string | null; prepareUpdateReload(): Promise<boolean>; retryStartup(): Promise<void>; refresh(): Promise<void>; confirmToday(): Promise<Snapshot<TodayData> | null>; refreshRoom(): Promise<void>; toggle(): Promise<boolean> };
 const Context = createContext<State | null>(null);
 export function StudyProvider({ children }: PropsWithChildren) {
   const identity = useIdentity();
@@ -40,6 +40,11 @@ export function StudyProvider({ children }: PropsWithChildren) {
   const consumers = useSyncExternalStore(demand.subscribe, demand.read, demand.read);
   const observesToday = consumers.today > 0, observesRoom = consumers.room > 0;
   const active = useAppActive();
+  const [foreground, setForeground] = useState({ active, epoch: 0 });
+  if (foreground.active !== active) setForeground({ active, epoch: foreground.epoch + 1 });
+  const foregroundRef = useRef(foreground);
+  useLayoutEffect(() => { foregroundRef.current = foreground; }, [foreground]);
+  const [celebrationProof, setCelebrationProof] = useState<{ snapshot: Snapshot<TodayData>; epoch: number; scope: string } | null>(null);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const connectionKey = `${scope}:${active}:${observesToday}:${observesRoom}`;
   const [previousConnectionKey, setPreviousConnectionKey] = useState(connectionKey);
@@ -68,6 +73,8 @@ export function StudyProvider({ children }: PropsWithChildren) {
     previousStudyDate.current = studyDate;
   }, [studyDate]);
   const latestSnapshot = useRef<State['today']>(null);
+  const confirmedSnapshot = useRef<State['today']>(null);
+  const confirmedForegroundEpoch = useRef(-1);
   useEffect(() => { latestSnapshot.current = today; }, [today]);
   const clock = useRef<(() => number) | null>(null);
   const lock = useRef(false);
@@ -89,7 +96,7 @@ export function StudyProvider({ children }: PropsWithChildren) {
   useLayoutEffect(() => {
     generation.current++; sequence.current++; roomSequence.current++;
     startupFlight.current = null;
-    clock.current = null; latestSnapshot.current = null;
+    clock.current = null; latestSnapshot.current = null; confirmedSnapshot.current = null;
   }, [scope]);
   // Friend requests have their own lifetime: neither slow friends nor a timer
   // mutation may hold up applying the authenticated owner's snapshot.
@@ -115,10 +122,12 @@ export function StudyProvider({ children }: PropsWithChildren) {
   const loadToday = useCallback((changed = false): Promise<void> => {
     if (!scope || lock.current) return Promise.resolve();
     const owner = ownerId!;
+    const foregroundEpoch = foregroundRef.current.epoch;
     const requestedGeneration = generation.current;
     return sharedRefresh.current(requestedGeneration, () => measure('study.refresh', async () => {
       if (lock.current || requestedGeneration !== generation.current || currentScope.current !== scope) return;
       const request = ++sequence.current;
+      confirmedSnapshot.current = null; confirmedForegroundEpoch.current = -1;
       setLoading(true);
       if (Platform.OS === 'android' && studyGuard && latestSnapshot.current) {
         try {
@@ -136,6 +145,13 @@ export function StudyProvider({ children }: PropsWithChildren) {
         try {
           const guarded = await measure('study.reconcile', () => withTimeout(withRoomOperation(() => reconcileAndroidGuard(snapshot)), 10000, '휴대폰 공부 기록 동기화가 지연되고 있어요. 다시 시도해 주세요.'));
           snapshot = guarded.snapshot;
+          if (request === sequence.current && requestedGeneration === generation.current && currentScope.current === scope) {
+            confirmedSnapshot.current = snapshot;
+            if (isAppActive() && foregroundRef.current.active && foregroundRef.current.epoch === foregroundEpoch) {
+              confirmedForegroundEpoch.current = foregroundEpoch;
+              setCelebrationProof({ snapshot, epoch: foregroundEpoch, scope });
+            }
+          }
         } catch { /* Native status is not a server error and stays out of the home banner. */ }
         if (!alive.current || request !== sequence.current || requestedGeneration !== generation.current || currentScope.current !== scope) return;
         clock.current = createServerClock(snapshot.serverNow);
@@ -159,6 +175,15 @@ export function StudyProvider({ children }: PropsWithChildren) {
   const requestToday = todayObservation.request, requestRoom = roomObservation.request;
   // Explicit reads and mutation recovery do not depend on screen demand.
   const refresh = useCallback(async () => { try { await loadToday(); markTodayFresh(); } catch { /* State exposes the error. */ } }, [loadToday, markTodayFresh]);
+  // A celebration cannot rely on a stale running timer or a failed guard recovery.
+  const confirmToday = useCallback(async () => {
+    if (!scope || lock.current) return null;
+    const requestedGeneration = generation.current;
+    try {
+      await loadToday(); markTodayFresh();
+      return currentScope.current === scope && requestedGeneration === generation.current && !lock.current && !pending.current && foregroundRef.current.active && confirmedForegroundEpoch.current === foregroundRef.current.epoch ? confirmedSnapshot.current : null;
+    } catch { return null; }
+  }, [scope, loadToday, markTodayFresh]);
   const refreshRoom = useCallback(async () => { try { await loadRoom(); markRoomFresh(); } catch { /* State exposes the error. */ } }, [loadRoom, markRoomFresh]);
   const retryStartup = useCallback((): Promise<void> => {
     if (!scope) return Promise.resolve();
@@ -313,7 +338,8 @@ export function StudyProvider({ children }: PropsWithChildren) {
         && !snapshot.data.activeSession;
     } catch { return false; }
   }, [scope, startupReady, loadToday, ownerId]);
-  const value = useMemo(() => ({ today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, startupError, prepareUpdateReload, retryStartup, refresh, refreshRoom, toggle }), [today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, startupError, prepareUpdateReload, retryStartup, refresh, refreshRoom, toggle]);
+  const canCelebrateLive = active && foreground.active && celebrationProof?.epoch === foreground.epoch && celebrationProof?.scope === scope && celebrationProof?.snapshot === today && !busy && !actionFailed;
+  const value = useMemo(() => ({ today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, canCelebrateLive, startupError, prepareUpdateReload, retryStartup, refresh, confirmToday, refreshRoom, toggle }), [today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, canCelebrateLive, startupError, prepareUpdateReload, retryStartup, refresh, confirmToday, refreshRoom, toggle]);
   return <StudyClockContext.Provider value={time}><StudyResourceContext.Provider value={demand}><Context.Provider value={value}>{children}</Context.Provider></StudyResourceContext.Provider></StudyClockContext.Provider>;
 }
 export function useStudy() { const state = useContext(Context); if (!state) throw new Error('StudyProvider required'); return state; }

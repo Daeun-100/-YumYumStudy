@@ -11,12 +11,13 @@
 | `Profile` | `id`, `displayName`, 선택 필드 `character`, `activeSkinId`, `skinUpdatedAt` |
 | `StudySession` | `id`, `userId`, UTC ISO `startedAt`, UTC ISO 또는 null인 `endedAt` |
 | `GoalWeek` | 월~일 7개 원소. 각 값은 정수 0~1,440분 또는 null. 0은 휴무, null은 미설정 |
-| `DayRecord` | `studyDate`, `closedSeconds`, `runningSeconds`, `goalMinutes`, `attendance`, `isRestDay`, `goalAchieved` |
+| `DayRecord` | `studyDate`, `closedSeconds`, `runningSeconds`, `goalMinutes`, `attendance`, `isRestDay`, `goalAchieved`, 선택 boolean `superWatermelon` |
 | `GoalSettings` | `current`, `scheduled`, `effectiveDate`, 선택 필드 `isFirstSetup` |
 | `RoomMember` | `profile`, `today`, null 가능한 `activeSession` |
 | `Snapshot<T>` | UTC ISO `serverNow`와 `data`. 같은 기준 시각의 일관된 조회 결과 |
 | `LeaveGrant` | `id`, `status`, `scheduledDate`, `earnedAt`, 선택 필드 `approvedAt` 및 종류별 날짜 정보 |
 | `LeaveStatus` | `revision`, `availableCount`, `grants`. 잔액은 AVAILABLE 건수 |
+| `WatermelonBalance` | 안전한 비음수 정수 `normalBalance`, `superBalance`. 본인 잔액만 조회 |
 
 `attendance`는 present/absent/pending/leave다. 진행 중 포함 정수 초 합계 1초 이상이면 present이며 연차일은 leave가 우선한다. 양수 목표에서만 `goalAchieved`를 계산하고 휴무·미설정에서는 null이다. 0초인 현재·미래 날짜는 pending, 종료된 날짜는 absent다.
 
@@ -89,3 +90,15 @@ resumePendingLeave(): Promise<Snapshot<LeaveStatus> | null>
 - 실시간 변경은 같은 방 세션과 프로필을 포함한다. 표시용 초 시계는 로컬에서 계산하고 매초 DB 읽기·쓰기를 하지 않는다. 최신 화면별 수요·보조 조회 설계는 관련 코드와 갱신 설계 문서에서 확인한다.
 - 라우트는 `src/app/`에 두고 화면·상태 로직은 `src/features/` 등 라우트 밖에서 관리한다. 현재 없는 초기 화면 이름이나 과거 작업 번호에 맞춰 구조를 되돌리지 않는다.
 - 오류는 `StudyError`로 전달한다. code는 NETWORK / UNAUTHORIZED / VALIDATION / POLICY_PENDING / NOT_CONFIGURED / UNKNOWN이며 한국어 안내를 제공한다. 실패·잘못된 응답을 빈 배열·0초·저장 성공으로 숨기지 않는다.
+
+## 수박 판정과 재화 계약
+
+`superWatermelon`은 기존 공부·목표·연차 기록으로 계산한 일요일 완주 표시다. 구형 서버에서 생략되면 앱에서 추정하지 않는다. 재화 거래·잔액은 기록 표시와 분리한다. 관리자 사후 연차로 표시가 바뀌더라도 기존 지급 거래를 수정하거나 잔액을 자동 회수하지 않는다.
+
+`watermelon_transactions`는 일반·슈퍼 공통 거래 내역이며 사용자+발생 사유+발생 키에 고유 제약이 있다. 일일 보상 키는 공부 날짜로, 두 종류 중 한 건만 허용한다. `watermelon_balances`는 사용자별 두 잔액을 저장한다. 내부 `_post_watermelon_transaction`은 프로필→잔액 잠금 순서로 새 거래와 증감을 원자적으로 처리하고 같은 입력 재시도에는 기존 ID를 반환한다. 다른 입력의 키 재사용과 음수 잔액은 거절한다. 거래 수정·삭제는 막고 계정 삭제의 연쇄 삭제만 허용한다.
+
+`watermelon_reward_policy`는 DB 도입 공부 날짜와 정책 버전을 고정한다. 도입 전에는 재화를 소급하지 않는다. `get_today`, `get_history`, `get_member_history`가 기존 입장·방 권한을 확인하고 조회 범위의 대상 날짜만 누락 지급을 복구한다. 일요일 완주는 전체 주간 기록으로 판정한다.
+
+`get_watermelon_balance()` → `Snapshot<WatermelonBalance>`이며 `normalBalance`, `superBalance` 두 안전한 비음수 정수를 반환한다. 데이터 함수는 `getWatermelonBalance()`다. 사용자 인자가 없으며 인증된 본인 지갑 한 행을 읽고, 없는 행은 0으로 처리한다. 이 API는 거래 합산·과거 스캔·지급 처리를 하지 않는다. 앱의 직접 테이블 접근과 내부 기록 함수 호출은 차단한다. 공개 업적 지급·소비 API와 잔액 UI는 이번 범위에 없다.
+
+적용 파일: `supabase/migrations/20261029063647_super_watermelon_rewards.sql` (운영 미적용 마이그레이션 교체). SQL 검증: `super_watermelon.sql`, `same_day_leave.sql`, `leave_attendance_policy.sql`, `admin_leave.sql`.

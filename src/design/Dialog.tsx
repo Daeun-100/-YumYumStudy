@@ -3,6 +3,7 @@ import { Button } from './components';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentProps, type PropsWithChildren } from 'react';
 import { Animated, Easing, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { spacing } from './theme';
+import { useBlockingOverlay } from '../hooks/useBlockingOverlay';
 
 const DismissContext = createContext<(() => void) | null>(null);
 export function DialogCloseButton(props: Omit<ComponentProps<typeof Button>, 'onPress'>) {
@@ -13,6 +14,7 @@ export function DialogCloseButton(props: Omit<ComponentProps<typeof Button>, 'on
 type Props = PropsWithChildren<{ visible: boolean; label: string; onClose(): void; busy?: boolean; embedded?: boolean }>;
 export function Dialog({ visible, label, onClose, busy = false, embedded = false, children }: Props) {
   useUpdateReloadBlocker(visible || busy);
+  useBlockingOverlay(visible);
   if (!visible) return null;
   return <AnimatedDialog label={label} onClose={onClose} busy={busy} embedded={embedded}>{children}</AnimatedDialog>;
 }

@@ -15,11 +15,13 @@
 - [상세 기능 정책과 검증 기준](product/FEATURE-POLICIES.md): 입력 제한, 날짜·상태 판정, 예외와 권한
 - [화면별 기능과 사용 흐름](product/CURRENT-FEATURES.md): 현재 작업본의 화면 진입·표시·조작
 - [캐릭터 이벤트 스킨 명세](product/CHARACTER-SKINS-SPEC.md): 스킨 보유·선택·표시와 호환성
+- [목표 달성과 보상 연차 인앱 알림](product/IN-APP-CELEBRATIONS.md): 당일 축하, 도장 모으기 전환과 Storybook 확인 방법
 
 ## 개발과 테스트
 
 - [기술 설계와 구현 원칙](development/ARCHITECTURE.md)
 - [데이터 및 API 공통 계약](development/CONTRACT.md)
+- [공통 인앱 토스트 사용법](development/TOASTS.md): 웹·앱 호출 API, 대기열·중복·전용 콘텐츠
 - [iPhone 웹앱 테스트](development/IPHONE-WEB-TESTING.md)
 - 이미지 파일을 추가하거나 교체할 때는 [에셋 규칙](../assets/README.md)을 따른다.
 
@@ -35,6 +37,8 @@
 - 설치 안내 사이트는 [다운로드 페이지 안내](../download-site/README.md)를 참고한다.
 
 ## 기획과 개선안
+
+- [목표 달성 보상 명세](proposals/GOAL-ACHIEVEMENT-REWARDS-SPEC.md): 7일 완주 금색 수박, 기존 인포 팝업 안내와 수집·소비 제외
 
 - [공부방 데이터 갱신 개선안](proposals/STUDY-REFRESH-DESIGN.md)
 - [수박 보상과 꾸미기 시안](proposals/WATERMELON-REWARDS-DRAFT.md)
