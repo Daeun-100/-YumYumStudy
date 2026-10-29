@@ -1,4 +1,4 @@
-import { OtaUpdateLifecycle } from '../features/ota/OtaUpdateLifecycle';
+import { OtaUpdateProvider } from '../features/ota/OtaUpdateProvider';
 import { AppVersionReporter } from '../features/app-version/AppVersionReporter';
 import { StartupBoundary } from '../components/StartupBoundary';
 import { CallNotificationLifecycle } from '../features/call-friend/CallNotifications';
@@ -18,13 +18,12 @@ import { AchievementCelebrations } from '../features/celebrations/AchievementCel
 export default function RootLayout() {
   return <SafeAreaProvider><RoomBuildBoundary><UpdateProvider><IdentityProvider><AdmissionGate><StudyProvider><LeaveProvider>
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <OtaUpdateLifecycle />
       <AppVersionReporter />
       <CallNotificationLifecycle />
       <UpdateNotice variant="global" />
-      <StartupBoundary><AppToastProvider><TestRoomSelector /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+      <StartupBoundary><AppToastProvider><OtaUpdateProvider><TestRoomSelector /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
-      </Stack><AchievementCelebrations /></AppToastProvider></StartupBoundary>
+      </Stack><AchievementCelebrations /></OtaUpdateProvider></AppToastProvider></StartupBoundary>
       <StatusBar style="dark" />
     </SafeAreaView>
   </LeaveProvider></StudyProvider></AdmissionGate></IdentityProvider></UpdateProvider></RoomBuildBoundary></SafeAreaProvider>;

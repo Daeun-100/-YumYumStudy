@@ -335,7 +335,7 @@ export function StudyProvider({ children }: PropsWithChildren) {
       const snapshot = latestSnapshot.current;
       return alive.current && currentScope.current === scope && generationBefore === generation.current
         && !lock.current && !pending.current && !!snapshot && snapshot.data.profile.id === ownerId
-        && !snapshot.data.activeSession;
+        && !snapshot.data.activeSession && confirmedSnapshot.current === snapshot;
     } catch { return false; }
   }, [scope, startupReady, loadToday, ownerId]);
   const canCelebrateLive = active && foreground.active && celebrationProof?.epoch === foreground.epoch && celebrationProof?.scope === scope && celebrationProof?.snapshot === today && !busy && !actionFailed;

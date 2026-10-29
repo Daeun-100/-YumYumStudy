@@ -1,3 +1,4 @@
+import { OtaUpdateRow } from '../ota/OtaUpdateRow';
 import { useStudyResources } from '../study/study-resources';
 import { recordQueryVersion } from '../../lib/record-query-version';
 import { CallNotificationSettings } from '../call-friend/CallNotifications';
@@ -61,7 +62,7 @@ export function ProfileScreen() {
     </View>
     <CallNotificationSettings />
     <View style={s.rule} />
-    <View style={s.section}><Text style={s.eyebrow}>이용 안내</Text><SettingsRow icon={<InfoIcon tone="primary" />} label="공부와 연차 이용 안내" onPress={() => router.push('/profile-guide')} /><SettingsRow icon="↗" label="앱 정보" value={config.expo.version} onPress={() => router.push('/profile-info')} /></View>
+    <View style={s.section}><Text style={s.eyebrow}>이용 안내</Text><SettingsRow icon={<InfoIcon tone="primary" />} label="공부와 연차 이용 안내" onPress={() => router.push('/profile-guide')} /><OtaUpdateRow /><SettingsRow icon="↗" label="앱 정보" value={config.expo.version} onPress={() => router.push('/profile-info')} /></View>
   </View></Page>;
 }
 const s = StyleSheet.create({

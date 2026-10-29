@@ -1,7 +1,8 @@
+import { OtaUpdateRowView } from '../../src/features/ota/OtaUpdateRowView';
 import { ToastProvider, useToast } from '../../src/design/toast';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Info, RefreshCw, Smartphone } from 'lucide-react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Info, Smartphone } from 'lucide-react-native';
 import { Button, InfoIcon } from '../../src/design/components';
 import { colors, spacing, typography } from '../../src/design/theme';
 import { SettingsRow, WeeklyAchievement } from '../../src/features/profile/ProfileComponents';
@@ -51,17 +52,7 @@ function ProfileUpdatesContent({ initialState = 'ready', sectionOnly = false }: 
   const section = <View style={s.section}>
     <Text style={s.eyebrow}>이용 안내</Text>
     <SettingsRow icon={<InfoIcon tone="primary" />} label="공부와 연차 이용 안내" onPress={() => {}} />
-    <View style={s.update}>
-      <View style={s.icon} accessible={false}><RefreshCw size={20} color={colors.primary} strokeWidth={1.8} /></View>
-      <Text style={[s.label, { flex: 1 }]}>앱 업데이트</Text>
-      <View style={s.action}>
-        {working ? <View style={s.progress} accessibilityRole="progressbar" accessibilityLabel={state === 'applying' ? '업데이트 적용 중' : '업데이트 준비 중'}><ActivityIndicator size="small" color={colors.primary} /></View>
-          : <Pressable accessibilityRole="button" accessibilityLabel={ready ? '적용하기' : '앱 업데이트 다시 확인'} onPress={ready ? apply : check}
-            style={({ pressed }) => [s.updateButton, !ready && s.statusButton, ready && { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}>
-            <Text numberOfLines={1} style={[s.actionText, !ready && s.statusText, ready && { color: colors.onPrimary }]}>{ready ? '적용하기' : state === 'error' ? '다시 확인' : '최신 상태'}</Text>
-          </Pressable>}
-      </View>
-    </View>
+    <OtaUpdateRowView pending={ready} busy={working} onPress={ready ? apply : check} />
     <SettingsRow icon={<Info size={20} color={colors.primary} strokeWidth={1.8} />} label="앱 정보" value="1.0.2" onPress={() => {}} />
   </View>;
   if (sectionOnly) return section;
@@ -92,12 +83,4 @@ const s = StyleSheet.create({
   rule: { height: 1, backgroundColor: colors.track },
   label: { ...typography.body, fontWeight: '600', color: colors.text }, state: { ...typography.caption, color: colors.secondary },
   notifications: { gap: 10, paddingVertical: 12 },
-  update: { height: 76, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  icon: { width: 30, alignItems: 'center', justifyContent: 'center' },
-  action: { width: 88 },
-  updateButton: { minHeight: 44, paddingHorizontal: 10, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  actionText: { ...typography.secondary, fontSize: 14, fontWeight: '600', color: colors.secondary },
-  statusButton: { paddingHorizontal: 0, alignItems: 'flex-end' },
-  statusText: { ...typography.body, fontWeight: '400', textAlign: 'right' },
-  progress: { height: 44, borderRadius: 22, backgroundColor: colors.soft, justifyContent: 'center', alignItems: 'center' },
 });

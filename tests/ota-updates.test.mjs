@@ -4,143 +4,124 @@ import { createOtaController } from '../src/features/ota/controller.ts';
 import { blockUpdateReload, updateReloadBlocked, beginUpdateReload, cancelUpdateReload, isUpdateReloading } from '../src/features/ota/reload-gate.ts';
 
 function fixture(overrides = {}) {
-  const state = { active: true, safe: true, now: 100_000, checks: 0, downloads: 0, reloads: 0, prepares: 0, notices: 0, begins: 0, cancels: 0 };
+  const state = { active: true, safe: true, now: 100_000, checks: 0, downloads: 0, reloads: 0, prepares: 0, begins: 0, cancels: 0, snapshots: [] };
   const deps = {
     active: () => state.active, safe: () => state.safe, now: () => state.now,
     check: async () => { state.checks++; return { isAvailable: true, isRollBackToEmbedded: false }; },
     fetch: async () => { state.downloads++; return { isNew: true, isRollBackToEmbedded: false }; },
     prepare: async () => { state.prepares++; return true; },
     begin: () => { state.begins++; return true; },
-    reload: async () => { state.reloads++; state.safe = false; },
-    cancel: () => { state.cancels++; }, changed: () => { state.notices++; },
-    ...overrides,
+    reload: async () => { state.reloads++; }, cancel: () => { state.cancels++; },
+    changed: snapshot => state.snapshots.push(snapshot), ...overrides,
   };
   return { state, controller: createOtaController(deps) };
 }
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
 
-test('downloads while studying but waits for a safe saved state before automatic reload', async () => {
+test('download completion and foreground checks never reload, even after study ends', async () => {
   const { state, controller } = fixture();
-  state.safe = false;
-  await controller.check();
-  assert.equal(state.downloads, 1);
-  assert.equal(controller.isPending(), true);
-  await controller.apply();
-  assert.equal(state.prepares, 0);
+  state.safe = false; await controller.check();
+  assert.equal(state.downloads, 1); assert.equal(controller.isPending(), true);
   state.safe = true;
-  await controller.apply();
-  assert.equal(state.reloads, 1);
-  await controller.apply();
-  assert.equal(state.reloads, 1);
+  for (let i = 0; i < 3; i++) { state.now += 60_000; await controller.check(); }
+  assert.equal(state.prepares, 0); assert.equal(state.reloads, 0);
+  assert.deepEqual(state.snapshots.map(s => s.phase), ['checking', 'downloading', 'downloading', 'idle']);
 });
 
-test('deduplicates startup/resume checks and throttles no-update checks', async () => {
+test('only an explicit apply action prepares and reloads a ready update once', async () => {
+  const { state, controller } = fixture(); await controller.check();
+  assert.equal(await controller.apply(), 'applied');
+  assert.equal(await controller.apply(), 'not-ready');
+  assert.equal(state.prepares, 1); assert.equal(state.reloads, 1);
+  assert.equal(state.snapshots.at(-1).phase, 'applying');
+});
+
+test('studying or saving blocks the click without starting preparation or scheduling a retry', async () => {
+  const { state, controller } = fixture(); controller.downloaded(); state.safe = false;
+  assert.equal(await controller.apply(), 'blocked'); assert.equal(state.prepares, 0);
+  state.safe = true; state.now += 600_000; await controller.check();
+  assert.equal(state.reloads, 0);
+  assert.equal(await controller.apply(), 'applied');
+});
+
+test('automatic checks deduplicate and throttle; manual checks bypass the cooldown', async () => {
   const request = deferred();
   const { state, controller } = fixture({ check: async () => { state.checks++; return request.promise; } });
-  const flight = controller.check();
-  await controller.check();
-  request.resolve({ isAvailable: false, isRollBackToEmbedded: false });
-  await flight;
-  await controller.check();
-  assert.equal(state.checks, 1);
-  state.now += 60_000;
-  await controller.check();
-  assert.equal(state.checks, 2);
-  assert.equal(state.downloads, 0);
+  const flight = controller.check(); await controller.check(true);
+  request.resolve({ isAvailable: false, isRollBackToEmbedded: false }); assert.equal(await flight, 'latest');
+  assert.equal(await controller.check(), 'skipped'); assert.equal(state.checks, 1);
+  assert.equal(await controller.check(true), 'latest'); assert.equal(state.checks, 2);
+  state.now += 60_000; await controller.check(); assert.equal(state.checks, 3);
 });
 
-test('offline failure stays usable and retries on a later foreground check', async () => {
+test('offline download returns idle and manual retry preserves the current app', async () => {
   const { state, controller } = fixture({ fetch: async () => { state.downloads++; if (state.downloads === 1) throw Error('offline'); return { isNew: true }; } });
-  await controller.check();
-  assert.equal(controller.isPending(), false);
-  state.now += 60_000;
-  await controller.check();
-  assert.equal(controller.isPending(), true);
+  assert.equal(await controller.check(), 'failed'); assert.equal(controller.isPending(), false);
+  assert.equal(state.snapshots.at(-1).phase, 'idle');
+  assert.equal(await controller.check(true), 'ready'); assert.equal(state.reloads, 0);
 });
 
-test('observes a download from the built-in startup check without fetching twice', async () => {
-  const { state, controller } = fixture();
-  controller.downloaded(); controller.downloaded();
-  await controller.check();
-  assert.equal(state.checks, 0);
-  assert.equal(state.notices, 1);
-  await controller.apply();
-  assert.equal(state.reloads, 1);
-});
-
-for (const reason of ['timer started', 'draft/dialog opened', 'save began', 'backgrounded', 'unmounted']) {
-  test(`rechecks eligibility after server/native preparation: ${reason}`, async () => {
-    const prep = deferred();
-    const { state, controller } = fixture({ prepare: () => prep.promise });
-    controller.downloaded();
-    const flight = controller.apply();
-    await controller.apply();
-    if (reason === 'backgrounded') state.active = false;
-    else if (reason === 'unmounted') controller.dispose();
-    else state.safe = false;
-    prep.resolve(true); await flight;
-    assert.equal(state.reloads, 0);
-    assert.equal(state.begins, 0);
-  });
-}
-
-test('failed server/native reconciliation defers reload with a bounded retry rate', async () => {
-  const { state, controller } = fixture({ prepare: async () => { state.prepares++; return false; } });
-  controller.downloaded();
-  await controller.apply(); await controller.apply();
-  assert.equal(state.prepares, 1);
-  assert.equal(state.reloads, 0);
-  state.now += 60_000;
-  await controller.apply();
-  assert.equal(state.prepares, 2);
-});
-
-test('reload failure releases the gate and retries later without losing the download', async () => {
-  const { state, controller } = fixture({ reload: async () => { state.reloads++; throw Error('reload failed'); } });
-  controller.downloaded();
-  await controller.apply(); await controller.apply();
-  assert.equal(state.cancels, 1);
-  assert.equal(controller.isPending(), true);
-  state.now += 60_000;
-  await controller.apply();
-  assert.equal(state.reloads, 2);
-});
-
-test('rollback directives are downloaded and applied through the same safety checks', async () => {
-  const { state, controller } = fixture({
-    check: async () => ({ isAvailable: false, isRollBackToEmbedded: true }),
-    fetch: async () => ({ isNew: false, isRollBackToEmbedded: true }),
-  });
-  await controller.check(); await controller.apply();
-  assert.equal(state.reloads, 1);
-});
-
-test('background does not check the server or apply a pending download', async () => {
-  const { state, controller } = fixture();
-  state.active = false;
-  await controller.check(); controller.downloaded(); await controller.apply();
+test('built-in startup downloads become ready without duplicate fetch or automatic reload', async () => {
+  const { state, controller } = fixture(); controller.downloaded(); controller.downloaded();
+  assert.equal(state.snapshots.length, 1); assert.equal(await controller.check(), 'ready');
   assert.equal(state.checks, 0); assert.equal(state.reloads, 0);
 });
 
-test('disposing during download never starts a reload or updates the UI', async () => {
-  const request = deferred();
-  const { state, controller } = fixture({ fetch: () => request.promise });
-  const flight = controller.check();
-  await Promise.resolve();
-  controller.dispose();
-  request.resolve({ isNew: true }); await flight; await controller.apply();
-  assert.equal(state.notices, 0); assert.equal(state.reloads, 0);
+for (const reason of ['timer started', 'draft/dialog opened', 'save began', 'backgrounded', 'unmounted']) {
+  test(`manual apply rechecks after preparation: ${reason}`, async () => {
+    const prep = deferred(); const { state, controller } = fixture({ prepare: () => prep.promise });
+    controller.downloaded(); const flight = controller.apply();
+    assert.equal(await controller.apply(), 'not-ready');
+    if (reason === 'backgrounded') state.active = false;
+    else if (reason === 'unmounted') controller.dispose(); else state.safe = false;
+    prep.resolve(true); assert.equal(await flight, 'blocked');
+    assert.equal(state.reloads, 0); assert.equal(state.begins, 0);
+  });
+}
+
+test('failed reconciliation never reloads and requires another click to retry', async () => {
+  const { state, controller } = fixture({ prepare: async () => { state.prepares++; return state.prepares > 1; } });
+  controller.downloaded(); assert.equal(await controller.apply(), 'blocked');
+  state.now += 60_000; await controller.check(); assert.equal(state.prepares, 1);
+  assert.equal(await controller.apply(), 'applied');
 });
 
-test('nested draft blockers and the synchronous reload lock protect new actions', () => {
-  const closeFirst = blockUpdateReload(); const closeSecond = blockUpdateReload();
-  assert.equal(beginUpdateReload(), false);
-  closeFirst(); closeFirst();
-  assert.equal(updateReloadBlocked(), true);
-  closeSecond();
-  assert.equal(beginUpdateReload(), true);
-  assert.equal(isUpdateReloading(), true);
-  assert.equal(beginUpdateReload(), false);
-  cancelUpdateReload();
-  assert.equal(updateReloadBlocked(), false);
+test('reload failure releases the gate, keeps the download, and allows manual retry', async () => {
+  const { state, controller } = fixture({ reload: async () => { state.reloads++; if (state.reloads === 1) throw Error('reload failed'); } });
+  controller.downloaded(); assert.equal(await controller.apply(), 'failed');
+  assert.equal(state.cancels, 1); assert.equal(controller.isPending(), true);
+  assert.equal(state.snapshots.at(-1).phase, 'idle');
+  assert.equal(await controller.apply(), 'applied'); assert.equal(state.reloads, 2);
+});
+
+test('rollback waits for an explicit apply action and uses the same safety checks', async () => {
+  const { state, controller } = fixture({ check: async () => ({ isAvailable: false, isRollBackToEmbedded: true }), fetch: async () => ({ isNew: false, isRollBackToEmbedded: true }) });
+  await controller.check(); assert.equal(state.reloads, 0);
+  assert.equal(await controller.apply(), 'applied'); assert.equal(state.reloads, 1);
+});
+
+test('background does not check or apply updates', async () => {
+  const { state, controller } = fixture(); state.active = false;
+  assert.equal(await controller.check(), 'skipped'); controller.downloaded();
+  assert.equal(await controller.apply(), 'blocked'); assert.equal(state.checks, 0); assert.equal(state.reloads, 0);
+});
+
+test('disposing during a download stops UI changes and reloads', async () => {
+  const request = deferred(); const { state, controller } = fixture({ fetch: () => request.promise });
+  const flight = controller.check(); await Promise.resolve();
+  controller.dispose(); const before = state.snapshots.length;
+  request.resolve({ isNew: true }); await flight; await controller.apply();
+  assert.equal(state.snapshots.length, before); assert.equal(state.reloads, 0);
+});
+
+test('a failed gate acquisition does not reload', async () => {
+  const { state, controller } = fixture({ begin: () => false }); controller.downloaded();
+  assert.equal(await controller.apply(), 'blocked'); assert.equal(state.reloads, 0);
+});
+
+test('nested drafts and the synchronous reload lock protect new actions', () => {
+  const first = blockUpdateReload(), second = blockUpdateReload();
+  assert.equal(beginUpdateReload(), false); first(); first(); assert.equal(updateReloadBlocked(), true);
+  second(); assert.equal(beginUpdateReload(), true); assert.equal(isUpdateReloading(), true);
+  assert.equal(beginUpdateReload(), false); cancelUpdateReload(); assert.equal(updateReloadBlocked(), false);
 });
