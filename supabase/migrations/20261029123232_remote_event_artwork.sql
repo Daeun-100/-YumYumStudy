@@ -29,7 +29,8 @@ create function private.validate_artwork_definition(m jsonb) returns void
 language plpgsql set search_path='' as $$
 declare screen text; a jsonb; e jsonb; pos jsonb; k text; w int; h int; rev uuid; nm text; n numeric;
 begin
- if jsonb_typeof(m) is distinct from 'object' or m->>'schemaVersion' is distinct from '1' or m->>'kind' is null or m->>'kind' not in ('skin','background')
+ if jsonb_typeof(m) is distinct from 'object' or m->'schemaVersion' is distinct from '1'::jsonb or m->>'kind' is null or m->>'kind' not in ('skin','background')
+  or jsonb_typeof(m->'id') is distinct from 'string' or jsonb_typeof(m->'name') is distinct from 'string'
   or coalesce(m->>'id','') !~ '^[a-z0-9][a-z0-9_-]{0,79}$' or coalesce(length(btrim(m->>'name')),0) not between 1 and 60 then raise exception 'Invalid artwork definition' using errcode='22023'; end if;
  if m->>'kind'='background' and m->>'id' !~ '^[a-z0-9][a-z0-9-]{0,79}$' then raise exception 'Invalid background ID' using errcode='22023';end if;
  rev:=(m->>'revision')::uuid;if rev is null then raise exception 'Revision required' using errcode='22023';end if;
@@ -38,7 +39,8 @@ begin
   a:=m->screen;
   w:=case when screen='home' then 1536 when m->>'kind'='skin' then 1254 else 1024 end;
   h:=case when screen='home' then 1024 when m->>'kind'='skin' then 1254 else 1536 end;
-  if jsonb_typeof(a) is distinct from 'object' or a->>'path' is distinct from (m->>'kind')||'/'||(m->>'id')||'/'||rev::text||'/'||screen||'.png'
+  if jsonb_typeof(a) is distinct from 'object' or jsonb_typeof(a->'path') is distinct from 'string' or jsonb_typeof(a->'sha256') is distinct from 'string'
+   or jsonb_typeof(a->'width') is distinct from 'number' or jsonb_typeof(a->'height') is distinct from 'number' or jsonb_typeof(a->'bytes') is distinct from 'number' or a->>'path' is distinct from (m->>'kind')||'/'||(m->>'id')||'/'||rev::text||'/'||screen||'.png'
    or coalesce(a->>'sha256','') !~ '^[a-f0-9]{64}$' or (a->>'width')::integer is distinct from w or (a->>'height')::integer is distinct from h
    or coalesce((a->>'bytes')::bigint,0) not between 1 and 5242880 then raise exception 'Invalid artwork image' using errcode='22023';end if;
   if not exists(select 1 from storage.objects o where o.bucket_id='event-artwork' and o.name=a->>'path'
@@ -46,23 +48,24 @@ begin
  end loop;
  if m ? 'homePlacement' then
   pos:=m->'homePlacement';
-  if jsonb_typeof(pos) is distinct from 'object' or coalesce((pos->>'scale')::numeric,0) not between .1 and 2
+  if jsonb_typeof(pos) is distinct from 'object' or jsonb_typeof(pos->'scale') is distinct from 'number'
+   or jsonb_typeof(pos->'x') is distinct from 'number' or jsonb_typeof(pos->'y') is distinct from 'number' or coalesce((pos->>'scale')::numeric,0) not between .1 and 2
    or (pos->>'x') is null or (pos->>'x')::numeric not between 0 and 1536
    or (pos->>'y') is null or (pos->>'y')::numeric not between 0 and 1024 then raise exception 'Invalid home placement' using errcode='22023';end if;
  end if;
- if m ? 'focusBottom' and ((m->>'focusBottom') is null or (m->>'focusBottom')::numeric not between 0 and 1254) then raise exception 'Invalid focus placement' using errcode='22023';end if;
+ if m ? 'focusBottom' and (jsonb_typeof(m->'focusBottom') is distinct from 'number' or (m->>'focusBottom') is null or (m->>'focusBottom')::numeric not between 0 and 1254) then raise exception 'Invalid focus placement' using errcode='22023';end if;
  if m ? 'effects' then
   if jsonb_typeof(m->'effects') is distinct from 'array' then raise exception 'Invalid effects' using errcode='22023';end if;
   if jsonb_array_length(m->'effects')>3 or (m->>'kind'='background' and jsonb_array_length(m->'effects')>0) then raise exception 'Unsupported effect composition' using errcode='22023';end if;
   for e in select value from jsonb_array_elements(m->'effects') loop
-   if e->>'kind' is distinct from 'warmSteam' or (e ? 'version' and e->>'version' is distinct from '1') then raise exception 'Unsupported effect kind or version' using errcode='22023';end if;
+   if e->>'kind' is distinct from 'warmSteam' or (e ? 'version' and e->'version' is distinct from '1'::jsonb) then raise exception 'Unsupported effect kind or version' using errcode='22023';end if;
    if exists(select 1 from jsonb_object_keys(e) key where key not in ('kind','version','home','focus')) then raise exception 'Unsupported effect parameter' using errcode='22023';end if;
    foreach screen in array array['home','focus'] loop
     pos:=e->screen;
     if jsonb_typeof(pos) is distinct from 'object' then raise exception 'Effect placement required' using errcode='22023';end if;
     if exists(select 1 from jsonb_object_keys(pos) key where key not in ('x','y','width','opacity')) then raise exception 'Unsupported placement parameter' using errcode='22023';end if;
     foreach k in array array['x','y','width','opacity'] loop
-     if pos->>k is null then raise exception 'Effect parameter required' using errcode='22023';end if;
+     if jsonb_typeof(pos->k) is distinct from 'number' or pos->>k is null then raise exception 'Effect parameter required' using errcode='22023';end if;
      n:=(pos->>k)::numeric;
      if n<0 or n>1 or (k='width' and (n<.01 or n>.5)) or n::text in ('NaN','Infinity','-Infinity') then raise exception 'Effect parameter out of range' using errcode='22023';end if;
     end loop;

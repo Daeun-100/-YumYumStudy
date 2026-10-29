@@ -16,6 +16,8 @@ try{
  await upload(skin);
  await call('admin_stage_artwork',[JSON.stringify(skin)]);
  await call('admin_stage_artwork',[JSON.stringify(skin)]);
+ await assert.rejects(()=>call('admin_stage_artwork',[JSON.stringify({...skin,schemaVersion:'1'})]),/Invalid artwork/);
+ await assert.rejects(()=>call('admin_stage_artwork',[JSON.stringify({...skin,home:{...skin.home,bytes:'100'}})]),/Invalid artwork/);
  await assert.rejects(()=>call('admin_stage_artwork',[JSON.stringify({...skin,name:'overwrite'})]),/immutable/);
  await call('admin_publish_artwork',[skin.revision,true]);
  assert.equal((await db.query('select grant_enabled from public.character_skins where id=$1',[skin.id])).rows[0].grant_enabled,true);
