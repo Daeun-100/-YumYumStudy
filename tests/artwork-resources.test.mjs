@@ -2,19 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createArtworkResources} from '../src/lib/artwork-resources.ts';
 import {decodeArtwork,artworkUrl} from '../src/lib/artwork-content.ts';
-const rev='00000000-0000-4000-8000-000000000001';
+const firstHash='a'.repeat(64);
 export function manifest(overrides={}){
- const m={schemaVersion:1,revision:rev,kind:'skin',id:'remote-bunny',name:'remote bunny',character:'bunny',effects:[],...overrides};
- const file=screen=>({path:`${m.kind}/${m.id}/${m.revision}/${screen}.png`,sha256:'a'.repeat(64),bytes:100,width:screen==='home'?1536:m.kind==='skin'?1254:1024,height:screen==='home'?1024:m.kind==='skin'?1254:1536});
+ const m={schemaVersion:2,theme:'winter',kind:'skin',id:'remote-bunny',name:'remote bunny',character:'bunny',effects:[],...overrides};
+ const file=screen=>({path:`${m.theme}/${m.kind==='skin'?`skins/${m.id}`:`backgrounds/${m.id}`}/${screen}.png`,sha256:overrides.sha256??firstHash,bytes:100,width:screen==='home'?1536:m.kind==='skin'?1254:1024,height:screen==='home'?1024:m.kind==='skin'?1254:1536});
  return {...m,home:file('home'),focus:file('focus')};
 }
 const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return{promise,resolve};};
 test('remote content rejects arbitrary hosts, paths, sizes and schema versions',()=>{
- const m=manifest();assert.equal(decodeArtwork(m).revision,rev);
- for(const change of [{schemaVersion:2},{id:undefined},{home:{...m.home,path:'../outside.png'}},{focus:{...m.focus,width:2048}},{home:{...m.home,bytes:6*1024*1024}}])assert.throws(()=>decodeArtwork({...m,...change}));
+ const m=manifest();assert.equal(decodeArtwork(m).theme,'winter');
+ for(const change of [{schemaVersion:1},{id:undefined},{home:{...m.home,path:'../outside.png'}},{focus:{...m.focus,width:2048}},{home:{...m.home,bytes:6*1024*1024}}])assert.throws(()=>decodeArtwork({...m,...change}));
  for(const url of ['http://x.supabase.co','https://x.example.com','https://user:pass@x.supabase.co','https://x.supabase.co/other'])assert.throws(()=>artworkUrl(url,m.home));
- assert.equal(artworkUrl('https://x.supabase.co',m.home),`https://x.supabase.co/storage/v1/object/public/event-artwork/${m.home.path}`);
+ assert.equal(artworkUrl('https://x.supabase.co',m.home),`https://x.supabase.co/storage/v1/object/public/event-artwork/${m.home.path}?hash=${m.home.sha256}`);
 });
 test('unknown effects leave images usable; supported effect parameters are bounded',()=>{
  const m=manifest();assert.deepEqual(decodeArtwork({...m,effects:[{kind:'future-effect'}]}).effects,[]);
@@ -27,14 +27,14 @@ test('same skin requests share a fetch and become ready only after both images p
  const first=store.requestSkins(['remote-bunny']),second=store.requestSkins(['remote-bunny']);await flush();assert.equal(reads,1);assert.equal(store.read().get('skin:remote-bunny').state,'loading');
  gate.resolve();await Promise.all([first,second]);assert.equal(store.read().get('skin:remote-bunny').state,'ready');store.dispose();
 });
-test('failed image preparation does not replace a verified previous revision',async()=>{
+test('failed image preparation does not replace a verified previous image',async()=>{
  let fail=false;const store=createArtworkResources({now:()=>1,fetchSkins:async()=>[],prepare:async()=>{if(fail)throw Error('offline');}});
- await store.ingest(manifest());fail=true;await store.ingest(manifest({revision:'00000000-0000-4000-8000-000000000002'}));assert.equal(store.read().get('skin:remote-bunny').manifest.revision,rev);store.dispose();
+ await store.ingest(manifest());fail=true;await store.ingest(manifest({sha256:'b'.repeat(64)}));assert.equal(store.read().get('skin:remote-bunny').manifest.home.sha256,firstHash);store.dispose();
 });
-test('late preparation of an older revision cannot replace newer artwork',async()=>{
- const first=deferred();const second='00000000-0000-4000-8000-000000000002';
- const store=createArtworkResources({now:()=>1,fetchSkins:async()=>[],prepare:async m=>{if(m.revision===rev)await first.promise;}});
- const slow=store.ingest(manifest());await store.ingest(manifest({revision:second}));first.resolve();await slow;assert.equal(store.read().get('skin:remote-bunny').manifest.revision,second);store.dispose();
+test('late preparation of an older image cannot replace newer artwork',async()=>{
+ const first=deferred();const second='b'.repeat(64);
+ const store=createArtworkResources({now:()=>1,fetchSkins:async()=>[],prepare:async m=>{if(m.home.sha256===firstHash)await first.promise;}});
+ const slow=store.ingest(manifest());await store.ingest(manifest({sha256:second}));first.resolve();await slow;assert.equal(store.read().get('skin:remote-bunny').manifest.home.sha256,second);store.dispose();
 });
 test('an invalidation during an in-flight fetch queues one fresh read',async()=>{
  const gate=deferred();let reads=0;const store=createArtworkResources({now:()=>1,fetchSkins:async()=>{if(++reads===1)await gate.promise;return[manifest()];},prepare:async()=>{}});
@@ -44,9 +44,9 @@ test('disposed identity stores cannot publish a late response or save metadata',
  const gate=deferred();let saves=0;const store=createArtworkResources({now:()=>1,fetchSkins:async()=>{await gate.promise;return[manifest()];},prepare:async()=>{},save:()=>saves++});
  const task=store.requestSkins(['remote-bunny']);store.dispose();gate.resolve();await task;assert.equal(saves,0);assert.notEqual(store.read().get('skin:remote-bunny')?.state,'ready');
 });
-test('background revisions have distinct cache keys and invalid cached definitions are ignored',async()=>{
- const store=createArtworkResources({now:()=>1,fetchSkins:async()=>[],prepare:async()=>{}});await store.restore([manifest({schemaVersion:2})]);assert.equal(store.read().size,0);
- await store.ingest(manifest({kind:'background',id:'room'}));await store.ingest(manifest({kind:'background',id:'room',revision:'00000000-0000-4000-8000-000000000002'}));assert.equal(store.read().size,2);store.dispose();
+test('different background assets have distinct cache keys and invalid cached definitions are ignored',async()=>{
+ const store=createArtworkResources({now:()=>1,fetchSkins:async()=>[],prepare:async()=>{}});await store.restore([manifest({schemaVersion:1})]);assert.equal(store.read().size,0);
+ await store.ingest(manifest({kind:'background',id:'room'}));await store.ingest(manifest({kind:'background',id:'second-room'}));assert.equal(store.read().size,2);store.dispose();
 });
 test('unmounted skin consumers stop background refresh without dropping other consumers',async()=>{
  let reads=0;const store=createArtworkResources({now:()=>1,fetchSkins:async()=>{reads++;return[manifest()];},prepare:async()=>{}});
