@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { baselineIdentity, inspectAdministrativeChanges, nativeInputReasons, normalizationHook, safeIgnoreAdditions, sourceSnapshot, treeDigest,
+import { compareNativeFingerprints, baselineIdentity, inspectAdministrativeChanges, nativeInputReasons, normalizationHook, safeIgnoreAdditions, sourceSnapshot, treeDigest,
   validateReview, verifyReviewDecision } from '../scripts/deployment-review.mjs';
 const digest = 'd'.repeat(64);
 const baseline = { sha: 'a'.repeat(40), tag: 'v1.0.1', runtimeVersion: 'c'.repeat(40) };
@@ -93,4 +93,77 @@ test('operator tools do not require an APK but native inputs and hook callers st
   for (const path of tools) for (const hook of ['preinstall', 'install', 'postinstall', 'prepare', 'prebuild', 'eas-build-pre-install']) {
     assert.ok(nativeInputReasons([path], { [hook]: `node ${path}` }).some(reason => reason.includes('native build hook')), `${hook}: ${path}`);
   }
+});
+
+const packageBefore = { dependencies: { expo: '58' }, scripts: { test: 'node test', postinstall: 'node native.js' } };
+const dependencyAfter = { ...packageBefore, dependencies: { ...packageBefore.dependencies, 'expo-application': '58.1.2' } };
+const comparison = (after = dependencyAfter, changed = ['package.json', 'package-lock.json']) =>
+  ({ baseline, before: files(packageBefore), after: files(after), files: changed });
+
+test('dependency promotion and lockfile changes permit OTA only with the complete exact fingerprint', async () => {
+  const calls = [];
+  const result = await compareNativeFingerprints(comparison(), async hook => {
+    calls.push(hook);
+    return { hash: baseline.runtimeVersion };
+  });
+  assert.equal(result.compatible, true);
+  assert.equal(result.match, 'exact');
+  assert.equal(result.rawRuntime, baseline.runtimeVersion);
+  assert.deepEqual(result.exemptions, []);
+  assert.deepEqual(calls, [undefined], 'never normalize dependencies to make them match');
+});
+
+test('a changed resolved native fingerprint rejects dependency or lockfile edits without normalization', async () => {
+  for (const input of [comparison(), comparison(packageBefore, ['package-lock.json'])]) {
+    let calls = 0;
+    const result = await compareNativeFingerprints(input, async hook => {
+      assert.equal(hook, undefined);
+      calls++;
+      return { hash: 'f'.repeat(40) };
+    });
+    assert.equal(result.compatible, false);
+    assert.equal(result.match, null);
+    assert.equal(calls, 1);
+    assert.ok(result.reasons.length > 0);
+  }
+});
+
+test('fingerprint failures and invalid hashes never authorize OTA', async () => {
+  await assert.rejects(compareNativeFingerprints(comparison(), async () => { throw Error('cannot resolve'); }), /cannot resolve/);
+  await assert.rejects(compareNativeFingerprints(comparison(), async () => ({ hash: 'unknown' })), /Invalid native fingerprint/);
+  let calls = 0;
+  const result = await compareNativeFingerprints({ ...comparison(), baseline: null }, async () => { calls++; });
+  assert.equal(result.compatible, false);
+  assert.equal(calls, 0);
+});
+
+test('exact-match path preserves native source, fingerprint config, unknown scripts and hook guards', async () => {
+  const inputs = ['modules/module/android/Module.kt', 'plugins/config.js', 'android/app/build.gradle', 'ios/Podfile',
+    'fingerprint.config.js', '.fingerprintignore', 'eas.json', 'scripts/new-build.mjs'];
+  for (const path of inputs) {
+    let calls = 0;
+    const result = await compareNativeFingerprints(comparison(dependencyAfter, ['package.json', 'package-lock.json', path]),
+      async () => { calls++; return { hash: baseline.runtimeVersion }; });
+    assert.equal(result.compatible, false, path);
+    assert.equal(calls, 0, path);
+  }
+  const changedHook = { ...dependencyAfter, scripts: { ...dependencyAfter.scripts, postinstall: 'node changed.js' } };
+  assert.equal((await compareNativeFingerprints(comparison(changedHook), async () => ({ hash: baseline.runtimeVersion }))).compatible, false);
+  const changedIgnore = comparison(); changedIgnore.after['.gitignore'] += 'plugins/\n';
+  assert.equal((await compareNativeFingerprints(changedIgnore, async () => ({ hash: baseline.runtimeVersion }))).compatible, false);
+});
+
+test('administrative normalization remains available only when dependency inputs are unchanged', async () => {
+  const before = files({ scripts: { 'update:production': 'old', test: 'node test' } });
+  const after = files({ scripts: { 'update:production': 'new', test: 'node test' } });
+  const calls = [];
+  const result = await compareNativeFingerprints({ baseline, before, after, files: ['package.json'] }, async hook => {
+    calls.push(hook);
+    return { hash: hook ? baseline.runtimeVersion : 'f'.repeat(40) };
+  });
+  assert.equal(result.compatible, true);
+  assert.equal(result.match, 'administrative-normalization');
+  assert.deepEqual(result.exemptions, ['package-script:update:production']);
+  assert.equal(calls[0], undefined);
+  assert.equal(typeof calls[1], 'function');
 });

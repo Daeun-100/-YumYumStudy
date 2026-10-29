@@ -58,5 +58,6 @@ NULL 기록은 '확인 기록 없음'으로 표시한다. 마지막 확인 이�
 - Web export와 Android JS/Hermes export를 검증한다. APK 설치·실기기 실행 검증과는 구분한다.
 - `expo-application`은 기존 lockfile에도 전이 의존성으로 있던 동일 버전을 직접 선언했다.
   실제 운영 APK 포함 여부 및 OTA 호환성은 릴리스 검토에서 확인해야 한다.
-  기존 배포 검사는 package/lockfile 변경을 보수적으로 APK 경로로 분류하므로 이를 우회하지 않는다.
+  의존성 선언/lockfile 변경은 전체 원본 Android 지문이 공개 APK runtime과 정확히 같을 때만 OTA 호환으로 인정한다.
+  네이티브 소스·빌드 훅·지문 제외 규칙 변경에 대한 차단은 유지하며 의존성을 정규화해 숨기지 않는다.
 - 운영 앱 코드는 기존 develop → master 검토·배포 경로를 따른다. DB 적용만으로 기존 앱이 보고를 시작하지 않는다.
