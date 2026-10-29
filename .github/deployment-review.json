@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "sourceCommit": "5aaa829f45006703dd8a7a125cb51e22a9077e34",
-  "sourceTreeDigest": "b4005591a65e3801fdd542ee691011413aee2b61fde27c6a870c8e1e496126c3",
+  "sourceCommit": "786d63158112e983c77932bd3544940b8f59359a",
+  "sourceTreeDigest": "1f2604d33fa998fa316abc427d6a21527f5751d4958104016f1269deeb2bbe1a",
   "baseline": {
     "tag": "v1.0.2",
     "sha": "710bd2e10b4eb8aa16378486f3cb3517770ac878",
@@ -11,17 +11,18 @@
     "kind": "interactive-codex"
   },
   "recommendation": "update",
-  "rationale": "The complete raw production Android fingerprint exactly matches the installed v1.0.2 APK runtime, without normalization or a runtime override. expo-application 58.1.2 was already included through expo-notifications; only its direct dependency declaration was added. The app changes are JavaScript, JS-loaded skins/effects and version reporting. EAS Update is technically recommended. However the existing guard rejects dependency metadata/lockfile edits before resolving the fingerprint and computes APK. That policy mismatch remains a publication blocker; this review does not bypass the guard, change CI, bump APK versions or publish.",
+  "rationale": "The complete unmodified production Android fingerprint exactly equals the runtime embedded in the published v1.0.2 APK. expo-application 58.1.2 was already in the resolved native graph through expo-notifications; declaring that same dependency directly does not alter it. The classifier now permits dependency declaration/lockfile changes only when this full raw fingerprint matches, without restoring, skipping or normalizing dependency inputs. Native source, build-hook, fingerprint configuration/ignore and unknown build-script guards remain in force; failure or mismatch does not authorize OTA. Deterministic review-context now selects update with no exemptions or unresolved blockers. Existing source binding, APK identity/version checks and guarded runtime-preserving production publication remain required.",
   "evidence": [
-    "The publishedBaseline helper verified stable APK v1.0.2, source 710bd2e10b4eb8aa16378486f3cb3517770ac878, successful master build run 40502268634, archived EAS build d51d8be5-d5a1-4f8e-897e-71fd22381369, production channel, version 1.0.2, versionCode 3 and runtime 4a7adc844a392bfaead47665719d0291b9f3da58. git confirms the APK source belongs to origin/master.",
-    "Compared the complete APK-to-source file list and master-to-source diff. app.json, app.config.js, eas.json, config/, modules/, native plugins, launcher/splash assets, native hooks and ignore files are unchanged from the APK. Character PNGs are imported by JavaScript in skin-artwork.ts; SkinEffects uses existing React Native Animated and react-native-svg.",
-    "The only package and lockfile changes versus the APK are the root expo-application ~58.1.2 declaration. Its resolved lock entry remains unchanged at 58.1.2; expo-notifications already depends on it.",
-    "SDK-local runtimeversion:resolve --platform android --workflow managed on the reviewed production source returned raw runtime 4a7adc844a392bfaead47665719d0291b9f3da58. The complete fingerprint equals the published APK with no normalization. fingerprintSources includes expoAutolinkingConfig:android with expo-application 58.1.2.",
-    "review-context returns mode=apk, compatible=false, normalizedRuntime=null, exemptions=[] with reasons: Package metadata, dependencies, or non-deployment scripts changed; Native/build input changed: package-lock.json. The current classifier stops before checking the exact raw fingerprint.",
-    "Existing review-check and production plan require no blockers and equality between recommendation and deterministic mode. APK mode would also fail check-release because app/package 1.0.2, versionCode 3 and the published v1.0.2 tag remain unchanged. No version or classification exception was silently selected.",
-    "Inspected check.yml, cloud-build.yml, publish-release.yml, publish-web.yml, eas.json, app.config.js, deployment.mjs, deployment-review.mjs, deployment-history.mjs, check-release.mjs and release-candidate.mjs. A resolved update route would preserve the installed APK runtime, verify returned source/runtime, promote the same-source web and record a revision Release while retaining APK Latest. Publication is currently blocked before these steps.",
-    "Change-summary baseline is successful production update v1.0.2-r1, source ffb6ba236cd8a3ecf283750cfe4ba9babf2072e4. Compatibility baseline remains v1.0.2. This candidate includes PR #29 skins/effects, PR #27 release summaries and PR #31 user version reporting, plus the final black-cat home artwork/placement already present in develop.",
-    "User version reporting uses one row per auth.uid(), SECURITY INVOKER, own-row RLS, completed-admission checks and server timestamps. Migration 20261029025831 is already applied; transactional SQL checks rolled back all test observations. App code remains unpublished."
+    "publishedBaseline verified stable APK v1.0.2, source 710bd2e10b4eb8aa16378486f3cb3517770ac878, successful master build run 40502268634 and archived EAS build d51d8be5-d5a1-4f8e-897e-71fd22381369: version 1.0.2, versionCode 3, production channel, runtime 4a7adc844a392bfaead47665719d0291b9f3da58. APK source belongs to origin/master.",
+    "Compared the complete APK-to-source file list and master-to-source diff. app.json, app.config.js, eas.json, config/, modules/, native plugins, launcher/splash assets, native hooks and ignore files remain unchanged from the APK. New PNGs and steam effects are loaded/rendered by JavaScript with existing React Native/SVG modules.",
+    "The root dependency/lockfile declaration of expo-application ~58.1.2 is the sole dependency edit. Its existing resolved lock entry is unchanged at 58.1.2, already required by expo-notifications. No new package version or native module enters the resolved graph.",
+    "With no fileHookTransform, the production SDK fingerprint is 4a7adc844a392bfaead47665719d0291b9f3da58, exactly matching the published APK. review-context now reports mode=update, compatible=true, match=exact, exemptions=[], reasons=[]. rawRuntime and normalizedRuntime both equal the APK runtime; no normalization was applied.",
+    "compareNativeFingerprints first verifies metadata and old/new hook guards. Only dependency declaration fields and package-lock are eligible for exact raw proof. It never normalizes dependency contents. Raw failure/invalid hash rejects the check; mismatch retains the conservative APK path for changed dependencies/lockfiles. Unknown native/build/config/ignore changes remain blocked.",
+    "The existing administrative normalization path remains restricted to previously audited deployment scripts and temporary ignore additions when dependency inputs are unchanged. Tests verify the raw path has no transform and dependency mismatches cannot fall through to normalization.",
+    "New regression tests cover same-graph dependency promotion, lockfile mismatch, different native hash, failed/invalid hash calculation, missing APK baseline, native source/config/unknown script/hook/ignore guards and preservation of the legacy administrative normalization path. Full local lint/typecheck and 237 tests pass.",
+    "Inspected check.yml, cloud-build.yml, publish-release.yml, publish-web.yml, eas.json, app.config.js, deployment.mjs, deployment-review.mjs, deployment-history.mjs, check-release.mjs and release-candidate.mjs. Production plan and the guarded publisher invoke the same nativeCompatibility implementation and revalidate the report/source/APK. The publisher verifies runtime and commit, promotes same-source web only after successful OTA, then records a revision Release while retaining APK Latest.",
+    "Release notes compare with successful production update v1.0.2-r1 at ffb6ba236cd8a3ecf283750cfe4ba9babf2072e4; native compatibility compares with v1.0.2. Candidate includes skins/effects, black-cat home placement, release summaries and user version reporting. App version 1.0.2 and Android versionCode 3 remain unchanged for OTA.",
+    "Version reporting migration 20261029025831 is already applied and its transactional role/admission/timestamp/upsert tests rolled back all observations. This rule/review update does not alter the database, publish production code, grant skins or dispatch notifications."
   ],
   "releaseNotes": [
     "검은고양이 기본 홈 이미지를 가로형으로 통일하고 책상 위 배치를 조정했습니다.",
@@ -31,10 +32,7 @@
     "운영 개선: 릴리스에 한국어 변경 요약을 표시하고, 변경 요약이 없으면 배포 검사를 중단합니다."
   ],
   "exemptions": [],
-  "blockers": [
-    "The exact raw fingerprint supports update, but existing dependency/lockfile guards compute apk. A separately reviewed narrow classifier correction or an explicit new APK release decision is required; this report cannot override the guard.",
-    "If APK remains selected, advance app/package version and Android versionCode before publication. Published v1.0.2 / build 3 cannot be reused."
-  ],
+  "blockers": [],
   "baselineApp": {
     "version": "1.0.2",
     "androidVersionCode": 3,
@@ -247,44 +245,43 @@
     "releaseUrl": "https://github.com/Daeun-100/-YumYumStudy/releases/tag/v1.0.2-r1"
   },
   "nativeCompatibility": {
-    "rawRuntime": "4a7adc844a392bfaead47665719d0291b9f3da58",
-    "rawFingerprintMatchesPublishedApk": true,
-    "normalizationApplied": false,
-    "compatible": false,
+    "compatible": true,
     "exemptions": [],
-    "reasons": [
-      "Package metadata, dependencies, or non-deployment scripts changed",
-      "Native/build input changed: package-lock.json"
-    ],
-    "normalizedRuntime": null
+    "reasons": [],
+    "rawRuntime": "4a7adc844a392bfaead47665719d0291b9f3da58",
+    "normalizedRuntime": "4a7adc844a392bfaead47665719d0291b9f3da58",
+    "match": "exact",
+    "rawFingerprintMatchesPublishedApk": true,
+    "normalizationApplied": false
   },
   "actualWorkflowRoute": {
-    "computedMode": "apk",
-    "publicationStatus": "blocked",
-    "reason": "unresolved blockers and recommendation/mode mismatch",
-    "apkVersionCheck": "would reject published v1.0.2 reuse",
+    "mode": "update",
+    "channel": "production",
+    "platform": "android",
+    "runtimeVersion": "4a7adc844a392bfaead47665719d0291b9f3da58",
+    "apkBuild": false,
+    "webPreview": true,
+    "webPromotion": true,
+    "environment": "production",
+    "revisionRelease": "next unused v1.0.2-rN after successful verified OTA and web promotion",
     "publicationTriggeredDuringPreparation": false
   },
   "checks": {
     "lint": "passed",
     "typecheck": "passed",
-    "deploymentRegressionTests": {
-      "passed": 29,
-      "failed": 0
-    },
     "unitTests": {
-      "passed": 232,
+      "passed": 237,
       "failed": 0
     },
-    "webExport": "passed production export with secure HTML postprocessing",
-    "androidExport": "passed production Hermes/assets export",
-    "physicalDevice": "not verified",
-    "reviewSchema": "passed source digest and report contract validation",
-    "reviewCheck": "confirmed rejected: Deployment review has unresolved blockers"
+    "nativeCompatibility": "passed exact full raw fingerprint, no exemptions",
+    "reviewCheck": "passed: Deployment review and native compatibility verified: update",
+    "webExport": "passed on identical app sources before this scripts/tests/docs-only change; CI will re-export",
+    "androidExport": "passed on identical app sources before this scripts/tests/docs-only change",
+    "physicalDevice": "not verified"
   },
   "limitations": [
-    "sourceCommit is the reviewed develop merge; a following report-only commit preserves sourceTreeDigest, which excludes only this report. Any later source change requires review.",
-    "Physical-device appearance and actual OTA receipt are unverified. This update does not merge master, publish updates, build APKs, enable skins or dispatch notifications.",
-    "Existing deterministic classification remains unchanged. APK version metadata remains 1.0.2 / 3."
+    "sourceCommit is the reviewed source commit. Following report-only or identical-tree merge commits preserve sourceTreeDigest, which excludes only this report. Any source change requires a fresh review.",
+    "Physical-device appearance and actual OTA receipt remain unverified. No master merge, production publication, APK build, skin grant or notification dispatch is included in this request.",
+    "OTA and web alias promotion are sequential external operations; a web promotion failure can follow a successful Android OTA. App version and versionCode stay 1.0.2 / 3."
   ]
 }
