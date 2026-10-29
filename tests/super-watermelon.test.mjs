@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decodeDay } from '../src/data/decode.ts';
+import { decodeDay, decodeWatermelonBalance } from '../src/data/decode.ts';
 import { reservationReason } from '../src/features/leave/model.ts';
 import { recordQueryVersion } from '../src/lib/record-query-version.ts';
 
@@ -8,6 +8,15 @@ const sunday = { studyDate: '2026-10-25', closedSeconds: 180, runningSeconds: 0,
 const week = Array.from({ length: 7 }, (_, i) => ({ ...sunday, studyDate: `2026-10-${19 + i}` }));
 const grant = { id: 'available', kind: 'reward', status: 'AVAILABLE', scheduledDate: null, earningWeek: '2026-10-12', earnedAt: '2026-10-17T06:03:00+09:00', expiresAt: '2026-11-02T06:00:00+09:00' };
 const now = Date.parse('2026-10-25T12:00:00+09:00');
+
+test('wallet reads both currencies and rejects negative, fractional or unsafe balances', () => {
+  assert.deepEqual(decodeWatermelonBalance({ normalBalance: 6, superBalance: 1 }), { normalBalance: 6, superBalance: 1 });
+  assert.deepEqual(decodeWatermelonBalance({ normalBalance: 0, superBalance: 0 }), { normalBalance: 0, superBalance: 0 });
+  for (const value of [-1, 0.5, '3', null, undefined, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => decodeWatermelonBalance({ normalBalance: value, superBalance: 0 }));
+    assert.throws(() => decodeWatermelonBalance({ normalBalance: 0, superBalance: value }));
+  }
+});
 
 test('gold accepts server Sunday markers, rejects malformed fields and supports older responses', () => {
   assert.deepEqual(decodeDay(sunday), sunday);
