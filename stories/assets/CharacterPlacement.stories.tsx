@@ -9,8 +9,8 @@ import { characterIds, type CharacterId } from '../../src/lib/characters';
 import { colors, typography } from '../../src/design/theme';
 import { LeaveLayout } from '../screens/LeaveLayout';
 
-type Props = { character: CharacterId; width: number; height: number; screen: 'home' | 'focus' | 'leave' | 'comparison'; guides: boolean };
-function Preview({ character, width, height, screen, guides }: Props) {
+type Props = { character: CharacterId; width: number; height: number; screen: 'home' | 'focus' | 'leave' | 'comparison'; guides: boolean; blackcatHomeY: number };
+function Preview({ character, width, height, screen, guides, blackcatHomeY }: Props) {
   const [selected, setSelected] = useState(character);
   const [showAchievement, setShowAchievement] = useState(false);
   const [seats, setSeats] = useState<CharacterId[]>(['bunny', 'maltese', 'pomeranian', 'blackcat']);
@@ -27,7 +27,7 @@ function Preview({ character, width, height, screen, guides }: Props) {
           {current === 'home' ? <>
             <View style={{ marginHorizontal: 24, minHeight: 268, paddingTop: 32, gap: 20 }}><Text style={{ ...typography.body, color: colors.text }}>오늘 공부한 시간</Text><Text style={{ ...typography.metric, fontSize: 54, color: colors.text }}>01:20:15</Text><Text style={{ color: colors.secondary }}>오늘 목표 3시간</Text></View>
             <View onLayout={({ nativeEvent }) => setScene(nativeEvent.layout)} style={{ flex: 1, minHeight: 360, overflow: 'hidden', paddingBottom: 16 }}>
-              <HomeArtwork character={selected} width={scene.width} height={scene.height} />
+              <HomeArtwork character={selected} width={scene.width} height={scene.height} placementOverride={selected === 'blackcat' ? { y: blackcatHomeY } : undefined} />
               {guides && <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: (scene.height - 1024 * Math.max(scene.width / 1536, scene.height / 1024)) / 2 + 785 * Math.max(scene.width / 1536, scene.height / 1024), borderTopWidth: 1, borderColor: '#E15353', borderStyle: 'dashed' }} />}
               <View style={{ flex: 1, minHeight: 284 }} /><View style={{ marginHorizontal: 16, minHeight: 52, backgroundColor: colors.surface, borderRadius: 16, padding: 16 }}><Text style={{ color: colors.secondary }}>지금 3명이 공부 중이에요</Text></View>
             </View><View style={{ height: 104 }} />
@@ -40,8 +40,8 @@ function Preview({ character, width, height, screen, guides }: Props) {
 const meta = {
   title: '에셋 확인/캐릭터 화면 배치', component: Preview,
   parameters: { screenLayout: true, layout: 'fullscreen', docs: { description: { component: '홈은 실제 앱의 HomeArtwork, 집중은 FocusView, 연차는 LeaveView를 공유합니다. 서버에 연결하거나 프로필을 저장하지 않습니다. 홈의 주변 UI는 배치 확인용 샘플입니다. 정렬선은 홈 배경의 책상 기준선입니다.' } } },
-  args: { character: 'blackcat', width: 390, height: 844, screen: 'comparison', guides: false },
-  argTypes: { character: { control: 'select', options: characterIds }, screen: { control: 'select', options: ['home', 'focus', 'leave', 'comparison'] }, width: { control: { type: 'range', min: 320, max: 430, step: 1 } }, height: { control: { type: 'range', min: 640, max: 932, step: 1 } }, guides: { control: 'boolean' } },
+  args: { character: 'blackcat', width: 390, height: 844, screen: 'comparison', guides: false, blackcatHomeY: 910 },
+  argTypes: { blackcatHomeY: { name: '검은고양이 높이 (Y)', description: '클수록 위로, 작을수록 아래로 이동합니다. 미리보기 전용이며 앱에 자동 저장되지 않습니다.', control: { type: 'number', min: 700, max: 1100, step: 5 } }, character: { control: 'select', options: characterIds }, screen: { control: 'select', options: ['home', 'focus', 'leave', 'comparison'] }, width: { control: { type: 'range', min: 320, max: 430, step: 1 } }, height: { control: { type: 'range', min: 640, max: 932, step: 1 } }, guides: { control: 'boolean' } },
   render: args => <Preview key={JSON.stringify(args)} {...args} />,
 } satisfies Meta<typeof Preview>;
 export default meta;
@@ -63,4 +63,18 @@ export const LeaveAllCharacters: Story = {
   name: '연차 · 전체 캐릭터 잘림 확인',
   parameters: { controls: { disable: true } },
   render: () => <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 16 }}>{characterIds.map(character => <View key={character} style={{ gap: 8 }}><Text style={{ ...typography.label, color: colors.text }}>{characters[character].label} · 320px</Text><LeaveLayout character={character} width={320} height={740} /></View>)}</View>,
+};
+
+export const BlackcatHeight: Story = {
+  name: '검은고양이 높이 조절',
+  args: { character: 'blackcat', screen: 'home', guides: false },
+  parameters: { controls: { include: ['검은고양이 높이 (Y)'] } },
+  render: ({ blackcatHomeY }) => <View style={{ alignItems: 'center', gap: 8, padding: 16 }}>
+    <Text style={{ ...typography.label, color: colors.text }}>검은고양이 높이: {blackcatHomeY}</Text>
+    <Text style={{ ...typography.caption, color: colors.secondary }}>아래 Controls에서 Y를 높이면 위로, 낮추면 아래로 이동해요.</Text>
+    <Text style={{ ...typography.caption, color: colors.secondary }}>미리보기 전용 · 마음에 드는 Y 값을 알려주면 앱에도 반영할게요.</Text>
+    <View style={{ width: 390, height: 360, overflow: 'hidden', borderRadius: 16 }}>
+      <HomeArtwork character="blackcat" width={390} height={360} placementOverride={{ y: blackcatHomeY }} />
+    </View>
+  </View>,
 };
