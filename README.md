@@ -1,12 +1,12 @@
 # 얌얌스터디
 
-구현 원칙: **최대한 간단하게.** 현재 MVP에 필요한 기능과 최소 구조를 우선한다. 구체적인 기준은 [설계 문서](docs/ARCHITECTURE.md)에 기록한다.
+구현 원칙: **최대한 간단하게.** 현재 MVP에 필요한 기능과 최소 구조를 우선한다. 구체적인 기준은 [설계 문서](docs/development/ARCHITECTURE.md)에 기록한다.
 
 4명이 공부 목표와 기록을 공유하는 앱. Android는 APK, iPhone은 Safari 웹앱으로 사용한다.
 
 첫 접속에는 초대 코드 확인과 이름 설정을 거쳐 고정 방에 참여하며, 이후에는 저장된 익명 UID로 자동 입장한다. 뒤에서 자동 익명 인증으로 UID를 발급해 기록을 구분하고 이름은 표시용으로 사용한다. 저장소 삭제·기기 변경 시 UID가 달라질 수 있으며 MVP에서는 이전·복구를 제공하지 않는다.
 
-타이머는 화면 이탈·잠금 후에도 시간을 누적하고 직접 중지하면 종료하는 방식으로 설계한다. 다른 앱 사용 시간도 포함한다. 현재 타이머 기능은 구현 전이다.
+기본 타이머는 화면 이탈·잠금 후에도 시간을 누적하고 직접 중지하면 종료한다. Android 허용앱 모드는 이탈 시 일시정지하는 별도 규칙을 사용한다. 자세한 동작은 [상세 기능 정책](docs/product/FEATURE-POLICIES.md)을 따른다.
 
 ## 개발 시작
 
@@ -21,11 +21,11 @@
 - `npm run export:web` — 정적 웹 배포 파일을 `dist/`에 생성
 - `npm run build:android` — 로컬 Android 릴리스 빌드 (Android SDK/JDK 필요)
 
-Expo Router와 Supabase 클라이언트, 자동 익명 UID 발급·세션 저장·복원을 구현했다. 웹은 localStorage, Android는 AsyncStorage를 사용한다. 현재 시작 화면에서 UID와 고정 방 프로필 연결을 확인할 수 있다. DB의 타이머 시작/중지·오늘/친구/기록 조회·Realtime API는 연결했으며 실제 기능 화면과 PWA 설치 지원은 아직 구현 전이다. Android 네이티브 빌드는 별도 도구 설치와 실기기 검증이 필요하다.
+Expo Router와 Supabase를 사용하며 홈·집중·기록·친구·연차·프로필 화면을 서버 데이터에 연결한다. 현재 작업본의 기능과 사용 흐름은 [화면별 기능 안내](docs/product/CURRENT-FEATURES.md)에 정리한다. 구현 여부와 실제 배포·실기기 검증 여부는 구분한다.
 
 공통 시작 화면에는 버전 표시와 업데이트 안내가 연결되어 있다. Supabase 배포 정보 테이블은 준비했으며 새 버전 활성화 전에는 안내하지 않는다. APK 설치 및 웹 호스팅 갱신은 아직 실기기로 검증하지 않았다.
 
-인증 오류나 기존 세션 유실 시 자동으로 새 UID를 만들지 않고 재시도를 안내한다. 분업 인계와 실제 검사 결과는 [00 공통 기반](docs/execution/reports/00.md), [01 DB 코어](docs/execution/reports/01.md), [목표·출석 코어](docs/execution/reports/goals-attendance-core.md)를 참고한다. 목표 저장은 다음 공부 날짜부터 적용하며 출석은 진행 중 포함 1초 이상이다. 화면은 아직 연결하지 않았다.
+인증 오류나 기존 세션 유실 시 자동으로 새 UID를 만들지 않고 재시도를 안내한다. 현재 기능은 [화면별 기능과 사용 흐름](docs/product/CURRENT-FEATURES.md), 날짜·목표·출석·연차 규칙은 [상세 기능 정책](docs/product/FEATURE-POLICIES.md), 복구 구조는 [기술 설계](docs/development/ARCHITECTURE.md)를 참고한다.
 
 실제 DB 통합 검사: `node --env-file=.env.local scripts/check-study-core.mjs --run`. 테스트 사용자 2명과 종료 세션을 생성하므로 필요할 때만 실행한다. 일반 `npm test`는 외부 서비스에 쓰지 않는다.
 
@@ -34,7 +34,7 @@ Expo Router와 Supabase 클라이언트, 자동 익명 UID 발급·세션 저장
 - 최신 `develop`을 기준으로 기능별 작업 브랜치를 만든다. Codex가 만드는 브랜치는 `codex/` 접두사를 사용한다.
 - 기능 구현은 작업 브랜치에서 진행하고, PR의 대상 브랜치(base)는 `develop`으로 지정한다.
 - PR을 올리기 전에 `npm run lint`와 `npm run typecheck`를 실행한다.
-- 운영 배포는 [버전 및 업데이트 운영](docs/RELEASES.md)의 `develop` → `master` 배포 PR 절차를 따른다.
+- 운영 배포는 [버전 및 업데이트 운영](docs/operations/RELEASES.md)의 `develop` → `master` 배포 PR 절차를 따른다.
 
 ## 환경 변수
 
@@ -50,12 +50,14 @@ iPhone에는 HTTPS 웹 주소를 전달한다. 홈 화면 추가용 manifest·�
 
 ## 문서
 
-- [제품 명세](docs/SPEC.md)
-- [설계 및 구현 순서](docs/ARCHITECTURE.md)
-- [결정이 필요한 항목](docs/DECISIONS.md)
-- [여러 Codex 세션용 실행 문서](docs/execution/README.md)
-- [버전 및 업데이트 운영](docs/RELEASES.md)
-- [Xcode로 iPhone 웹앱 테스트하기](docs/IPHONE-WEB-TESTING.md)
+- [문서 전체 안내](docs/README.md) — 종류별 문서 목록과 참고 시점
+- [제품 명세](docs/product/SPEC.md)
+- [상세 기능 정책과 검증 기준](docs/product/FEATURE-POLICIES.md)
+- [화면별 기능과 사용 흐름](docs/product/CURRENT-FEATURES.md) — 제품 명세의 하위 화면 문서
+- [설계 및 구현 순서](docs/development/ARCHITECTURE.md)
+- [데이터 및 API 공통 계약](docs/development/CONTRACT.md)
+- [버전 및 업데이트 운영](docs/operations/RELEASES.md)
+- [Xcode로 iPhone 웹앱 테스트하기](docs/development/IPHONE-WEB-TESTING.md)
 
 ## 공식 참고
 
