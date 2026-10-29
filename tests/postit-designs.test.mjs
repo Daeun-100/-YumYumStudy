@@ -57,3 +57,10 @@ test('approved portrait paper and circular preview retain original PNG bytes',()
  assert.equal(decodePostitDefinition(definition).paper.sha256,definition.paper.sha256);
  assert.throws(()=>decodePostitDefinition({...definition,paper:{...definition.paper,width:2048,height:512}}));
  });
+
+test('square Halloween paper matches the square sheet without stretching',()=>{
+ const paper=readFileSync('assets/postits/halloween-paper-square.png');
+ const result=preparePostit(config,paper);
+ assert.equal(result.paper.width,result.paper.height);
+ assert.equal(decodePostitDefinition(result).paper.sha256,result.paper.sha256);
+});
