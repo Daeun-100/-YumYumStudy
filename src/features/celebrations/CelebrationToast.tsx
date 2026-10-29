@@ -56,7 +56,7 @@ export function CelebrationToast({ notice, onDismiss, reducedMotion = false, scr
     let collection: Animated.CompositeAnimation | undefined;
     const lifetime = createRewardTiming({
       now: () => performance.now(), setTimer: (run, ms) => setTimeout(run, ms), clearTimer: timer => clearTimeout(timer),
-      goalMs: screenReader ? 10000 : 4000, rewardMs: screenReader ? 10000 : 6000,
+      goalMs: screenReader ? 10000 : 4000, rewardMs: screenReader ? 10000 : 3000,
       holdMs: reducedMotion ? 0 : 800, autoDismiss,
       onExpire: () => {
         timing(entrance, 0, 200).start(({ finished }) => { if (finished && alive) callbacks.current.onDismiss(); });

@@ -13,7 +13,7 @@ type Options = {
 
 /** One notice owns one bounded lifetime. Late replies never revive an expired notice. */
 export function createRewardTiming(options: Options) {
-  const { now, setTimer, clearTimer, onCollect, onExpire, goalMs = 4000, rewardMs = 6000, holdMs = 800, extraWaitMs = 2000, autoDismiss = true } = options;
+  const { now, setTimer, clearTimer, onCollect, onExpire, goalMs = 4000, rewardMs = 3000, holdMs = 800, extraWaitMs = 2000, autoDismiss = true } = options;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let stampedAt: number | undefined;
   let reward = false, pending = false, collecting = false, closed = false;
