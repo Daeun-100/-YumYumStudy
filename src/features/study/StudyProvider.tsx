@@ -1,3 +1,4 @@
+import { isUpdateReloading } from '../ota/reload-gate';
 import { createStudyResourceDemand } from '../../lib/study-resource-demand';
 import { StudyResourceContext } from './study-resources';
 import { useResourceRefresh } from '../../hooks/useResourceRefresh';
@@ -24,7 +25,7 @@ import { createServerClock } from '../../lib/clock';
 import { getStudyDate } from '../../lib/study-day';
 import { toStudyError, type RoomMember, type Snapshot, type TodayData } from '../../lib/contracts';
 
-type State = { today: Snapshot<TodayData> | null; room: Snapshot<RoomMember[]> | null; loading: boolean; roomLoading: boolean; busy: boolean; error: string | null; roomError: string | null; actionFailed: boolean; startupReady: boolean; startupError: string | null; retryStartup(): Promise<void>; refresh(): Promise<void>; refreshRoom(): Promise<void>; toggle(): Promise<boolean> };
+type State = { today: Snapshot<TodayData> | null; room: Snapshot<RoomMember[]> | null; loading: boolean; roomLoading: boolean; busy: boolean; error: string | null; roomError: string | null; actionFailed: boolean; startupReady: boolean; startupError: string | null; prepareUpdateReload(): Promise<boolean>; retryStartup(): Promise<void>; refresh(): Promise<void>; refreshRoom(): Promise<void>; toggle(): Promise<boolean> };
 const Context = createContext<State | null>(null);
 export function StudyProvider({ children }: PropsWithChildren) {
   const identity = useIdentity();
@@ -226,7 +227,7 @@ export function StudyProvider({ children }: PropsWithChildren) {
     return () => clearInterval(timer);
   }, [refresh, startupReady]);
   const toggle = useCallback(async () => {
-    if (lock.current || !startupReady || !today || identity.loading || identity.error) return false;
+    if (isUpdateReloading() || lock.current || !startupReady || !today || identity.loading || identity.error) return false;
     const finish = finishTiming('timer.toggle');
     let succeeded = false;
     lock.current = true; generation.current++; sequence.current++; setBusy(true); setError(null);
@@ -295,7 +296,24 @@ export function StudyProvider({ children }: PropsWithChildren) {
     }
     finally { finish(succeeded ? 'ok' : 'error'); lock.current = false; if (alive.current && currentScope.current === scope) { setBusy(false); void refresh(); if (demand.read().room && isAppActive()) void refreshRoom(); } }
   }, [today, startupReady, identity.loading, identity.error, identity.profile, refresh, refreshRoom, demand, scope, setNow]);
-  const value = useMemo(() => ({ today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, startupError, retryStartup, refresh, refreshRoom, toggle }), [today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, startupError, retryStartup, refresh, refreshRoom, toggle]);
+  // Reload eligibility must read the synchronous mutation lock and latest server
+  // snapshot, including native stop acknowledgements, rather than the route.
+  const prepareUpdateReload = useCallback(async () => {
+    const generationBefore = generation.current;
+    if (!scope || !startupReady || lock.current || pending.current) return false;
+    try {
+      await loadToday(true);
+      if (Platform.OS === 'android' && studyGuard) {
+        const status = await withTimeout(studyGuard.status(), 5000, '공부 기록 확인 지연');
+        if (status.running || (status.link && !status.link.confirmed)) return false;
+      }
+      const snapshot = latestSnapshot.current;
+      return alive.current && currentScope.current === scope && generationBefore === generation.current
+        && !lock.current && !pending.current && !!snapshot && snapshot.data.profile.id === ownerId
+        && !snapshot.data.activeSession;
+    } catch { return false; }
+  }, [scope, startupReady, loadToday, ownerId]);
+  const value = useMemo(() => ({ today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, startupError, prepareUpdateReload, retryStartup, refresh, refreshRoom, toggle }), [today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, startupError, prepareUpdateReload, retryStartup, refresh, refreshRoom, toggle]);
   return <StudyClockContext.Provider value={time}><StudyResourceContext.Provider value={demand}><Context.Provider value={value}>{children}</Context.Provider></StudyResourceContext.Provider></StudyClockContext.Provider>;
 }
 export function useStudy() { const state = useContext(Context); if (!state) throw new Error('StudyProvider required'); return state; }

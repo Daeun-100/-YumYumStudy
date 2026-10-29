@@ -1,3 +1,4 @@
+import { useUpdateReloadBlocker } from '../features/ota/useUpdateReloadBlocker';
 import { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput } from 'react-native';
 import { Button, Card } from '../design/components';
@@ -13,6 +14,7 @@ export function EditName() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
+  useUpdateReloadBlocker(open || busy);
   async function save() {
     if (lock.current) return;
     lock.current = true; setBusy(true); setError(null);

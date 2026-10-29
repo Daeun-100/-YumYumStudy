@@ -1,3 +1,4 @@
+import { useUpdateReloadBlocker } from '../features/ota/useUpdateReloadBlocker';
 import { colors, layout, spacing, typography } from '../design/theme';
 import { Button, Card } from '../design/components';
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from 'react';
@@ -90,6 +91,7 @@ export function UpdateNotice({ variant = 'inline' }: { variant?: 'inline' | 'glo
   const pathname = usePathname();
   if (!context) throw new Error('UpdateProvider required');
   const { release, error, dismissed, retry, dismiss, update } = context;
+  useUpdateReloadBlocker(variant === 'global' && pathname !== '/profile-info' && !!release && release.revision !== dismissed);
   if (variant === 'global' && (pathname === '/profile-info' || !release || release.revision === dismissed)) return null;
   if (!release || release.revision === dismissed) {
     return <View style={styles.version}>

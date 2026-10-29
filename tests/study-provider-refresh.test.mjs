@@ -1,3 +1,4 @@
+import * as reloadGate from '../src/features/ota/reload-gate.ts';
 import { createHookRuntime } from './helpers/hooks.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,7 +23,7 @@ const snapshot = active => ({ serverNow: '2026-10-27T00:00:00Z', data: {
   activeSession: active ? { id: active, startedAt: '2026-10-27T00:00:00Z', endedAt: null } : null,
 } });
 
-function mount({ resources = ['today', 'room'] } = {}) {
+function mount({ resources = ['today', 'room'], guard = null } = {}) {
   const runtime = createHookRuntime();
   const timers = new Map();
   const intervals = new Map();
@@ -44,14 +45,15 @@ function mount({ resources = ['today', 'room'] } = {}) {
   const react = runtime.react;
   const modules = {
     react, 'react/jsx-runtime': { jsx: (_type, props) => ['ClockProvider', 'ResourceProvider'].includes(_type) ? props.children : props.value },
-    'react-native': { Platform: { OS: 'ios' }, AppState: { currentState: 'active' } },
+    'react-native': { Platform: { OS: guard ? 'android' : 'ios' }, AppState: { currentState: 'active' } },
     '../../lib/shared-request': { createSharedRequest },
     '../../lib/study-clock': { createStudyClock },
     './study-clock': { StudyClockContext: { Provider: 'ClockProvider' } },
     '../../data/query-cache': { invalidateRecordQueries: () => {} },
     '../../lib/performance': { measure: (_name, run) => run(), finishTiming: () => () => {} },
     '../../lib/with-timeout': { withTimeout: promise => promise },
-    '../allowed-apps/native': { studyGuard: null },
+    '../allowed-apps/native': { studyGuard: guard },
+    '../ota/reload-gate': reloadGate,
     '../../lib/room': { studyRoomId: 1, withRoomOperation: run => run() },
     '../../hooks/useRefreshOnResume': { isAppActive: () => active },
     '../../hooks/useAppActive': { useAppActive: () => active },
@@ -296,4 +298,58 @@ test('mandatory startup and explicit reads still run without screen subscribers'
   assert.equal(app.calls.recover, 1); assert.equal(app.calls.today, 1); assert.equal(app.calls.room, 0);
   await app.advance(120000); assert.equal(app.calls.today, 1);
   await app.render().refresh(); assert.equal(app.calls.today, 2); assert.equal(app.calls.room, 0);
+});
+
+
+test('OTA preparation requires a confirmed idle server snapshot, independent of the screen', async () => {
+  const app = mount({ resources: [] });
+  assert.equal(await app.render().prepareUpdateReload(), false);
+  await app.render().retryStartup(); app.render();
+  assert.equal(await app.render().prepareUpdateReload(), true);
+  app.data.getToday = async () => snapshot('running-on-home');
+  assert.equal(await app.render().prepareUpdateReload(), false);
+  app.data.getToday = async () => snapshot(null);
+  assert.equal(await app.render().prepareUpdateReload(), true);
+});
+
+test('OTA preparation refuses failed server reads even with a previously idle snapshot', async () => {
+  const app = mount(); await app.render().retryStartup(); app.render();
+  app.data.getToday = async () => { throw Error('offline'); };
+  assert.equal(await app.render().prepareUpdateReload(), false);
+});
+
+test('OTA preparation refuses running or unacknowledged native study records', async () => {
+  let status = { running: false, link: null };
+  const app = mount({ guard: { status: async () => status } });
+  await app.render().retryStartup(); app.render();
+  assert.equal(await app.render().prepareUpdateReload(), true);
+  status = { running: true, link: null };
+  assert.equal(await app.render().prepareUpdateReload(), false);
+  status = { running: false, link: { confirmed: false } };
+  assert.equal(await app.render().prepareUpdateReload(), false);
+  status.link.confirmed = true;
+  assert.equal(await app.render().prepareUpdateReload(), true);
+});
+
+test('OTA preparation refuses a new start racing its server read', async () => {
+  const app = mount(); await app.render().retryStartup(); app.render();
+  const read = deferred(), start = deferred();
+  app.data.getToday = () => read.promise;
+  const preparation = app.render().prepareUpdateReload();
+  await Promise.resolve();
+  app.data.startStudy = () => start.promise;
+  const starting = app.render().toggle();
+  read.resolve(snapshot(null));
+  assert.equal(await preparation, false);
+  start.resolve({ serverNow: '2026-10-27T00:00:00Z', data: { id: 'new', startedAt: '2026-10-27T00:00:00Z', endedAt: null } });
+  await starting;
+});
+
+test('timer controls cannot start a session after OTA has committed to reload', async () => {
+  const app = mount(); await app.render().retryStartup(); app.render();
+  assert.equal(reloadGate.beginUpdateReload(), true);
+  try {
+    assert.equal(await app.render().toggle(), false);
+    assert.equal(app.calls.start, 0);
+  } finally { reloadGate.cancelUpdateReload(); }
 });

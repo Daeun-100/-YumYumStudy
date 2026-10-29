@@ -1,3 +1,4 @@
+import { OtaUpdateLifecycle } from '../features/ota/OtaUpdateLifecycle';
 import { AppVersionReporter } from '../features/app-version/AppVersionReporter';
 import { StartupBoundary } from '../components/StartupBoundary';
 import { CallNotificationLifecycle } from '../features/call-friend/CallNotifications';
@@ -15,6 +16,7 @@ import { StudyProvider } from '../features/study/StudyProvider';
 export default function RootLayout() {
   return <SafeAreaProvider><RoomBuildBoundary><UpdateProvider><IdentityProvider><AdmissionGate><StudyProvider><LeaveProvider>
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <OtaUpdateLifecycle />
       <AppVersionReporter />
       <CallNotificationLifecycle />
       <UpdateNotice variant="global" />
