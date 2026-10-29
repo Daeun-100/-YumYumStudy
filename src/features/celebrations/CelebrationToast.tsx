@@ -75,7 +75,7 @@ export function CelebrationToast({ notice, onDismiss, reducedMotion = false, scr
     });
     timingRef.current = lifetime;
     lifetime.update(notice.reward, !!notice.rewardPending);
-    const animation = Animated.parallel([timing(entrance, 1, 380), Animated.sequence([Animated.delay(reducedMotion ? 0 : 160), timing(stamp, 1, 600)])]);
+    const animation = Animated.parallel([timing(entrance, 1, 380), Animated.sequence([Animated.delay(reducedMotion ? 0 : 160), timing(stamp, 1, 900)])]);
     const sparkleDelay = Animated.delay(reducedMotion ? 0 : 380);
     sparkleDelay.start(({ finished }) => { if (finished && alive) setSparkleReady(true); });
     announce('오늘 목표 달성!');
