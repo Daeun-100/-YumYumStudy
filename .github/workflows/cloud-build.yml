@@ -132,6 +132,8 @@ jobs:
       - run: npm ci
       - run: node --experimental-strip-types scripts/cloud-preflight.mjs
       - run: npm run export:web
+        env:
+          EXPO_PUBLIC_BUILD_SHA: ${{ needs.prepare.outputs.sha }}
       - name: Publish preview only (never production)
         id: deploy
         run: |
@@ -181,7 +183,10 @@ jobs:
             git tag "$TAG" "$GITHUB_SHA"
             git push origin "$TAG"
           fi
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "$TAG" --notes "Candidate built from $GITHUB_SHA. Verify before sharing. Web production URL is unchanged."
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            node scripts/release-candidate.mjs notes > /tmp/release-notes.md
+            gh release create "$TAG" --draft --title "$TAG" --notes-file /tmp/release-notes.md
+          fi
           tar -czf build-results.tgz results
           APK=$(node -p "require('./candidate.json').apkName")
           gh release upload "$TAG" release.json candidate.json "$APK" build-results.tgz --clobber
@@ -237,7 +242,7 @@ jobs:
         env:
           WEB_DEPLOYMENT_ID: ${{ needs.web.outputs.deployment_id }}
         run: node scripts/deployment.mjs promote-web
-      - name: Record successful update as a revision release
+      - name: Record successful update with reviewed change summary
         run: node scripts/update-release.mjs
       - name: Record update result
         if: always()

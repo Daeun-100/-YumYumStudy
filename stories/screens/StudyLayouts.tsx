@@ -15,10 +15,12 @@ import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AchievementBadge, Button, PressableCard } from '../../src/design/components';
 import { colors, interaction, radius, typography } from '../../src/design/theme';
+import type { CharacterId } from '../../src/lib/characters';
 const imageSource = (asset: number | string) => typeof asset === 'string' ? { uri: asset } : asset;
 const characters = [bunny, bear, cat, puppy];
 
 export type LayoutProps = {
+  character?: CharacterId;
   activeSkinId?: string;
   screen: 'home' | 'focus';
   homeEntryPreview?: boolean;
@@ -45,7 +47,7 @@ function Progress({ seconds, goalMinutes, todayLeave = false }: { seconds: numbe
   return <View style={s.progressRow}><View accessibilityRole="progressbar" accessibilityLabel="목표 달성률" accessibilityValue={percent === null ? { text: '목표 없음' } : { min: 0, max: 100, now: Math.min(percent, 100), text: `${percent}%` }} style={[s.track, todayLeave && { backgroundColor: colors.leaveTrack }]}><View style={[s.fill, { width: `${Math.min(percent ?? 0, 100)}%` }]} /></View><Text style={s.secondary}>{percent === null ? '—' : `${percent}%`}</Text></View>;
 }
 // Storybook-only presentation: no identity, API, router, or running study session.
-export function StudyLayout({ screen, activeSkinId, homeEntryPreview = false, todayLeave = false, onOpenLeave, running = true, seconds: initialSeconds = 4815, goalMinutes = 180, activeFriendCount = 2, name = '다이앤', width = 390, height = 844 }: LayoutProps) {
+export function StudyLayout({ screen, character = 'bunny', activeSkinId, homeEntryPreview = false, todayLeave = false, onOpenLeave, running = true, seconds: initialSeconds = 4815, goalMinutes = 180, activeFriendCount = 2, name = '다이앤', width = 390, height = 844 }: LayoutProps) {
   const [activeScreen, setActiveScreen] = useState(screen);
   const [isRunning, setRunning] = useState(running);
   const [seconds, setSeconds] = useState(initialSeconds);
@@ -88,7 +90,7 @@ export function StudyLayout({ screen, activeSkinId, homeEntryPreview = false, to
       {activeScreen === 'home' ? <>
         <View style={s.summary}><Text style={[s.body, { fontWeight: '600' }]}>오늘 공부한 시간</Text><View style={s.timeRow}>{homeEntryPreview && <StudyControlView round roundSize={56} running={isRunning} onPress={() => setRunning(value => !value)} />}<Text numberOfLines={1} adjustsFontSizeToFit style={[s.metric, s.timeValue, homeEntryPreview && { fontSize: width < 360 ? 34 : 44 }]}>{clock(seconds)}</Text>{achieved && !homeEntryPreview && <View style={s.timeBadge}><AchievementBadge label="달성 완료" /></View>}</View><Progress seconds={seconds} goalMinutes={goalMinutes} todayLeave={todayLeave} /><View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}><Pressable accessibilityRole="button" accessibilityLabel={todayLeave ? '연차 탭으로 이동' : '오늘 목표 확인'} onPress={() => todayLeave ? onOpenLeave ? onOpenLeave() : setLeaveDetails(true) : feedback('목표')} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6 }}><Text style={[s.secondary, todayLeave && { color: colors.leave }]}>{todayLeave ? '✈  오늘 연차' : goal}</Text><ChevronRight size={16} color={todayLeave ? colors.leave : colors.secondary} /></Pressable>{homeEntryPreview && achieved && <AchievementBadge label="달성 완료" />}</View></View>
         <View onLayout={({ nativeEvent }) => setHomeSize(nativeEvent.layout)} style={[s.homeScene, homeEntryPreview && { minHeight: 180, paddingBottom: 0 }]}>
-          {activeSkinId ? <HomeArtwork character="bunny" activeSkinId={activeSkinId} width={homeSize.width} height={homeSize.height} /> : <><Image source={imageSource(homeBackground)} resizeMode="contain" style={backgroundFrame} accessibilityLabel="햇살이 드는 공부방" />
+          {activeSkinId || character !== 'bunny' ? <HomeArtwork character={character} activeSkinId={activeSkinId} width={homeSize.width} height={homeSize.height} /> : <><Image source={imageSource(homeBackground)} resizeMode="contain" style={backgroundFrame} accessibilityLabel="햇살이 드는 공부방" />
           <Image source={imageSource(homeBunny)} resizeMode="contain" style={characterFrame} accessibilityLabel={`${name}의 토끼 캐릭터`} /></>}
           <View style={[s.homeSceneSpace, homeEntryPreview && { minHeight: 180 }]} />
         {homeEntryPreview && friendCount > 0 && <>           <View style={s.friendToast} accessibilityLabel={friendMessage}>
@@ -108,7 +110,7 @@ export function StudyLayout({ screen, activeSkinId, homeEntryPreview = false, to
           <Button label={isRunning ? 'Ⅱ  일시정지' : '▶  공부 시작'} accessibilityLabel={isRunning ? '공부 일시정지' : '공부 시작'} onPress={() => { if (isRunning) setRunning(false); else { setRunning(true); move('focus'); } }} style={{ flex: 1 }} />}
         </View>
       </> : <>
-        <FocusView members={[{ id: 'self', name, time: '나', active: isRunning, character: 'bunny', activeSkinId, self: true }, ...friends.map((friend, index) => ({ id: String(index), name: friend.name, time: friend.time, active: index < friendCount, character: (['bear', 'cat', 'puppy'] as const)[index] }))]} memberCount={4} seconds={seconds} sessionSeconds={28 * 60} goalMinutes={goalMinutes} running={isRunning} onBack={() => move('home')} onFriends={() => feedback('친구')} onToggle={() => setRunning(!isRunning)} />
+        <FocusView members={[{ id: 'self', name, time: '나', active: isRunning, character, activeSkinId, self: true }, ...friends.map((friend, index) => ({ id: String(index), name: friend.name, time: friend.time, active: index < friendCount, character: (['bear', 'cat', 'puppy'] as const)[index] }))]} memberCount={4} seconds={seconds} sessionSeconds={28 * 60} goalMinutes={goalMinutes} running={isRunning} onBack={() => move('home')} onFriends={() => feedback('친구')} onToggle={() => setRunning(!isRunning)} />
       </>}
       {!!notice && <Pressable accessibilityRole="button" accessibilityLabel="미리보기 안내 닫기" onPress={() => setNotice('')} style={s.notice}><Text accessibilityLiveRegion="polite" style={s.caption}>{notice}  ×</Text></Pressable>}
     </ScrollView>
