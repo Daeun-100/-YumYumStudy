@@ -1,3 +1,4 @@
+import { ArtworkProvider } from '../features/artwork/ArtworkProvider';
 import { AdminToastProvider } from '../features/admin-toasts/AdminToasts';
 import { OtaUpdateProvider } from '../features/ota/OtaUpdateProvider';
 import { AppVersionReporter } from '../features/app-version/AppVersionReporter';
@@ -17,7 +18,7 @@ import { AppToastProvider } from '../components/AppToastProvider';
 import { AchievementCelebrations } from '../features/celebrations/AchievementCelebrations';
 
 export default function RootLayout() {
-  return <SafeAreaProvider><RoomBuildBoundary><UpdateProvider><IdentityProvider><AdmissionGate><StudyProvider><LeaveProvider>
+  return <SafeAreaProvider><RoomBuildBoundary><UpdateProvider><IdentityProvider><AdmissionGate><ArtworkProvider><StudyProvider><LeaveProvider>
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <AppVersionReporter />
       <CallNotificationLifecycle />
@@ -27,5 +28,5 @@ export default function RootLayout() {
       </Stack><AchievementCelebrations /></AdminToastProvider></OtaUpdateProvider></AppToastProvider></StartupBoundary>
       <StatusBar style="dark" />
     </SafeAreaView>
-  </LeaveProvider></StudyProvider></AdmissionGate></IdentityProvider></UpdateProvider></RoomBuildBoundary></SafeAreaProvider>;
+  </LeaveProvider></StudyProvider></ArtworkProvider></AdmissionGate></IdentityProvider></UpdateProvider></RoomBuildBoundary></SafeAreaProvider>;
 }
