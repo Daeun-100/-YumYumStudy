@@ -31,7 +31,7 @@ async function trial({name,todayMs,historyMs,leaveMs,tickMs=0,reward=false,stora
  '../../data/leave':{getLeaveStatus:async()=>{calls.push('leave:start');await pause(leaveMs);calls.push('leave:end');if(fail)throw Error('simulated request failure');return {data:{grants:reward?[{kind:'reward',earningWeek:'2026-10-26',earnedAt:new Date(epoch).toISOString(),status:'AVAILABLE'}]:[]}};}},
  '../../lib/room':{studyRoomId:0},'../../lib/study-day':{getStudyDate},
  '../study/StudyProvider':{useStudy:()=>study},'../study/study-clock':{useStudyNow:()=>now},'../study/presentation':{displayedSeconds},
- './model':model,'./CelebrationToast':{CelebrationToast:'Toast'},'./useToastEnvironment':{useToastEnvironment:()=>({ready:true,active:true,blocked:false,reducedMotion:false,screenReader:false})},
+ './model':model,'./CelebrationToast':{CelebrationToast:'Toast'},'../../design/toast':{ToastSlot:'ToastSlot',useToastEnvironment:()=>({ready:true,active:true,blocked:false,reducedMotion:false,screenReader:false})},
  };
  const context={exports:{},require:name=>{assert.ok(name in modules,name);return modules[name];}};
  vm.runInNewContext(source,context);
@@ -42,6 +42,7 @@ async function trial({name,todayMs,historyMs,leaveMs,tickMs=0,reward=false,stora
  let output=render();const detection=performance.now()-started;
  while(!output&&performance.now()-started<tickMs+todayMs+Math.max(historyMs,leaveMs)+150){await pause(2);output=render();}
  const total=performance.now()-started;
+ output?.props.onShow?.(); // Simulate the shared host actually mounting the queued feature.
  assert.equal(output.props.children.type,'Toast');
  // A reward must not be claimed before confirmation. Fast zero-delay replies may already be known.
  assert.equal(output.props.children.props.notice.reward && !reward, false);

@@ -28,14 +28,15 @@ function mount({ live = true } = {}) {
     '../study/StudyProvider': { useStudy: () => study }, '../study/study-clock': { useStudyNow: () => now },
     '../study/presentation': { displayedSeconds }, './model': model,
     './CelebrationToast': { CelebrationToast: 'Toast' },
-    './useToastEnvironment': { useToastEnvironment: () => ({ ready: true, active, blocked: false }) },
+    '../../design/toast': { ToastSlot: 'ToastSlot', useToastEnvironment: () => ({ ready: true, active, blocked: false }) },
   };
   const context = { exports: {}, require: name => { assert.ok(name in modules, name); return modules[name]; } };
   vm.runInNewContext(source, context);
   const render = () => runtime.render(() => context.exports.AchievementCelebrations());
   const flush = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
   return { render, flush, study, confirmed, history, leave, verified, dispose: runtime.dispose,
-    cross() { now = epoch; render(); return render(); },
+    cross() { now = epoch; render(); const view = render(); view?.props.onShow?.(); return view; },
+    queueGoal() { now = epoch; render(); return render(); },
     background() { active = false; render(); }, resume() { active = true; study.canCelebrateLive = false; render(); },
     reads: () => reads, stored: () => stored,
   };
@@ -92,4 +93,10 @@ test('late history cannot re-enable reward waiting after the reward request fail
   assert.equal(app.render().props.children.props.notice.rewardPending, false);
   app.history.resolve({ data: week }); await app.flush();
   assert.equal(app.render().props.children.props.notice.rewardPending, false); app.dispose();
+});
+
+test('a celebration queued behind another toast is not marked seen until the host mounts it', async () => {
+  const app = mount(); app.render(); await app.flush();
+  const queued = app.queueGoal(); assert.ok(queued); assert.equal(app.stored(), null);
+  queued.props.onShow(); await app.flush(); assert.equal(app.stored(), date); app.dispose();
 });

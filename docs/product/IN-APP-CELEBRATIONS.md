@@ -51,7 +51,9 @@
 
 ## 구현과 Storybook
 
-`src/features/celebrations/`에 순수 판정 모델, 공통 표시 컴포넌트, 앱 연결을 둔다. 기존 StudyProvider의 확인 조회는 가드 정산을 통과한 최신 스냅샷만 축하에 제공한다. 기존 Dialog와 업데이트 안내는 전역 표시 차단 여부를 공유한다.
+`src/features/celebrations/`에 순수 판정 모델, 도장·연차 전용 콘텐츠와 앱 연결을 둔다. 위치·대기열·환경 차단·일반 안내의 자동 닫힘은 `src/design/toast/` 공통 호스트가 담당한다. 성취 콘텐츠는 `ToastSlot`으로 같은 호스트에 등록하고, 다단계 애니메이션의 유지 시간은 전용 타이밍 모델이 관리한다. 대기열 등록만으로는 안내 시작 날짜를 저장하지 않고, 호스트가 실제 콘텐츠를 마운트할 때 저장한다. 사용법은 [공통 토스트](../development/TOASTS.md)를 참고한다.
+
+기존 StudyProvider의 확인 조회는 가드 정산을 통과한 최신 스냅샷만 축하에 제공한다. 기존 Dialog와 업데이트 안내는 전역 표시 차단 여부를 공유한다.
 
 ```bash
 npm run storybook

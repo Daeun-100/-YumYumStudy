@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 import { useIdentity } from '../../components/IdentityProvider';
 import { useStartupVisible } from '../../components/StartupBoundary';
 import { getHistory } from '../../data/study';
@@ -13,7 +12,7 @@ import { useStudyNow } from '../study/study-clock';
 import { displayedSeconds } from '../study/presentation';
 import { celebrationForProgress, celebrationForToday, createDailyCelebrationTracker, rewardCandidate, weekDates, type Celebration } from './model';
 import { CelebrationToast } from './CelebrationToast';
-import { useToastEnvironment } from './useToastEnvironment';
+import { ToastSlot, useToastEnvironment } from '../../design/toast';
 
 const tracker = createDailyCelebrationTracker(AsyncStorage);
 type Warm = { key: string; seen?: boolean; seenRead: Promise<boolean>; history?: DayRecord[]; historyRead: Promise<DayRecord[] | null> };
@@ -75,9 +74,7 @@ export function AchievementCelebrations() {
       const progress = study.canCelebrateLive ? seconds : today.data.day.closedSeconds + today.data.day.runningSeconds;
       const first = celebrationForProgress(uid, date, today, entry?.history ?? [], progress);
       if (!first) return;
-      shown.current = `${scope}:${date}`;
       setNotice({ ...first, rewardPending: rewardCandidate(first) });
-      void tracker.start(uid, room, date);
       // Server work is now after the first stamp view. A failed reward read cannot hide it.
       const verifiedRead = study.canCelebrateLive ? confirmToday() : Promise.resolve(today);
       const historyRead = (async () => {
@@ -102,8 +99,9 @@ export function AchievementCelebrations() {
     }).finally(() => { if (requestGeneration === generation.current) flight.current = false; });
   }, [ready, candidate, seconds, identity.uid, snapshot, date, scope, viewKey, notice, confirmToday, study.canCelebrateLive]);
   if (!ready || !notice || notice.date !== date) return null;
-  return <View pointerEvents="box-none" style={s.host}>
+  return <ToastSlot id={`achievement:${scope}:${notice.date}`} dedupeKey={`achievement:${scope}:${notice.date}`}
+    onShow={() => { shown.current = `${scope}:${notice.date}`; void tracker.start(identity.uid!, studyRoomId, notice.date); }}
+    onDismiss={() => setNotice(null)}>
     <CelebrationToast key={`${scope}:${notice.date}`} notice={notice} reducedMotion={environment.reducedMotion} screenReader={environment.screenReader} onDismiss={() => setNotice(null)} />
-  </View>;
+  </ToastSlot>;
 }
-const s = StyleSheet.create({ host: { position: 'absolute', top: 8, left: 16, right: 16, zIndex: 100, elevation: 12 } });

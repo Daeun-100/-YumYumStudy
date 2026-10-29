@@ -21,6 +21,7 @@
 
 - [기술 설계와 구현 원칙](development/ARCHITECTURE.md)
 - [데이터 및 API 공통 계약](development/CONTRACT.md)
+- [공통 인앱 토스트 사용법](development/TOASTS.md): 웹·앱 호출 API, 대기열·중복·전용 콘텐츠
 - [iPhone 웹앱 테스트](development/IPHONE-WEB-TESTING.md)
 - 이미지 파일을 추가하거나 교체할 때는 [에셋 규칙](../assets/README.md)을 따른다.
 
