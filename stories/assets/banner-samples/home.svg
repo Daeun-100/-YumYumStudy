@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 360 108">
+  <path d="M14 8 Q180 38 346 8" fill="none" stroke="#786449" stroke-width="2.6"/>
+  <circle cx="14" cy="8" r="3.5" fill="#7B644A"/><circle cx="346" cy="8" r="3.5" fill="#7B644A"/>
+  <path d="M28 25 Q180 40 332 25 L336 88 Q180 108 24 88Z" fill="#715336" opacity=".15"/>
+  <path d="M26 17 Q180 31 334 17 L338 81 Q180 103 22 81Z" fill="#FFF2CD" stroke="#B89460" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M26 17 L42 20 L38 84 L22 81Z M318 20 L334 17 L338 81 L322 84Z" fill="#D6B97E" opacity=".45"/>
+  <path d="M44 27 Q180 39 316 27 M42 77 Q180 93 318 77" fill="none" stroke="#C8AA78" stroke-width="1" opacity=".65"/>
+  <path d="M30 13 L32 30 M328 13 L326 30" fill="none" stroke="#8D704A" stroke-width="5" stroke-linecap="round"/>
+  <path d="M30 13 L32 30 M328 13 L326 30" fill="none" stroke="#D2AE74" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="180" y="62" text-anchor="middle" font-family="Apple SD Gothic Neo,AppleGothic,sans-serif" font-size="17" font-weight="700" fill="#425B3B">이번 주도 우리 같이 달려요!</text></svg>
