@@ -40,11 +40,14 @@ export function decodeDay(value: unknown): DayRecord {
     || typeof row.isRestDay !== 'boolean'
     || (row.goalAchieved !== null && typeof row.goalAchieved !== 'boolean')) return invalid();
   const goalMinutes = row.goalMinutes === null ? null : seconds(row.goalMinutes);
+  if (row.superWatermelon !== undefined && typeof row.superWatermelon !== 'boolean') return invalid();
+  if (row.superWatermelon === true && new Date(`${studyDate}T00:00:00Z`).getUTCDay() !== 0) return invalid();
   if (goalMinutes !== null && goalMinutes > 1440) return invalid();
   return {
     studyDate, closedSeconds: seconds(row.closedSeconds), runningSeconds: seconds(row.runningSeconds),
     goalMinutes, attendance: row.attendance as DayRecord['attendance'],
     isRestDay: row.isRestDay, goalAchieved: row.goalAchieved,
+    ...(row.superWatermelon !== undefined ? { superWatermelon: row.superWatermelon as boolean } : {}),
   };
 }
 export function decodeGoals(value: unknown): GoalWeek {

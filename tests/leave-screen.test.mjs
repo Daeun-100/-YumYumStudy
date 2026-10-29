@@ -31,7 +31,7 @@ test('same-day use protects reward eligibility before and after reconciliation',
   const n = Date.parse(today + 'T12:00:00+09:00');
   const days = Array.from({length:7}, (_,i) => ({studyDate: '2026-' + (i < 6 ? '10-' + (26+i) : '11-01'), goalMinutes:1, closedSeconds:60, runningSeconds:0, attendance:'present', isRestDay:false}));
   const g = {...grant, earnedAt:'2026-10-26T06:00:00+09:00', earningWeek:'2026-10-19'};
-  assert.equal(reservationReason(today,today,[g],n,null,days),null);
+  assert.match(reservationReason(today,today,[g],n,null,days),/목표 달성 보상/);
   const six = days.filter(d=>d.studyDate!=='2026-10-26');
   assert.match(reservationReason(today,today,[g],n,null,six),/보상/);
   assert.equal(reservationReason(today,today,[g],n,null,six.slice(1)),null);

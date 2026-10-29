@@ -11,7 +11,7 @@
 | `Profile` | `id`, `displayName`, 선택 필드 `character`, `activeSkinId`, `skinUpdatedAt` |
 | `StudySession` | `id`, `userId`, UTC ISO `startedAt`, UTC ISO 또는 null인 `endedAt` |
 | `GoalWeek` | 월~일 7개 원소. 각 값은 정수 0~1,440분 또는 null. 0은 휴무, null은 미설정 |
-| `DayRecord` | `studyDate`, `closedSeconds`, `runningSeconds`, `goalMinutes`, `attendance`, `isRestDay`, `goalAchieved` |
+| `DayRecord` | `studyDate`, `closedSeconds`, `runningSeconds`, `goalMinutes`, `attendance`, `isRestDay`, `goalAchieved`, 선택 boolean `superWatermelon` |
 | `GoalSettings` | `current`, `scheduled`, `effectiveDate`, 선택 필드 `isFirstSetup` |
 | `RoomMember` | `profile`, `today`, null 가능한 `activeSession` |
 | `Snapshot<T>` | UTC ISO `serverNow`와 `data`. 같은 기준 시각의 일관된 조회 결과 |
@@ -89,3 +89,11 @@ resumePendingLeave(): Promise<Snapshot<LeaveStatus> | null>
 - 실시간 변경은 같은 방 세션과 프로필을 포함한다. 표시용 초 시계는 로컬에서 계산하고 매초 DB 읽기·쓰기를 하지 않는다. 최신 화면별 수요·보조 조회 설계는 관련 코드와 갱신 설계 문서에서 확인한다.
 - 라우트는 `src/app/`에 두고 화면·상태 로직은 `src/features/` 등 라우트 밖에서 관리한다. 현재 없는 초기 화면 이름이나 과거 작업 번호에 맞춰 구조를 되돌리지 않는다.
 - 오류는 `StudyError`로 전달한다. code는 NETWORK / UNAUTHORIZED / VALIDATION / POLICY_PENDING / NOT_CONFIGURED / UNKNOWN이며 한국어 안내를 제공한다. 실패·잘못된 응답을 빈 배열·0초·저장 성공으로 숨기지 않는다.
+
+## 슈퍼 수박 서버 판정
+
+`superWatermelon`은 서버가 확정한 일요일 완주 표식이다. 구형 서버에서 필드가 생략되면 금색 수박을 추정하지 않는다. 클라이언트는 양수 목표·공부 시간을 유지하고 주간·월간·친구 기록 및 프로필 표시까지 이 필드를 전달한다. 일요일 표식의 변경은 기록 쿼리 버전을 갱신한다.
+
+`super_watermelon_awards`는 사용자와 획득 주의 고유 키를 가진 비공개 표식이며 클라이언트 직접 조회·쓰기를 허용하지 않는다. `get_today`, `get_history`, `get_member_history`가 기존 입장·방 권한을 검증하고 대상 프로필을 잠근 뒤 조회 범위의 누락 지급을 복구한다. 월 경계의 부분 조회도 전체 7일을 검사한다. 기존 내부 함수·래퍼는 클라이언트 실행 권한을 회수한다.
+
+적용 파일: `supabase/migrations/20261029063647_super_watermelon_rewards.sql`. SQL 회귀 검증: `supabase/tests/super_watermelon.sql`, `same_day_leave.sql`, `leave_attendance_policy.sql`, `admin_leave.sql`.
