@@ -9,6 +9,15 @@ import { createRewardTiming } from './reward-timing';
 
 const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 const native = Platform.OS !== 'web';
+const rewardStars = [
+  { position: { top: 8, right: '12%' }, size: 28, gold: false },
+  { position: { bottom: 16, left: '9%' }, size: 23, gold: false },
+  { position: { top: 17, left: '14%' }, size: 13, gold: true },
+  { position: { bottom: 12, right: '17%' }, size: 14, gold: true },
+] as const;
+function FourPointStar({ size, color }: { size: number; color: string }) {
+  return <Svg width={size} height={size * 1.1} viewBox="0 0 24 24"><Path d="M12 0C12 8 16 12 24 12C16 12 12 16 12 24C12 16 8 12 0 12C8 12 12 8 12 0Z" fill={color} /></Svg>;
+}
 type Props = {
   notice: Celebration; onDismiss(): void;
   reducedMotion?: boolean; screenReader?: boolean;
@@ -26,7 +35,7 @@ function CelebrationSparkle({ still }: { still: boolean }) {
   return <View pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={s.spark}>
     <Animated.View style={{ opacity: twinkle.interpolate({ inputRange: [0, 0.18, 1], outputRange: [0, 1, 1] }),
       transform: [{ scale: twinkle.interpolate({ inputRange: [0, 0.3, 0.65, 1], outputRange: [0.45, 1.25, 0.88, 1] }) }],
-    }}><Svg width={20} height={23} viewBox="0 0 24 24"><Path d="M12 0C12 8 16 12 24 12C16 12 12 16 12 24C12 16 8 12 0 12C8 12 12 8 12 0Z" fill={colors.primary} /></Svg></Animated.View>
+    }}><FourPointStar size={20} color={colors.primary} /></Animated.View>
   </View>;
 }
 export function CelebrationToast({ notice, onDismiss, reducedMotion = false, screenReader = false, previewPhase, autoDismiss = true }: Props) {
@@ -84,10 +93,10 @@ export function CelebrationToast({ notice, onDismiss, reducedMotion = false, scr
   const title = rewardVisible ? '보상 연차를 받았어요!' : '오늘 목표 달성!';
   return <Animated.View testID="celebration-toast" style={[s.card, {
     opacity: entrance, transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }],
-    backgroundColor: collect.interpolate({ inputRange: [0, 1], outputRange: [colors.surface, colors.leaveBackground] }),
+    backgroundColor: colors.surface,
   }]}>
     <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={s.title}>{title}</Text>
-    <Animated.View style={{ height: collect.interpolate({ inputRange: [0, 1], outputRange: [78, 148] }) }}>
+    <Animated.View style={{ height: collect.interpolate({ inputRange: [0, 1], outputRange: [78, 116] }) }}>
       {phase !== 'reward' && <Animated.View onLayout={event => setWidth(event.nativeEvent.layout.width)}
         accessibilityElementsHidden={rewardVisible} importantForAccessibility={rewardVisible ? 'no-hide-descendants' : 'auto'}
         style={[s.week, { opacity: collect.interpolate({ inputRange: [0, 0.55, 1], outputRange: [1, 0.7, 0] }) }]}>
@@ -112,7 +121,14 @@ export function CelebrationToast({ notice, onDismiss, reducedMotion = false, scr
         opacity: collect.interpolate({ inputRange: [0, 0.3, 0.75, 1], outputRange: [0, 0, 1, 1] }),
         transform: [{ scale: collect.interpolate({ inputRange: [0, 0.3, 0.8, 1], outputRange: [0.6, 0.6, 1.05, 1] }) }],
       }]}>
-        <View style={s.ticket}><View style={[s.notch, { left: -9 }]} /><Text accessibilityLabel="연차 1개 추가" style={s.amount}>+1</Text><View style={[s.notch, { right: -9 }]} /></View>
+        <View style={s.ticket}><View style={[s.notch, { left: -8 }]} /><Text accessibilityLabel="연차 1개 추가" style={s.amount}>+1</Text><View style={[s.notch, { right: -8 }]} /></View>
+        <View pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={s.decoration}>
+          {rewardStars.map(({ position, size, gold }, index) => <Animated.View key={index} style={[s.rewardStar, position, {
+            opacity: collect.interpolate({ inputRange: [0, 0.35 + index * 0.06, 0.8, 1], outputRange: [0, 0, 1, 1] }),
+            transform: [{ scale: collect.interpolate({ inputRange: [0, 0.4, 0.72, 0.87, 1], outputRange: [0.3, 0.3, 1.25, 0.88, 1] }) }],
+          }]}><FourPointStar size={size} color={gold ? colors.accent : colors.primary} /></Animated.View>)}
+          <View style={[s.rewardDot, { top: 57, right: '7%' }]} /><View style={[s.rewardDot, { top: 15, left: '34%', width: 3, height: 3 }]} />
+        </View>
       </Animated.View>}
     </Animated.View>
 
@@ -128,7 +144,9 @@ const s = StyleSheet.create({
   slot: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16 },
   empty: { borderWidth: 1, borderStyle: 'dashed', borderColor: colors.track },
   melon: { width: 32, height: 32 }, reward: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
-  ticket: { width: 162, height: 118, borderRadius: 16, borderWidth: 2, borderColor: colors.leaveIconBackground, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
-  notch: { position: 'absolute', top: 48, width: 17, height: 17, borderRadius: 9, backgroundColor: colors.leaveBackground }, amount: { fontSize: 62, lineHeight: 76, fontWeight: '700', color: colors.leave, letterSpacing: -3 },
+  ticket: { width: 134, height: 96, borderRadius: 14, borderWidth: 1, borderColor: colors.leaveIconBackground, backgroundColor: colors.leaveBackground, boxShadow: `0 4px 0 ${colors.leaveIconBackground}`, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
+  notch: { position: 'absolute', top: 39, width: 15, height: 15, borderRadius: 8, backgroundColor: colors.surface }, amount: { fontSize: 54, lineHeight: 64, fontWeight: '700', color: colors.leave, letterSpacing: -3 },
+  decoration: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 },
+  rewardStar: { position: 'absolute' }, rewardDot: { position: 'absolute', width: 4, height: 4, borderRadius: 2, backgroundColor: colors.accent },
 
 });
