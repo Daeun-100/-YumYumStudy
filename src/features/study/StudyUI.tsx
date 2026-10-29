@@ -3,7 +3,7 @@ import { characters } from '../profile/CharacterPicker';
 import type { CharacterId } from '../../lib/characters';
 import { colors, typography, radius, layout } from '../../design/theme';
 import { AchievementBadge, Button } from '../../design/components';
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, RefObject, ComponentRef } from 'react';
 import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useIdentity } from '../../components/IdentityProvider';
 import { useStudy } from './StudyProvider';
@@ -25,9 +25,9 @@ export function RoomArt({ tall = false }: { tall?: boolean }) {
   return <View style={{ height: tall ? 410 : 300, overflow: 'hidden', backgroundColor: colors.artFallback }}><Image source={require('../../../assets/illustrations/study-room-illustration.png')} resizeMode="cover" style={{ width: '100%', height: '100%' }} accessibilityLabel="따뜻한 공부방에서 함께 공부하는 동물 친구들" /></View>;
 }
 type TabKey = 'home' | 'records' | 'friends' | 'leave' | 'profile';
-export function Page({ children, current }: PropsWithChildren<{ current?: TabKey }>) {
+export function Page({ children, current, scrollRef }: PropsWithChildren<{ current?: TabKey; scrollRef?: RefObject<ComponentRef<typeof ScrollView> | null> }>) {
   const study = useStudy();
-  return <View style={ui.outer}><View style={ui.page}><ScrollView contentContainerStyle={{ paddingBottom: 22 }} refreshControl={<RefreshControl refreshing={current === 'friends' ? study.roomLoading : study.loading} onRefresh={() => void (current === 'friends' ? study.refreshRoom() : study.refresh())} tintColor={colors.primary} />}><>{children}</></ScrollView></View></View>;
+  return <View style={ui.outer}><View style={ui.page}><ScrollView ref={scrollRef} contentContainerStyle={{ paddingBottom: 22 }} refreshControl={<RefreshControl refreshing={current === 'friends' ? study.roomLoading : study.loading} onRefresh={() => void (current === 'friends' ? study.refreshRoom() : study.refresh())} tintColor={colors.primary} />}><>{children}</></ScrollView></View></View>;
 }
 export function Status({ showLoading = true }: { showLoading?: boolean } = {}) {
   const identity = useIdentity(); const study = useStudy();

@@ -1,0 +1,87 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+// Run with PGLITE_MODULE=/absolute/path/to/@electric-sql/pglite/dist/index.js.
+// This exercises real PostgreSQL grants/RLS/transactions; Realtime and cron are stubbed.
+test('admin toast SQL authorization, transactions, idempotency and revocation', { skip: !process.env.PGLITE_MODULE }, async () => {
+  const { PGlite } = await import(process.env.PGLITE_MODULE);
+  const db = new PGlite();
+  const user = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa', other = 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb', outsider = 'cccccccc-cccc-4ccc-cccc-cccccccccccc';
+  const id = '11111111-1111-4111-8111-111111111111', requestId = '22222222-2222-4222-8222-222222222222';
+  try {
+    await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
+      create schema auth; create schema realtime; create schema cron;
+      create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
+      create table public.study_room(id smallint primary key); insert into public.study_room values(0),(1);
+      create table public.profiles(id uuid primary key,room_id smallint,name_confirmed boolean,invite_verified_at timestamptz);
+      create function public.current_study_room() returns smallint language sql security definer as $$select room_id from public.profiles where id=auth.uid() and name_confirmed and invite_verified_at is not null$$;
+      create function realtime.topic() returns text language sql as $$select current_setting('test.topic',true)$$;
+      create table realtime.messages(extension text); alter table realtime.messages enable row level security;
+      create function realtime.send(jsonb,text,text,boolean) returns void language sql as $$select$$;
+      create function cron.schedule(text,text,text) returns bigint language sql as $$select 1::bigint$$;
+      grant usage on schema auth,realtime to authenticated,service_role;
+      grant select on public.profiles to service_role;
+      insert into public.profiles values('${user}',1,true,now()),('${other}',1,true,now()),('${outsider}',0,true,now());`);
+    await db.exec(readFileSync(new URL('../supabase/migrations/20261029125804_admin_toasts.sql', import.meta.url), 'utf8'));
+    const call = async input => (await db.query('select public.manage_admin_toasts($1::jsonb) as result', [JSON.stringify(input)])).rows[0].result;
+    await db.exec('set role service_role');
+    const base = { action: 'create', requestId, campaignId: id, kind: 'info_notice', roomId: 1, userIds: [user], enabled: true,
+      startsAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 60000).toISOString(), platforms: ['android','web'], appVariant: 'production', payload: { title: '공지' } };
+    const first = await call(base); assert.equal(first.status, 'saved'); assert.equal(first.targetCount, 1);
+    assert.deepEqual(await call(base), first);
+    await assert.rejects(call({ ...base, enabled: false }), /Request UUID already used/);
+    await assert.rejects(call({ ...base, requestId: other, campaignId: other, userIds: [outsider] }), /Recipients missing/);
+    assert.equal((await db.query('select count(*)::integer as n from public.admin_toast_campaigns')).rows[0].n, 1);
+    await db.exec(`reset role; set role authenticated; select set_config('test.uid','${user}',false)`);
+    assert.equal((await db.query('select public.get_admin_toasts() as x')).rows[0].x.campaigns.length, 1);
+    await assert.rejects(call(base), /permission denied/);
+    await assert.rejects(db.exec(`update public.admin_toast_campaigns set enabled=false`), /permission denied/);
+    await assert.rejects(db.exec(`select * from admin_toast_private.requests`), /permission denied/);
+    await db.query('select public.record_admin_toast($1,$2,$3)', [id, user, 'shown']);
+    await db.query('select public.record_admin_toast($1,$2,$3)', [id, user, 'close']);
+    await db.query('select public.record_admin_toast($1,$2,$3)', [id, user, 'close']);
+    assert.equal((await db.query('select * from public.admin_toast_receipts')).rows.length, 1);
+    await db.exec(`select set_config('test.uid','${other}',false)`);
+    assert.equal((await db.query('select public.get_admin_toasts() as x')).rows[0].x.campaigns.length, 0);
+    assert.equal((await db.query('select * from public.admin_toast_recipients')).rows.length, 0);
+    await assert.rejects(db.query('select public.record_admin_toast($1,$2,$3)', [id, other, 'shown']), /row-level security/);
+    await db.exec(`select set_config('test.uid','${outsider}',false)`);
+    assert.equal((await db.query('select public.get_admin_toasts() as x')).rows[0].x.campaigns.length, 0);
+    await db.exec('reset role; set role service_role');
+    await assert.rejects(call({ action: 'set_enabled', requestId: outsider, campaignId: id, expectedRevision: 2, enabled: false }), /Revision conflict/);
+    await call({ action: 'set_enabled', requestId: outsider, campaignId: id, expectedRevision: 1, enabled: false });
+    const status = await call({ action: 'status', requestId: user, campaignId: id });
+    assert.equal(status.shownInstallations, 1); assert.equal(status.completedInstallations, 1);
+    await db.exec(`reset role; set role authenticated; select set_config('test.uid','${user}',false)`);
+    assert.equal((await db.query('select public.get_admin_toasts() as x')).rows[0].x.campaigns.length, 0);
+    await db.exec('reset role; set role service_role');
+    const scheduledId = randomUUID();
+    await call({ ...base, campaignId: scheduledId, requestId: randomUUID(), userIds: null,
+      startsAt: new Date(Date.now()+3600000).toISOString(), expiresAt: new Date(Date.now()+7200000).toISOString() });
+    await db.exec(`reset role; set role authenticated; select set_config('test.uid','${user}',false)`);
+    assert.equal((await db.query('select public.get_admin_toasts() as x')).rows[0].x.campaigns.length, 1, 'future notice is available for local scheduling');
+    await assert.rejects(db.query('select public.record_admin_toast($1,$2,$3)', [scheduledId, user, 'shown']), /row-level security/);
+    await db.exec('reset role; set role service_role');
+    const resendInput = { ...base, action: 'resend', requestId: randomUUID(), campaignId: randomUUID(), sourceCampaignId: id, expectedRevision: 2 };
+    const resent = await call(resendInput); assert.equal(resent.campaign.source_campaign_id, id);
+    assert.deepEqual(await call(resendInput), resent);
+    const updateInput = { ...base, requestId: randomUUID(), campaignId: randomUUID(), kind: 'update_ready', userIds: null, payload: { updateId: id } };
+    await call(updateInput);
+    await assert.rejects(call({ ...updateInput, requestId: randomUUID(), campaignId: randomUUID() }), /Duplicate active update notice/);
+    await db.exec(`update public.admin_toast_campaigns set enabled=false,starts_at=now()-interval '101 days',expires_at=now()-interval '100 days' where id='${scheduledId}'`);
+    await db.exec('select public.cleanup_admin_toasts()');
+    assert.equal((await db.query('select count(*)::integer as n from public.admin_toast_campaigns where id=$1',[scheduledId])).rows[0].n, 0);
+    await db.exec(`reset role; grant insert on realtime.messages to authenticated;
+      create policy unrelated_publish on realtime.messages for insert to authenticated with check(true);
+      set role authenticated; select set_config('test.uid','${user}',false);
+      select set_config('test.topic','admin-toasts:room:1',false)`);
+    await assert.rejects(db.exec("insert into realtime.messages values('broadcast')"), /row-level security/);
+    await db.exec("select set_config('test.topic','unrelated',false); insert into realtime.messages values('broadcast')");
+    await db.exec('reset role; set role anon');
+    await assert.rejects(db.exec('select public.get_admin_toasts()'), /permission denied/);
+    await db.exec('reset role');
+    const functions = await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where p.prosecdef and n.nspname='public' and p.proname like '%admin_toast%'`);
+    assert.equal(functions.rows.length, 0, 'public toast RPCs must not bypass RLS');
+  } finally { await db.close(); }
+});
