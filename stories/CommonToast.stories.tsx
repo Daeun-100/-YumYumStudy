@@ -13,7 +13,13 @@ function Controls() {
   const [dialog, setDialog] = useState(false), [status, setStatus] = useState('');
   return <View style={{ padding: 18, paddingTop: 150, gap: 10 }}>
     <Text style={[typography.title, { color: colors.text }]}>공통 인앱 토스트</Text>
-    <Button label="중요 공지" onPress={() => { lastId.current = toast.show({ title: '새로운 소식이 있어요', message: '공부방의 새 공지를 확인해 주세요.', tone: 'info' }); }} />
+    <Button label="중요 공지" onPress={() => {
+      let started: number | null = null;
+      lastId.current = toast.show({ title: '새로운 소식이 있어요', message: '공부방의 새 공지를 확인해 주세요.', tone: 'info',
+        onShow: () => { started = performance.now(); },
+        onDismiss: reason => { if (reason === 'timeout' && started !== null) setStatus(`중요 공지 자동 닫힘 · 표시 시작 후 ${((performance.now() - started) / 1000).toFixed(1)}초`); },
+      });
+    }} />
     <Button label="저장 완료" variant="secondary" onPress={() => { lastId.current = toast.show({ title: '목표를 저장했어요', tone: 'success', durationMs: 2000 }); }} />
     <Button label="서프라이즈" variant="secondary" onPress={() => { lastId.current = toast.show({ title: '작은 선물이 도착했어요!', message: '오늘도 함께해 줘서 고마워요.', tone: 'reward' }); }} />
     <Button label="도장 → 보상 전환 · 공통 호스트" variant="secondary" onPress={() => {

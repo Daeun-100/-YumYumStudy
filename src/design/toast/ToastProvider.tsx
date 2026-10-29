@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef,
 import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 import { Bell, Check, Gift } from 'lucide-react-native';
 import { colors, layout, typography } from '../theme';
-import { createToastStore, type ToastDismissReason, type ToastEntry, type ToastOptions } from './store';
+import { createToastStore, TOAST_EXIT_MS, type ToastDismissReason, type ToastEntry, type ToastOptions } from './store';
 import { useToastEnvironment as useDeviceEnvironment } from './useToastEnvironment';
 
 type Environment = ReturnType<typeof useDeviceEnvironment>;
@@ -23,9 +23,9 @@ export function useToastEnvironment() { return useToast().environment; }
 function MessageToast({ entry, environment }: { entry: ToastEntry; environment: Environment }) {
   const [entrance] = useState(() => new Animated.Value(environment.reducedMotion ? 1 : 0));
   useEffect(() => {
-    const animation = Animated.timing(entrance, { toValue: 1, duration: environment.reducedMotion ? 0 : 240, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web', isInteraction: false });
+    const animation = Animated.timing(entrance, { toValue: entry.closing ? 0 : 1, duration: environment.reducedMotion ? 0 : entry.closing ? TOAST_EXIT_MS : 240, easing: entry.closing ? Easing.in(Easing.cubic) : Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web', isInteraction: false });
     animation.start(); return () => animation.stop();
-  }, [entrance, environment.reducedMotion]);
+  }, [entrance, environment.reducedMotion, entry.closing]);
   useEffect(() => {
     if (environment.screenReader && Platform.OS !== 'web') AccessibilityInfo.announceForAccessibility([entry.title, entry.message].filter(Boolean).join('. '));
   }, [entry.title, entry.message, environment.screenReader]);
@@ -45,7 +45,7 @@ export function ToastProvider({ children, scope, enabled = true }: PropsWithChil
   const environment = useMemo(() => ({ ready: enabled && device.ready, active: device.active, blocked: device.blocked, reducedMotion: device.reducedMotion, screenReader: device.screenReader }), [enabled, device.ready, device.active, device.blocked, device.reducedMotion, device.screenReader]);
   const [store] = useState(() => {
     const value = createToastStore(); value.setScope(scope);
-    value.setEnvironment({ enabled, active: environment.active, blocked: !environment.ready || environment.blocked, screenReader: environment.screenReader });
+    value.setEnvironment({ enabled, active: environment.active, blocked: !environment.ready || environment.blocked, screenReader: environment.screenReader, reducedMotion: environment.reducedMotion });
     return value;
   });
   const snapshot = useSyncExternalStore(store.subscribe, store.read, store.read);
@@ -53,7 +53,7 @@ export function ToastProvider({ children, scope, enabled = true }: PropsWithChil
   const currentBinding = useRef(binding);
   useLayoutEffect(() => { currentBinding.current = binding; store.setScope(scope); }, [store, scope, binding]);
   useLayoutEffect(() => {
-    store.setEnvironment({ enabled, active: environment.active, blocked: !environment.ready || environment.blocked, screenReader: environment.screenReader });
+    store.setEnvironment({ enabled, active: environment.active, blocked: !environment.ready || environment.blocked, screenReader: environment.screenReader, reducedMotion: environment.reducedMotion });
   }, [store, enabled, environment]);
   useEffect(() => () => store.dispose(), [store]);
   const api = useMemo<ToastApi>(() => ({

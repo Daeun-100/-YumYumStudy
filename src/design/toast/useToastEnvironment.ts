@@ -10,12 +10,15 @@ export function useToastEnvironment() {
   const [accessibility, setAccessibility] = useState({ ready: false, reducedMotion: false, screenReader: false });
   useEffect(() => {
     let alive = true;
-    void Promise.all([AccessibilityInfo.isReduceMotionEnabled(), AccessibilityInfo.isScreenReaderEnabled()]).then(([reducedMotion, screenReader]) => {
+    // RN Web returns a constant true here; browsers cannot detect screen-reader usage.
+    // Keep ARIA announcements, but only use the native signal to extend the timeout.
+    const native = Platform.OS !== 'web';
+    void Promise.all([AccessibilityInfo.isReduceMotionEnabled(), native ? AccessibilityInfo.isScreenReaderEnabled() : Promise.resolve(false)]).then(([reducedMotion, screenReader]) => {
       if (alive) setAccessibility({ ready: true, reducedMotion, screenReader });
     }).catch(() => { if (alive) setAccessibility({ ready: true, reducedMotion: true, screenReader: false }); });
     const motion = AccessibilityInfo.addEventListener('reduceMotionChanged', reducedMotion => setAccessibility(s => ({ ...s, reducedMotion })));
-    const reader = AccessibilityInfo.addEventListener('screenReaderChanged', screenReader => setAccessibility(s => ({ ...s, screenReader })));
-    return () => { alive = false; motion.remove(); reader.remove(); };
+    const reader = native ? AccessibilityInfo.addEventListener('screenReaderChanged', screenReader => setAccessibility(s => ({ ...s, screenReader }))) : undefined;
+    return () => { alive = false; motion?.remove(); reader?.remove(); };
   }, []);
   useEffect(() => {
     if (Platform.OS === 'web') {

@@ -14,8 +14,9 @@ export type ToastOptions = {
   onShow?(): void;
   onDismiss?(reason: ToastDismissReason): void;
 };
-export type ToastEntry = ToastOptions & { id: string; presented: boolean };
-type Environment = { enabled: boolean; active: boolean; blocked: boolean; screenReader: boolean };
+export const TOAST_EXIT_MS = 200;
+export type ToastEntry = ToastOptions & { id: string; presented: boolean; closing?: boolean };
+type Environment = { enabled: boolean; active: boolean; blocked: boolean; screenReader: boolean; reducedMotion?: boolean };
 type Clock = { setTimer(run: () => void, ms: number): ReturnType<typeof setTimeout>; clearTimer(id: ReturnType<typeof setTimeout>): void };
 
 /** Bounded, provider-local queue. No notification history or user content is persisted. */
@@ -36,7 +37,7 @@ export function createToastStore(clock: Clock = { setTimer: (run, ms) => setTime
   const pump = () => {
     if (!active && environment.enabled && environment.active && !environment.blocked && queue.length) { active = queue.shift()!; emit(); }
   };
-  const dismiss = (id: string, reason: ToastDismissReason = 'manual') => {
+  const finish = (id: string, reason: ToastDismissReason) => {
     if (active?.id === id) {
       const old = active; active = null; stop(); remember(old); emit();
       notify(() => old.onDismiss?.(reason)); pump();
@@ -46,7 +47,15 @@ export function createToastStore(clock: Clock = { setTimer: (run, ms) => setTime
       queue = queue.filter(entry => entry.id !== id); emit(); notify(() => old.onDismiss?.(reason));
     }
   };
+  const dismiss = (id: string, reason: ToastDismissReason = 'manual') => {
+    if (active?.id === id && !active.render && active.presented && !environment.reducedMotion && (reason === 'manual' || reason === 'timeout')) {
+      if (active.closing) return;
+      active = { ...active, closing: true }; stop();
+      timer = clock.setTimer(() => finish(id, reason), TOAST_EXIT_MS); emit();
+    } else finish(id, reason);
+  };
   const arm = () => {
+    if (active?.closing) return;
     stop();
     if (!active?.presented || active.durationMs === null) return;
     const id = active.id, requested = active.durationMs ?? 4000;
@@ -86,6 +95,7 @@ export function createToastStore(clock: Clock = { setTimer: (run, ms) => setTime
     update(id: string, patch: Partial<ToastOptions>, expectedScope: string): boolean {
       if (scope !== expectedScope) return false;
       if (active?.id === id) {
+        if (active.closing) return false;
         active = { ...active, ...patch, id, presented: active.presented };
         if ('durationMs' in patch) arm(); emit(); return true;
       }
