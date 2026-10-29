@@ -1,4 +1,6 @@
-import { resolveCharacterArtwork } from '../../design/skin-artwork';
+import { useSkinArtwork } from '../artwork/useSkinArtwork';
+import { ArtworkImage } from '../artwork/ArtworkImage';
+import { resolveCharacterArtwork as defaultArtwork } from '../../design/skin-artwork';
 import { characters } from '../profile/CharacterPicker';
 import type { CharacterId } from '../../lib/characters';
 import { colors, typography, radius, layout } from '../../design/theme';
@@ -10,7 +12,8 @@ import { useStudy } from './StudyProvider';
 import { progress } from './presentation';
 
 export function Avatar({ size = 64, character = 'bunny', activeSkinId }: { id?: string; size?: number; character?: CharacterId; activeSkinId?: string | null }) {
-  return <Image source={resolveCharacterArtwork(character, activeSkinId).home} resizeMode="contain" style={{ width: size, height: size }} accessibilityLabel={`${characters[character].label} 캐릭터`} />;
+  const { resolveCharacterArtwork } = useSkinArtwork([activeSkinId]);
+  return <ArtworkImage fallbackSource={defaultArtwork(character).home} source={resolveCharacterArtwork(character, activeSkinId).home} resizeMode="contain" style={{ width: size, height: size }} accessibilityLabel={`${characters[character].label} 캐릭터`} />;
 }
 
 export function Progress({ seconds, goal }: { seconds: number; goal: number | null }) {

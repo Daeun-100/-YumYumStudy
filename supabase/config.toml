@@ -426,3 +426,7 @@ verify_jwt = false
 # Server-only administrator endpoint checks ADMIN_NOTIFICATION_TOKEN before any work.
 [functions.admin-notifications]
 verify_jwt = false
+
+[functions.event-notifications]
+# Authenticates the existing trusted Cron credential inside the handler.
+verify_jwt = false
