@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 // Run with PGLITE_MODULE=/absolute/path/to/@electric-sql/pglite/dist/index.js.
 // This exercises real PostgreSQL grants/RLS/transactions; Realtime and cron are stubbed.
-test('admin toast SQL authorization, transactions, idempotency and revocation', { skip: !process.env.PGLITE_MODULE }, async () => {
+test('admin toast SQL authorization, transactions, idempotency and terminal deletion', { skip: !process.env.PGLITE_MODULE }, async () => {
   const { PGlite } = await import(process.env.PGLITE_MODULE);
   const db = new PGlite();
   const user = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa', other = 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb', outsider = 'cccccccc-cccc-4ccc-cccc-cccccccccccc';
@@ -26,17 +26,17 @@ test('admin toast SQL authorization, transactions, idempotency and revocation', 
     await db.exec(readFileSync(new URL('../supabase/migrations/20261029125804_admin_toasts.sql', import.meta.url), 'utf8'));
     const call = async input => (await db.query('select public.manage_admin_toasts($1::jsonb) as result', [JSON.stringify(input)])).rows[0].result;
     await db.exec('set role service_role');
-    const base = { action: 'create', requestId, campaignId: id, kind: 'info_notice', roomId: 1, userIds: [user], enabled: true,
+    const base = { action: 'create', requestId, campaignId: id, kind: 'info_notice', roomId: 1, userIds: [user],
       startsAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 60000).toISOString(), platforms: ['android','web'], appVariant: 'production', payload: { title: '공지' } };
     const first = await call(base); assert.equal(first.status, 'saved'); assert.equal(first.targetCount, 1);
     assert.deepEqual(await call(base), first);
-    await assert.rejects(call({ ...base, enabled: false }), /Request UUID already used/);
+    await assert.rejects(call({ ...base, payload: { title: '다른 안내' } }), /Request UUID already used/);
     await assert.rejects(call({ ...base, requestId: other, campaignId: other, userIds: [outsider] }), /Recipients missing/);
     assert.equal((await db.query('select count(*)::integer as n from public.admin_toast_campaigns')).rows[0].n, 1);
     await db.exec(`reset role; set role authenticated; select set_config('test.uid','${user}',false)`);
     assert.equal((await db.query('select public.get_admin_toasts() as x')).rows[0].x.campaigns.length, 1);
     await assert.rejects(call(base), /permission denied/);
-    await assert.rejects(db.exec(`update public.admin_toast_campaigns set enabled=false`), /permission denied/);
+    await assert.rejects(db.exec(`update public.admin_toast_campaigns set deleted_at=now()`), /permission denied/);
     await assert.rejects(db.exec(`select * from admin_toast_private.requests`), /permission denied/);
     await db.query('select public.record_admin_toast($1,$2,$3)', [id, user, 'shown']);
     await db.query('select public.record_admin_toast($1,$2,$3)', [id, user, 'close']);
@@ -49,12 +49,22 @@ test('admin toast SQL authorization, transactions, idempotency and revocation', 
     await db.exec(`select set_config('test.uid','${outsider}',false)`);
     assert.equal((await db.query('select public.get_admin_toasts() as x')).rows[0].x.campaigns.length, 0);
     await db.exec('reset role; set role service_role');
-    await assert.rejects(call({ action: 'set_enabled', requestId: outsider, campaignId: id, expectedRevision: 2, enabled: false }), /Revision conflict/);
-    await call({ action: 'set_enabled', requestId: outsider, campaignId: id, expectedRevision: 1, enabled: false });
+    await assert.rejects(call({ action: 'delete', requestId: outsider, campaignId: id, expectedRevision: 2 }), /Revision conflict/);
+    const deletion = { action: 'delete', requestId: outsider, campaignId: id, expectedRevision: 1 };
+    const deleted = await call(deletion);
+    assert.equal(deleted.status, 'deleted'); assert.ok(deleted.campaign.deleted_at); assert.equal(deleted.campaign.revision, 2);
+    assert.deepEqual(await call(deletion), deleted, 'same request recovers the same deletion result');
+    const repeated = await call({ ...deletion, requestId: randomUUID() });
+    assert.equal(repeated.campaign.deleted_at, deleted.campaign.deleted_at); assert.equal(repeated.campaign.revision, 2);
+    await assert.rejects(db.query('update public.admin_toast_campaigns set deleted_at=null where id=$1',[id]), /cannot be restored/);
+    await assert.rejects(call({ ...deletion, requestId: randomUUID(), action: 'set_enabled', enabled: true }), /cannot be re-enabled/);
+    assert.equal((await call({ action: 'list', requestId: randomUUID(), roomId: 1 })).campaigns.length, 0);
+
     const status = await call({ action: 'status', requestId: user, campaignId: id });
     assert.equal(status.shownInstallations, 1); assert.equal(status.completedInstallations, 1);
     await db.exec(`reset role; set role authenticated; select set_config('test.uid','${user}',false)`);
     assert.equal((await db.query('select public.get_admin_toasts() as x')).rows[0].x.campaigns.length, 0);
+    await assert.rejects(db.query('select public.record_admin_toast($1,$2,$3)', [id, other, 'shown']), /row-level security/);
     await db.exec('reset role; set role service_role');
     const scheduledId = randomUUID();
     await call({ ...base, campaignId: scheduledId, requestId: randomUUID(), userIds: null,
@@ -63,13 +73,13 @@ test('admin toast SQL authorization, transactions, idempotency and revocation', 
     assert.equal((await db.query('select public.get_admin_toasts() as x')).rows[0].x.campaigns.length, 1, 'future notice is available for local scheduling');
     await assert.rejects(db.query('select public.record_admin_toast($1,$2,$3)', [scheduledId, user, 'shown']), /row-level security/);
     await db.exec('reset role; set role service_role');
-    const resendInput = { ...base, action: 'resend', requestId: randomUUID(), campaignId: randomUUID(), sourceCampaignId: id, expectedRevision: 2 };
-    const resent = await call(resendInput); assert.equal(resent.campaign.source_campaign_id, id);
-    assert.deepEqual(await call(resendInput), resent);
+    const newNotice = { ...base, requestId: randomUUID(), campaignId: randomUUID() };
+    const resent = await call(newNotice); assert.notEqual(resent.campaign.id, id); assert.equal(resent.campaign.deleted_at, null);
+    assert.deepEqual(await call(newNotice), resent);
     const updateInput = { ...base, requestId: randomUUID(), campaignId: randomUUID(), kind: 'update_ready', userIds: null, payload: { updateId: id } };
     await call(updateInput);
     await assert.rejects(call({ ...updateInput, requestId: randomUUID(), campaignId: randomUUID() }), /Duplicate active update notice/);
-    await db.exec(`update public.admin_toast_campaigns set enabled=false,starts_at=now()-interval '101 days',expires_at=now()-interval '100 days' where id='${scheduledId}'`);
+    await db.exec(`update public.admin_toast_campaigns set starts_at=now()-interval '101 days',expires_at=now()-interval '100 days' where id='${scheduledId}'`);
     await db.exec('select public.cleanup_admin_toasts()');
     assert.equal((await db.query('select count(*)::integer as n from public.admin_toast_campaigns where id=$1',[scheduledId])).rows[0].n, 0);
     await db.exec(`reset role; grant insert on realtime.messages to authenticated;

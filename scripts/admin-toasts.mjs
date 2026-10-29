@@ -19,7 +19,7 @@ export function deploymentTarget(record, easResponse, plan) {
 export function prepare(raw, now = Date.now()) {
   const v = { ...raw };
   v.requestId ??= crypto.randomUUID(); v.campaignId ??= crypto.randomUUID();
-  v.enabled ??= true; v.userIds ??= null;
+  v.userIds ??= null;
   v.startsAt ??= new Date(now).toISOString();
   v.expiresAt ??= new Date(Date.parse(v.startsAt) + (v.kind === 'update_ready' ? 7 : 1) * 86400000).toISOString();
   v.platforms ??= v.kind === 'update_ready' ? ['android'] : ['android', 'ios', 'web'];
@@ -35,7 +35,7 @@ export async function request(input, config, fetcher = fetch) {
 }
 async function main() {
   const [action, inputFile, ...extra] = process.argv.slice(2);
-  if (!['preview', 'create', 'set_enabled', 'resend', 'list', 'status'].includes(action) || !inputFile || extra.length) throw Error('Use <action> <private JSON input file>');
+  if (!['preview', 'create', 'delete', 'list', 'status'].includes(action) || !inputFile || extra.length) throw Error('Use <action> <private JSON input file>');
   const credentialFile = path.join(os.homedir(), '.codex', 'skills', 'yumyum-send-toast', 'private', 'admin.json');
   if (fs.statSync(credentialFile).mode & 0o077) throw Error('Credentials must have mode 0600');
   const config = JSON.parse(fs.readFileSync(credentialFile, 'utf8'));

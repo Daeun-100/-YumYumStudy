@@ -4,22 +4,23 @@ export type Input = Record<string, unknown> & { action: string; requestId: strin
 export function parseInput(raw: unknown, now = Date.now()): Input {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw Error('Invalid input');
   const v = raw as Record<string, unknown>;
-  const actions = ['preview', 'create', 'set_enabled', 'resend', 'list', 'status'];
+  const actions = ['preview', 'create', 'delete', 'list', 'status'];
   if (!actions.includes(String(v.action)) || typeof v.requestId !== 'string' || !uuid.test(v.requestId)) throw Error('Action and request UUID required');
+  if (v.enabled !== undefined || v.sourceCampaignId !== undefined) throw Error('Enable/disable and resend are unsupported; create or delete a notice');
   const result: Input = { action: String(v.action), requestId: v.requestId.toLowerCase() };
   if (v.campaignId !== undefined) {
     if (typeof v.campaignId !== 'string' || !uuid.test(v.campaignId)) throw Error('Invalid campaign UUID');
     result.campaignId = v.campaignId.toLowerCase();
   }
   if (v.action === 'status') return result;
-  if (v.action === 'set_enabled') {
-    if (!result.campaignId || typeof v.enabled !== 'boolean' || !Number.isSafeInteger(v.expectedRevision) || Number(v.expectedRevision) < 1) throw Error('Campaign, enabled and revision required');
-    return { ...result, enabled: v.enabled, expectedRevision: v.expectedRevision };
+  if (v.action === 'delete') {
+    if (!result.campaignId || !Number.isSafeInteger(v.expectedRevision) || Number(v.expectedRevision) < 1) throw Error('Campaign and revision required');
+    return { ...result, expectedRevision: v.expectedRevision };
   }
   if (![0, 1].includes(Number(v.roomId)) || typeof v.roomId !== 'number') throw Error('Room required');
   result.roomId = v.roomId;
   if (v.action === 'list') return result;
-  if (!result.campaignId || !['info_notice', 'update_ready'].includes(String(v.kind)) || typeof v.enabled !== 'boolean') throw Error('Campaign, kind and enabled required');
+  if (!result.campaignId || !['info_notice', 'update_ready'].includes(String(v.kind))) throw Error('Campaign and kind required');
   const ids = v.userIds;
   if (ids !== null && (!Array.isArray(ids) || !ids.length || ids.length > 100 || ids.some(id => typeof id !== 'string' || !uuid.test(id)))) throw Error('userIds must be null or 1-100 UUIDs');
   result.userIds = ids === null ? null : [...new Set((ids as string[]).map(id => id.toLowerCase()))].sort();
@@ -45,10 +46,6 @@ export function parseInput(raw: unknown, now = Date.now()): Input {
       || (p.message !== undefined && (typeof p.message !== 'string' || p.message.length > 240))) throw Error('Invalid notice text');
     payload = { title: p.title.trim(), ...(p.message ? { message: String(p.message).trim() } : {}) };
   }
-  if (v.action === 'resend') {
-    if (typeof v.sourceCampaignId !== 'string' || !uuid.test(v.sourceCampaignId) || !Number.isSafeInteger(v.expectedRevision)) throw Error('Source campaign and revision required');
-    result.sourceCampaignId = v.sourceCampaignId.toLowerCase(); result.expectedRevision = v.expectedRevision;
-  }
-  return { ...result, kind: v.kind, enabled: v.enabled, appVariant: variant, platforms: [...new Set(platforms)].sort(),
+  return { ...result, kind: v.kind, appVariant: variant, platforms: [...new Set(platforms)].sort(),
     startsAt: new Date(starts).toISOString(), expiresAt: new Date(expires).toISOString(), payload };
 }
