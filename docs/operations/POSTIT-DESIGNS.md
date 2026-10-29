@@ -59,13 +59,13 @@ node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs enabl
 {
   "request_id": "새 UUID로 교체",
   "event_id": "2026-halloween",
-  "name": "할로윈 31분 공부",
+  "name": "할로윈 30분 공부",
   "document_path": "docs/events/2026-halloween.md",
   "room_id": 0,
   "design_id": "halloween-paper",
   "starts_at": "2026-10-31T06:00:00+09:00",
   "ends_at": "2026-11-01T06:00:00+09:00",
-  "required_seconds": 1860
+  "required_seconds": 1800
 }
 ```
 
@@ -93,7 +93,7 @@ node supabase/scripts/check-themed-artwork-db.mjs /ABSOLUTE/PATH/TO/@electric-sq
 npm run build-storybook
 ```
 
-격리 DB는 Storage·Cron·실제 네트워크의 대체 구현이다. 역할·권한·RLS·중복 방지·31분 경계·분할 세션·종료 이벤트 복구·구형 색상·고정 리비전을 확인한다. 실제 동시 DB 연결·Storage 업로드·Android 기기·iPhone 웹앱 수신은 배포 후 별도 확인한다.
+격리 DB는 Storage·Cron·실제 네트워크의 대체 구현이다. 역할·권한·RLS·중복 방지·30분 경계·분할 세션·종료 이벤트 복구·구형 색상·고정 리비전을 확인한다. 실제 동시 DB 연결·Storage 업로드·Android 기기·iPhone 웹앱 수신은 배포 후 별도 확인한다.
 
 Storybook `화면/포스트잇 디자인 보상`에서 원형 견본 선택·작성·붙이기·열람·이미지 실패 대체를 확인한다. `stories/assets/postit-paper-preview.png`는 코드로 만든 도형 검증 파일이며 실제 지급용 디자인이 아니다.
 

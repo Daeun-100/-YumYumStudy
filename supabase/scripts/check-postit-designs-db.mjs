@@ -10,7 +10,7 @@ const asUser=async uid=>{await db.exec(`reset role;set role authenticated;select
 const rule=async(m,changes={})=>{
  const bounds=(await db.query("select ((public.study_date(now())+time '06:00') at time zone 'Asia/Seoul') lo, ((public.study_date(now())+1+time '06:00') at time zone 'Asia/Seoul') hi")).rows[0];
  const request={request_id:randomUUID(),event_id:'qa-postit',name:'QA',document_path:'docs/events/qa-postit.md',room_id:0,design_id:m.id,
- starts_at:bounds.lo,ends_at:bounds.hi,required_seconds:1860,...changes};
+ starts_at:bounds.lo,ends_at:bounds.hi,required_seconds:1800,...changes};
  return {request,result:await call('admin_configure_postit_reward',[JSON.stringify(request)])};
 };
 try{
@@ -27,13 +27,13 @@ try{
  await assert.rejects(()=>rule(m,{ends_at:new Date(Date.now()+172800000).toISOString()}),/check constraint/);
  // Closed + running fragments total exactly the threshold at transaction time.
  await db.query("insert into public.study_sessions(user_id,room_id,started_at,ended_at) values($1,0,now()-interval '40 minutes',now()-interval '25 minutes')",[u]);
- await db.query("insert into public.study_sessions(user_id,room_id,started_at) values($1,0,now()-interval '959 seconds')",[u]);
+ await db.query("insert into public.study_sessions(user_id,room_id,started_at) values($1,0,now()-interval '899 seconds')",[u]);
  await asUser(u);
  assert.equal((await call('sync_postit_designs',[0])).owned.length,0);
  await assert.rejects(()=>call('admin_configure_postit_reward',[JSON.stringify(request)]),/permission denied/);
  await assert.rejects(()=>call('sync_postit_designs',[1]),/Room identity/);
  await assert.rejects(()=>call('put_designed_postit',[randomUUID(),'hello','#F9E8A0',.5,.5,m.id]),/보유한/);
- await db.exec('reset role');await db.query("update public.study_sessions set started_at=now()-interval '960 seconds' where user_id=$1 and ended_at is null",[u]);
+ await db.exec('reset role');await db.query("update public.study_sessions set started_at=now()-interval '900 seconds' where user_id=$1 and ended_at is null",[u]);
  await asUser(u);
  const first=await call('sync_postit_designs',[0]);assert.equal(first.owned.length,1);
  const grant=first.owned[0];assert.equal((await call('sync_postit_designs',[0])).owned[0].grantId,grant.grantId);
@@ -92,5 +92,5 @@ try{
  await db.exec('reset role');
  const permissions=(await db.query("select p.proname,has_function_privilege('anon',p.oid,'execute') anon,has_function_privilege('authenticated',p.oid,'execute') app from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('private','public') and p.proname like '%postit%'")).rows;
  assert.ok(permissions.every(p=>!p.anon));assert.ok(permissions.filter(p=>p.proname.startsWith('admin_')).every(p=>!p.app));
- console.log('PASS: themed PNG registration, preserved paper snapshots, enabled rules, 1859/1860-second split sessions, running time, duplicate grants, retry preservation, room/ownership rights, legacy colors, pinned revisions, ended-event recovery, cancellation and function permissions. Storage is an isolated substitute.');
+ console.log('PASS: themed PNG registration, preserved paper snapshots, enabled rules, 1799/1800-second split sessions, running time, duplicate grants, retry preservation, room/ownership rights, legacy colors, pinned revisions, ended-event recovery, cancellation and function permissions. Storage is an isolated substitute.');
 }finally{await db.close();}
