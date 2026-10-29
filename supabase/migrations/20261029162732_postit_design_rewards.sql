@@ -1,11 +1,13 @@
 begin;
--- Extend the same immutable image library; existing skin/background contracts stay intact.
-alter table private.artwork_revisions drop constraint artwork_revisions_kind_check;
-alter table private.artwork_revisions add constraint artwork_revisions_kind_check check(kind in ('skin','background','postit'));
-alter table private.artwork_publications drop constraint artwork_publications_kind_check;
-alter table private.artwork_publications add constraint artwork_publications_kind_check check(kind in ('skin','background','postit'));
+-- Only paper snapshots need an internal immutable reference; operators use theme/path.
+create table private.postit_artwork_snapshots (
+ revision uuid primary key, content_id text not null, definition jsonb not null, created_at timestamptz not null default clock_timestamp()
+);
+create index postit_artwork_snapshots_content_idx on private.postit_artwork_snapshots(content_id);
+alter table private.postit_artwork_snapshots enable row level security;
+revoke all on private.postit_artwork_snapshots from public,anon,authenticated,service_role;
 create table private.postit_designs (
- id text primary key, name text not null, grant_enabled boolean not null default false
+ id text primary key, name text not null, grant_enabled boolean not null default false, artwork_revision uuid not null references private.postit_artwork_snapshots(revision)
 );
 create table private.user_postit_designs (
  id uuid primary key default gen_random_uuid(), user_id uuid not null references public.profiles(id) on delete cascade,
@@ -36,57 +38,57 @@ alter table private.user_postit_designs enable row level security;
 alter table private.postit_reward_rules enable row level security;
 alter table private.postit_reward_deliveries enable row level security;
 revoke all on private.postit_designs,private.user_postit_designs,private.postit_reward_rules,private.postit_reward_deliveries from public,anon,authenticated,service_role;
-alter table public.room_postits add column design_id text references private.postit_designs(id), add column design_revision uuid references private.artwork_revisions(revision);
+alter table public.room_postits add column design_id text references private.postit_designs(id), add column design_revision uuid references private.postit_artwork_snapshots(revision);
 alter table public.room_postits add constraint postit_design_pair check((design_id is null)=(design_revision is null));
 create index room_postits_design_revision_idx on public.room_postits(design_revision) where design_revision is not null;
 create index room_postits_design_idx on public.room_postits(design_id) where design_id is not null;
 
-alter function private.validate_artwork_definition(jsonb) rename to validate_scene_artwork_definition;
-revoke all on function private.validate_scene_artwork_definition(jsonb) from public,anon,authenticated,service_role;
-create function private.validate_artwork_definition(m jsonb) returns void language plpgsql set search_path='' as $$
-declare a jsonb; rev uuid;
+create function private.validate_postit_definition(m jsonb) returns void language plpgsql set search_path='' as $$
+declare a jsonb;
 begin
- if m->>'kind' is distinct from 'postit' then perform private.validate_scene_artwork_definition(m);return;end if;
- if jsonb_typeof(m) is distinct from 'object' or (m->'schemaVersion' is null or m->'schemaVersion' not in ('1'::jsonb,'2'::jsonb))
+ if jsonb_typeof(m) is distinct from 'object' or m->'schemaVersion' is distinct from '2'::jsonb or m->>'kind' is distinct from 'postit'
   or jsonb_typeof(m->'id') is distinct from 'string' or coalesce(m->>'id','') !~ '^[a-z0-9][a-z0-9_-]{0,79}$'
+  or jsonb_typeof(m->'theme') is distinct from 'string' or coalesce(m->>'theme','') !~ '^[a-z0-9][a-z0-9_-]{0,79}$'
   or jsonb_typeof(m->'name') is distinct from 'string' or coalesce(length(btrim(m->>'name')),0) not between 1 and 60
-  or coalesce(m->>'fallbackColor','') not in ('#F9E8A0','#F7CED4','#DAE8BE')
-  or coalesce(m->>'textColor','') !~ '^#[0-9A-Fa-f]{6}$'
-  or exists(select 1 from jsonb_object_keys(m) k where k not in ('schemaVersion','kind','id','name','revision','paper','fallbackColor','textColor','theme'))
- then raise exception 'Invalid postit definition' using errcode='22023';end if;
- rev:=(m->>'revision')::uuid;if rev is null then raise exception 'Revision required' using errcode='22023';end if;
+  or coalesce(m->>'fallbackColor','') not in ('#F9E8A0','#F7CED4','#DAE8BE') or coalesce(m->>'textColor','') !~ '^#[0-9A-Fa-f]{6}$'
+  or exists(select 1 from jsonb_object_keys(m) k where k not in ('schemaVersion','kind','id','name','theme','paper','fallbackColor','textColor'))
+ then raise exception 'Invalid postit definition; use theme/path without image revisions' using errcode='22023';end if;
  a:=m->'paper';
- if jsonb_typeof(a) is distinct from 'object' or (case when m->'schemaVersion'='1'::jsonb then a->>'path' is distinct from 'postit/'||(m->>'id')||'/'||rev::text||'/paper.png' else jsonb_typeof(m->'theme') is distinct from 'string' or coalesce(m->>'theme','') !~ '^[a-z0-9][a-z0-9_-]{0,79}$' or coalesce(a->>'path','') !~ ('^'||(m->>'theme')||'/postits/([a-z0-9][a-z0-9_-]{0,79}/)*[a-z0-9][a-z0-9_-]{0,79}[.]png$') or length(a->>'path')>240 end)
+ if jsonb_typeof(a) is distinct from 'object' or coalesce(a->>'path','') !~ ('^'||(m->>'theme')||'/postits/([a-z0-9][a-z0-9_-]{0,79}/)*[a-z0-9][a-z0-9_-]{0,79}[.]png$') or length(a->>'path')>240
   or jsonb_typeof(a->'sha256') is distinct from 'string' or coalesce(a->>'sha256','') !~ '^[a-f0-9]{64}$'
   or a->'width' is distinct from '1024'::jsonb or a->'height' is distinct from '1024'::jsonb
-  or jsonb_typeof(a->'bytes') is distinct from 'number' or coalesce((a->>'bytes')::numeric,0) not between 1 and 2097152
-  or (a->>'bytes')::numeric<>trunc((a->>'bytes')::numeric)
+  or jsonb_typeof(a->'bytes') is distinct from 'number' or coalesce((a->>'bytes')::numeric,0) not between 1 and 2097152 or (a->>'bytes')::numeric<>trunc((a->>'bytes')::numeric)
  then raise exception 'Invalid postit PNG' using errcode='22023';end if;
  if not exists(select 1 from storage.objects o where o.bucket_id='event-artwork' and o.name=a->>'path' and o.metadata->>'mimetype'='image/png' and (o.metadata->>'size')::bigint=(a->>'bytes')::bigint)
  then raise exception 'Upload verified postit PNG first' using errcode='22023';end if;
 end $$;
-revoke all on function private.validate_artwork_definition(jsonb) from public,anon,authenticated,service_role;
-alter function private.publish_artwork(uuid,boolean) rename to publish_scene_artwork;
-revoke all on function private.publish_scene_artwork(uuid,boolean) from public,anon,authenticated,service_role;
-create function private.publish_artwork(p_revision uuid,p_activate boolean default false) returns jsonb language plpgsql security definer set search_path='' as $$
-declare r private.artwork_revisions;
+revoke all on function private.validate_postit_definition(jsonb) from public,anon,authenticated,service_role;
+alter table private.artwork_library drop constraint artwork_library_kind_check;
+alter table private.artwork_library add constraint artwork_library_kind_check check(kind in ('skin','background','postit'));
+alter function private.register_library_artwork(jsonb,boolean) rename to register_scene_library_artwork;
+revoke all on function private.register_scene_library_artwork(jsonb,boolean) from public,anon,authenticated,service_role;
+create function private.register_library_artwork(m jsonb,p_activate boolean default false) returns jsonb language plpgsql security definer set search_path='' as $$
+declare previous jsonb; snapshot_id uuid;
 begin
- select * into strict r from private.artwork_revisions where revision=p_revision for update;
- if r.kind<>'postit' then return private.publish_scene_artwork(p_revision,p_activate);end if;
- perform private.validate_artwork_definition(r.definition);
- perform pg_advisory_xact_lock(hashtextextended('artwork:postit:'||r.content_id,0));
- insert into private.postit_designs(id,name,grant_enabled) values(r.content_id,r.definition->>'name',p_activate)
- on conflict(id) do update set name=excluded.name,grant_enabled=private.postit_designs.grant_enabled or excluded.grant_enabled;
- update private.artwork_revisions set published_at=coalesce(published_at,clock_timestamp()) where revision=p_revision;
- insert into private.artwork_publications(kind,content_id,revision) values('postit',r.content_id,r.revision)
- on conflict(kind,content_id) do update set revision=excluded.revision;
- return jsonb_build_object('kind','postit','id',r.content_id,'revision',r.revision,'published',true,'activated',p_activate);
+ if m->>'kind' is distinct from 'postit' then return private.register_scene_library_artwork(m,p_activate);end if;
+ perform private.validate_postit_definition(m);
+ perform pg_advisory_xact_lock(hashtextextended('artwork:postit:'||(m->>'id'),0));
+ select definition into previous from private.artwork_library where kind='postit' and content_id=m->>'id';
+ if previous=m then
+  if p_activate then update private.postit_designs set grant_enabled=true where id=m->>'id';end if;
+  return jsonb_build_object('id',m->>'id','theme',m->>'theme','registered',true,'activated',p_activate);
+ end if;
+ snapshot_id:=gen_random_uuid();
+ insert into private.postit_artwork_snapshots(revision,content_id,definition) values(snapshot_id,m->>'id',m||jsonb_build_object('revision',snapshot_id));
+ insert into private.postit_designs(id,name,grant_enabled,artwork_revision) values(m->>'id',m->>'name',p_activate,snapshot_id)
+ on conflict(id) do update set name=excluded.name,grant_enabled=private.postit_designs.grant_enabled or excluded.grant_enabled,artwork_revision=excluded.artwork_revision;
+ insert into private.artwork_library(kind,content_id,theme,definition) values('postit',m->>'id',m->>'theme',m)
+ on conflict(kind,content_id) do update set theme=excluded.theme,definition=excluded.definition,updated_at=clock_timestamp();
+ return jsonb_build_object('id',m->>'id','theme',m->>'theme','registered',true,'activated',p_activate);
 end $$;
--- SQL wrappers can retain dependencies on renamed functions: replace their bodies explicitly.
-create or replace function public.admin_publish_artwork(p_revision uuid,p_activate boolean default false) returns jsonb language sql security invoker set search_path='' as $$ select private.publish_artwork(p_revision,p_activate) $$;
-revoke all on function private.publish_artwork(uuid,boolean) from public,anon,authenticated,service_role;
-grant execute on function private.publish_artwork(uuid,boolean) to service_role;
-
+create or replace function public.admin_register_artwork(p_definition jsonb,p_activate boolean default false) returns jsonb language sql security invoker set search_path='' as $$ select private.register_library_artwork(p_definition,p_activate) $$;
+revoke all on function private.register_library_artwork(jsonb,boolean) from public,anon,authenticated,service_role;
+grant execute on function private.register_library_artwork(jsonb,boolean) to service_role;
 create function private.configure_postit_reward(p jsonb) returns jsonb language plpgsql security definer set search_path='' as $$
 declare old private.postit_reward_rules; rid uuid:=(p->>'request_id')::uuid;
 begin
@@ -96,7 +98,7 @@ begin
  perform pg_advisory_xact_lock(hashtextextended('postit-rule:'||rid,0));
  select * into old from private.postit_reward_rules where id=rid;
  if found then if old.request<>p then raise exception 'Request ID reused with different input' using errcode='22023';end if;return to_jsonb(old);end if;
- if not exists(select 1 from private.postit_designs d join private.artwork_publications a on a.kind='postit' and a.content_id=d.id where d.id=p->>'design_id' and d.grant_enabled)
+ if not exists(select 1 from private.postit_designs d where d.id=p->>'design_id' and d.grant_enabled)
  then raise exception 'Published enabled postit design required' using errcode='22023';end if;
  insert into private.events(id,name,document_path) values(p->>'event_id',p->>'name',p->>'document_path') on conflict(id) do nothing;
  insert into private.postit_reward_rules(id,event_id,room_id,design_id,starts_at,ends_at,required_seconds,request)
@@ -145,10 +147,10 @@ begin
   if remaining>0 then next_check:=least(next_check,remaining);end if;
  end loop;
  select coalesce(jsonb_agg(jsonb_build_object('grantId',g.id,'grantedAt',g.granted_at,'artwork',a.definition) order by g.granted_at,g.id),'[]'::jsonb)
- into results from private.user_postit_designs g join private.artwork_publications p on p.kind='postit' and p.content_id=g.design_id
- join private.artwork_revisions a on a.revision=p.revision where g.user_id=uid;
+ into results from private.user_postit_designs g join private.postit_designs d on d.id=g.design_id
+ join private.postit_artwork_snapshots a on a.revision=d.artwork_revision where g.user_id=uid;
  return jsonb_build_object('serverNow',t,'owned',results,'nextCheckSeconds',next_check,
- 'visible',coalesce((select jsonb_agg(a.definition) from private.artwork_revisions a where a.kind='postit' and a.revision in (
+ 'visible',coalesce((select jsonb_agg(a.definition) from private.postit_artwork_snapshots a where a.revision in (
  select n.design_revision from public.room_postits n where n.room_id=actual and n.study_date=public.study_date(t) and n.deleted_at is null)),'[]'::jsonb));
 end $$;
 create function public.sync_postit_designs(p_room_id smallint) returns jsonb language sql security invoker set search_path='' as $$ select private.sync_postit_designs(p_room_id) $$;
@@ -156,7 +158,7 @@ create function public.sync_postit_designs(p_room_id smallint) returns jsonb lan
 -- Separate name avoids overloading the old RPC and keeps old clients working.
 create function private.put_designed_postit(p_id uuid,p_text text,p_color text,p_x double precision,p_y double precision,p_design_id text) returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare r smallint:=public.current_study_room(); n public.room_postits; m private.artwork_revisions; d date:=public.study_date(statement_timestamp());
+declare r smallint:=public.current_study_room(); n public.room_postits; m private.postit_artwork_snapshots; d date:=public.study_date(statement_timestamp());
 begin
  if r is null then raise exception 'Room admission required' using errcode='42501';end if;
  perform 1 from public.profiles where id=auth.uid() for update;
@@ -167,7 +169,7 @@ begin
  end if;
  if p_design_id is null then return public.put_room_postit(p_id,p_text,p_color,p_x,p_y);end if;
  if not exists(select 1 from private.user_postit_designs where user_id=auth.uid() and design_id=p_design_id) then raise exception '보유한 종이 디자인인지 다시 확인해 주세요.' using errcode='22023';end if;
- select a.* into m from private.artwork_publications p join private.artwork_revisions a on a.revision=p.revision where p.kind='postit' and p.content_id=p_design_id;
+ select a.* into m from private.postit_designs p join private.postit_artwork_snapshots a on a.revision=p.artwork_revision where p.id=p_design_id;
  if not found then raise exception '종이 디자인을 불러올 수 없어요.' using errcode='22023';end if;
  if (select count(*) from public.room_postits where author_id=auth.uid() and study_date=d)>=30 then raise exception '오늘은 포스트잇을 30개까지 남길 수 있어요.' using errcode='22023';end if;
  insert into public.room_postits(id,room_id,author_id,author,text,color,x,y,study_date,design_id,design_revision)
@@ -187,30 +189,5 @@ end $$;
 create function public.admin_set_postit_design_enabled(p_id text,p_enabled boolean) returns void language sql security invoker set search_path='' as $$ select private.set_postit_design_enabled(p_id,p_enabled) $$;
 revoke all on function private.set_postit_design_enabled(text,boolean),public.admin_set_postit_design_enabled(text,boolean) from public,anon,authenticated,service_role;
 grant execute on function private.set_postit_design_enabled(text,boolean),public.admin_set_postit_design_enabled(text,boolean) to service_role;
--- The current shared library is theme/path based. Snapshot UUIDs stay internal.
-alter table private.artwork_library drop constraint artwork_library_kind_check;
-alter table private.artwork_library add constraint artwork_library_kind_check check(kind in ('skin','background','postit'));
-alter function private.register_library_artwork(jsonb,boolean) rename to register_scene_library_artwork;
-revoke all on function private.register_scene_library_artwork(jsonb,boolean) from public,anon,authenticated,service_role;
-create function private.register_library_artwork(m jsonb,p_activate boolean default false) returns jsonb language plpgsql security definer set search_path='' as $$
-declare previous jsonb; snapshot jsonb; snapshot_id uuid;
-begin
- if m->>'kind' is distinct from 'postit' then return private.register_scene_library_artwork(m,p_activate);end if;
- if m ? 'revision' or m->'schemaVersion' is distinct from '2'::jsonb then raise exception 'Use a theme and file path, not an image revision' using errcode='22023';end if;
- perform pg_advisory_xact_lock(hashtextextended('artwork:postit:'||(m->>'id'),0));
- select definition into previous from private.artwork_library where kind='postit' and content_id=m->>'id';
- if previous=m then
-  if p_activate then update private.postit_designs set grant_enabled=true where id=m->>'id';end if;
-  return jsonb_build_object('id',m->>'id','theme',m->>'theme','registered',true,'activated',p_activate);
- end if;
- snapshot_id:=gen_random_uuid();snapshot:=m||jsonb_build_object('revision',snapshot_id);
- perform private.stage_artwork(snapshot);
- perform private.publish_artwork(snapshot_id,p_activate);
- insert into private.artwork_library(kind,content_id,theme,definition) values('postit',m->>'id',m->>'theme',m)
- on conflict(kind,content_id) do update set theme=excluded.theme,definition=excluded.definition,updated_at=clock_timestamp();
- return jsonb_build_object('id',m->>'id','theme',m->>'theme','registered',true,'activated',p_activate);
-end $$;
-create or replace function public.admin_register_artwork(p_definition jsonb,p_activate boolean default false) returns jsonb language sql security invoker set search_path='' as $$ select private.register_library_artwork(p_definition,p_activate) $$;
-revoke all on function private.register_library_artwork(jsonb,boolean) from public,anon,authenticated,service_role;
-grant execute on function private.register_library_artwork(jsonb,boolean) to service_role;
+notify pgrst, 'reload schema';
 commit;

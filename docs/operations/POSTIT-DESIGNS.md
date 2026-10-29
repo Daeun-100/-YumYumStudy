@@ -6,7 +6,7 @@
 
 - 의존성: [PR #49](https://github.com/Daeun-100/-YumYumStudy/pull/49)의 이벤트 운영·원격 이미지 서버와 앱 코드. 기존 Storage `event-artwork`, 주제별 이미지 라이브러리와 PNG 검사·다운로드 제한을 재사용한다.
 - 이 브랜치는 최신 develop에서 시작해 #49를 병합한 작업본이다. #49가 먼저 develop에 병합되면 이 PR의 변경 범위가 포스트잇 기능으로 줄어든다. #49의 이후 스키마 변경과 충돌 여부도 병합 전 확인한다.
-- `20261029160742_postit_design_rewards` 마이그레이션과 지원 앱을 기존 릴리스 절차로 반영한 뒤 실제 디자인과 보상 규칙을 활성화한다. 이 문서가 production 배포·업로드·행사 등록을 승인하거나 완료했음을 뜻하지 않는다.
+- `20261029162732_postit_design_rewards` 마이그레이션과 지원 앱을 기존 릴리스 절차로 반영한 뒤 실제 디자인과 보상 규칙을 활성화한다. 이 문서가 production 배포·업로드·행사 등록을 승인하거나 완료했음을 뜻하지 않는다.
 - 최초 지원 코드 배포 후에는 같은 규격의 새 PNG와 보상 규칙 등록에 앱 재배포가 필요 없다.
 
 ## 디자인 PNG
@@ -89,7 +89,7 @@ npm run lint
 npm run typecheck
 npm test
 node supabase/scripts/check-postit-designs-db.mjs /ABSOLUTE/PATH/TO/@electric-sql/pglite/dist/index.js
-node supabase/scripts/check-artwork-db.mjs /ABSOLUTE/PATH/TO/@electric-sql/pglite/dist/index.js
+node supabase/scripts/check-themed-artwork-db.mjs /ABSOLUTE/PATH/TO/@electric-sql/pglite/dist/index.js
 npm run build-storybook
 ```
 
@@ -99,7 +99,7 @@ Storybook `화면/포스트잇 디자인 보상`에서 원형 견본 선택·작
 
 ## 이번 로컬 검증 기록
 
-- 전체 앱 테스트 392개 통과. 린트·타입 검사와 Storybook 정적 빌드, 테스트용 공개 설정의 웹 export·CSP 처리 통과.
+- 전체 앱 테스트 393개 통과. 린트·타입 검사와 Storybook 정적 빌드, 테스트용 공개 설정의 웹 export·CSP 처리 통과.
 - 격리 PostgreSQL의 새 포스트잇 디자인 검사 및 기존 원격 이미지 회귀 검사 통과. 실제 운영 DB에 마이그레이션을 적용하지 않았다.
 - 웹 Storybook의 320px에서 원형 디자인 선택·입력·배치·열람을 조작하고 이미지 실패의 기본 종이 대체를 확인했다. 원형 버튼은 모두 44×44이며 실제 `aria-checked`도 확인했다.
 - Android와 iPhone 실기기, 실제 PNG 업로드·행사 등록·자동 지급은 미검증이다. 푸시는 이번 기능에 포함하지 않는다.

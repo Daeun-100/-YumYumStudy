@@ -7,14 +7,14 @@ import {artworkUrl} from '../src/lib/artwork-content.ts';
 import {preparePostit} from '../supabase/scripts/manage-postit-designs.mjs';
 import {inspectPng} from '../supabase/scripts/artwork-png.mjs';
 const revision='00000000-0000-4000-8000-000000000001';
-const config={id:'remote-paper',name:'할로윈 종이',revision,fallbackColor:'#F9E8A0',textColor:'#453F30'};
+const config={id:'remote-paper',name:'할로윈 종이',theme:'halloween',fallbackColor:'#F9E8A0',textColor:'#453F30'};
 const bytes=readFileSync('stories/assets/postit-paper-preview.png');
-const manifest=preparePostit(config,bytes);
+const manifest={...preparePostit(config,bytes),revision};
 test('single remote PNG is validated without inventing home/focus assets',()=>{
  assert.equal(manifest.kind,'postit');assert.equal(manifest.paper.width,1024);assert.equal(manifest.home,undefined);
  assert.equal(decodePostitArtwork(manifest).revision,revision);
- assert.ok(artworkUrl('https://x.supabase.co',manifest.paper).endsWith(`/postit/remote-paper/${revision}/paper.png`));
- for(const change of [{schemaVersion:2},{revision:'bad'},{fallbackColor:'#FA8000'},{textColor:'url(evil)'},{paper:{...manifest.paper,path:'postit/other/paper.png'}},{paper:{...manifest.paper,bytes:2097153}}])assert.throws(()=>decodePostitArtwork({...manifest,...change}));
+ assert.ok(artworkUrl('https://x.supabase.co',manifest.paper).endsWith(`/halloween/postits/remote-paper/paper.png?hash=${manifest.paper.sha256}`));
+ for(const change of [{schemaVersion:3},{revision:'bad'},{fallbackColor:'#FA8000'},{textColor:'url(evil)'},{paper:{...manifest.paper,path:'postit/other/paper.png'}},{paper:{...manifest.paper,bytes:2097153}}])assert.throws(()=>decodePostitArtwork({...manifest,...change}));
 });
 test('damaged PNG and wrong dimensions are rejected before upload',()=>{
  const broken=Buffer.from(bytes);broken[100]^=1;assert.throws(()=>preparePostit(config,broken));

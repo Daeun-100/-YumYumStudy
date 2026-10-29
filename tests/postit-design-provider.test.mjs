@@ -8,7 +8,7 @@ import * as designs from '../src/features/postits/designs.ts';
 const source=ts.transpileModule(readFileSync(new URL('../src/features/postits/PostitDesignProvider.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
 const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
 const revision='00000000-0000-4000-8000-000000000001';
-const owned=[{grantId:revision,grantedAt:'2026-10-31T00:00:00Z',artwork:{schemaVersion:1,kind:'postit',id:'remote-paper',revision,name:'할로윈 종이',fallbackColor:'#F9E8A0',textColor:'#453F30',paper:{path:`postit/remote-paper/${revision}/paper.png`,sha256:'a'.repeat(64),bytes:100,width:1024,height:1024}}}];
+const owned=[{grantId:revision,grantedAt:'2026-10-31T00:00:00Z',artwork:{schemaVersion:2,theme:'halloween',kind:'postit',id:'remote-paper',revision,name:'할로윈 종이',fallbackColor:'#F9E8A0',textColor:'#453F30',paper:{path:'halloween/postits/remote-paper/paper.png',sha256:'a'.repeat(64),bytes:100,width:1024,height:1024}}}];
 const response=(items=owned,wait=null)=>({serverNow:'2026-10-31T00:00:00Z',owned:items,visible:[],nextCheckSeconds:wait});
 function setup(){
  const hooks=createHookRuntime(),timers=new Map(),room={studyRoomId:0},storage=new Map(),toasts=[],study={today:null,busy:false};
