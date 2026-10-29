@@ -32,7 +32,7 @@ export function FriendRecords({ member, onBack }: { member: RoomMember; onBack()
     const snapshotTime = useRoom ? room.serverNow : history!.serverNow;
     const now = study.roomError ? Date.parse(snapshotTime) : Math.max(studyNow, Date.parse(snapshotTime));
     const seconds = displayedSeconds(source, member.activeSession, snapshotTime, now);
-    return { date: day.studyDate, asOf: now, minutes: seconds / 60, goal: source.goalMinutes,
+    return { date: day.studyDate, superWatermelon: source.superWatermelon, asOf: now, minutes: seconds / 60, goal: source.goalMinutes,
       status: source.attendance === 'leave' ? 'leave' as const : source.isRestDay ? 'rest' as const : seconds > 0 ? 'study' as const : 'empty' as const, sessions: [] };
   });
   const notice = error ? <View style={{ gap: 8 }}>

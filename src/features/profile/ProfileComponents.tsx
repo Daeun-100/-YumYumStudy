@@ -29,7 +29,7 @@ const s = StyleSheet.create({
 });
 
 /** Open weekly summary, without a container surface. Sample states supplied by the caller. */
-export function WeeklyAchievement({ achievedDays = 4, achievedWeekdays, weekdayProgress }: { achievedDays?: number; achievedWeekdays?: readonly boolean[]; weekdayProgress?: readonly (number | null)[] }) {
+export function WeeklyAchievement({ achievedDays = 4, achievedWeekdays, weekdayProgress, superWatermelon = false }: { superWatermelon?: boolean; achievedDays?: number; achievedWeekdays?: readonly boolean[]; weekdayProgress?: readonly (number | null)[] }) {
   const days = Array.from({ length: 7 }, (_, index) => weekdayProgress ? (weekdayProgress[index] ?? 0) >= 100 : achievedWeekdays ? !!achievedWeekdays[index] : index < achievedDays);
   const count = days.filter(Boolean).length;
   return <View style={{ gap: spacing.lg, paddingVertical: spacing.xl }}>
@@ -38,9 +38,9 @@ export function WeeklyAchievement({ achievedDays = 4, achievedWeekdays, weekdayP
       <Text style={[typography.title, { color: colors.primary }]}>{count}<Text style={[typography.secondary, { color: colors.secondary }]}> / 7일</Text></Text>
     </View>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-      {['월', '화', '수', '목', '금', '토', '일'].map((day, index) => <View key={day} accessible accessibilityLabel={`${day}요일 ${days[index] ? '목표 달성' : '미달성'}`} style={{ alignItems: 'center', gap: spacing.sm }}>
+      {['월', '화', '수', '목', '금', '토', '일'].map((day, index) => <View key={day} accessible accessibilityLabel={`${day}요일 ${superWatermelon && index === 6 ? '슈퍼 수박 · 한 주 완주' : days[index] ? '목표 달성' : '미달성'}`} style={{ alignItems: 'center', gap: spacing.sm }}>
         <View style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: days[index] ? colors.background : colors.track, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
-          {weekdayProgress && (weekdayProgress[index] ?? 0) > 0 ? <AchievementProgressIcon percent={weekdayProgress[index]!} size={28} /> : days[index] && <AchievementIcon size={28} />}
+          {superWatermelon && index === 6 ? <AchievementIcon size={28} superWatermelon /> : weekdayProgress && (weekdayProgress[index] ?? 0) > 0 ? <AchievementProgressIcon percent={weekdayProgress[index]!} size={28} /> : days[index] && <AchievementIcon size={28} />}
         </View><Text style={[typography.caption, { color: colors.secondary }]}>{day}</Text>
       </View>)}
     </View>

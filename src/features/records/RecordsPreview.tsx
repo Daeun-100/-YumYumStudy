@@ -18,6 +18,7 @@ export function RecordsPreview({ initialPeriod = 'week', initialDate = '2026-10-
   const elapsed = days.filter(day => day.date <= today);
   const minutes = elapsed.reduce((sum, day) => sum + day.minutes, 0);
   const day = record(selected);
+  const superWatermelonDates = days.filter(day => day.superWatermelon).map(day => day.date);
   const date = parseDate(start);
   const next = period === 'week' ? shiftDate(start, 7) : shiftMonth(start, 1);
   const earliest = onRangeChange ? undefined : records?.reduce<string | undefined>((first, day) => !first || day.date < first ? day.date : first, undefined);
@@ -31,11 +32,11 @@ export function RecordsPreview({ initialPeriod = 'week', initialDate = '2026-10-
     <PeriodHeader previousDisabled={!!earliest && start <= earliest} compact title={period === 'week' ? `${date.getUTCMonth() + 1}월 ${Math.ceil((date.getUTCDate() + ((parseDate(monthStart(start)).getUTCDay() + 6) % 7)) / 7)}주차` : `${date.getUTCFullYear()}년 ${date.getUTCMonth() + 1}월`} onPrevious={() => move(-1)} onNext={() => move(1)} nextDisabled={next > today} />
     {notice}
     <SkeletonRegion loading={loading} label="기록 요약 불러오는 중"><View style={s.metrics}><View style={s.metricItem}><Text style={s.metricLabel}>총 공부 시간</Text><Text style={s.metricValue}>{loading ? '—' : duration(minutes)}</Text></View><View style={s.metricDivider} /><View style={s.metricItem}><Text style={s.metricLabel}>목표 달성</Text><Text style={[s.metricValue, { color: colors.primary }]}>{loading ? '—' : `${elapsed.filter(achieved).length}일`}</Text></View></View></SkeletonRegion>
-    <SkeletonRegion loading={loading} label="공부 기록 불러오는 중">{period === 'week' ? <WeeklyChart today={today} days={days} selected={selected} onSelect={selectDay} /> : <MonthlyCalendar compact days={days} selected={selected} onSelect={selectDay} today={today} />}</SkeletonRegion>
+    <SkeletonRegion loading={loading} label="공부 기록 불러오는 중">{period === 'week' ? <WeeklyChart today={today} days={days} selected={selected} onSelect={selectDay} superWatermelonDates={superWatermelonDates} /> : <MonthlyCalendar compact days={days} selected={selected} onSelect={selectDay} today={today} superWatermelonDates={superWatermelonDates} />}</SkeletonRegion>
     <View style={s.legendRow}><Text style={s.hint}>날짜를 누르면 아래에서 상세 기록을 볼 수 있어요</Text><InfoButton accessibilityLabel="기록 표시 안내" onPress={() => setLegendOpen(true)} /></View>
     <View style={s.detail}>
       <Text accessibilityRole="header" style={[typography.title, { color: colors.text }]}>상세 기록</Text>
-      {renderDayDetail ? renderDayDetail(day, loading) : loading ? <DetailSkeleton /> : <DayDetail day={day} aggregateOnly={!!records} />}
+      {renderDayDetail ? renderDayDetail(day, loading) : loading ? <DetailSkeleton /> : <DayDetail day={day} aggregateOnly={!!records} superWatermelon={day.superWatermelon} />}
     </View>
     </ScrollView>
     <Modal visible={legendOpen} transparent animationType="slide" onRequestClose={() => setLegendOpen(false)}>
@@ -43,7 +44,7 @@ export function RecordsPreview({ initialPeriod = 'week', initialDate = '2026-10-
         <Pressable accessibilityRole="button" accessibilityLabel="기록 표시 안내 닫기" onPress={() => setLegendOpen(false)} style={StyleSheet.absoluteFill} />
         <View accessibilityViewIsModal role="dialog" aria-modal={true} accessibilityLabel="기록 표시 안내" style={s.sheet}>
           <View style={s.sheetHeader}><Text accessibilityRole="header" style={[typography.title, { color: colors.text }]}>기록 표시 안내</Text><Button label="닫기" variant="ghost" size="compact" onPress={() => setLegendOpen(false)} /></View>
-          <ScrollView contentContainerStyle={{ paddingBottom: spacing.xxl }}><View style={{ gap: spacing.lg }}><RecordLegend /><Text style={s.summary}>연한 초록 배경은 공부한 날, 수박은 목표를 달성한 날이에요. 사선 무늬는 쉬는 날, 비행기는 연차를 사용한 날이에요.</Text></View></ScrollView>
+          <ScrollView contentContainerStyle={{ paddingBottom: spacing.xxl }}><View style={{ gap: spacing.lg }}><RecordLegend /><Text style={s.summary}>연한 초록 배경은 공부한 날, 수박은 목표를 달성한 날이에요. 사선 무늬는 쉬는 날, 비행기는 연차를 사용한 날이에요.</Text><Text style={s.summary}>연차 없이 월요일부터 일요일까지 7일 모두 목표를 달성하면, 일요일의 일반 수박 대신 금색 슈퍼 수박이 표시돼요. 휴무·목표 미설정·연차 사용일은 달성 일수에서 제외돼요. 한 주는 한국시간 월요일 오전 6시부터 다음 월요일 오전 6시 전까지예요.</Text></View></ScrollView>
         </View>
       </View>
     </Modal>

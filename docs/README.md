@@ -38,6 +38,8 @@
 
 ## 기획과 개선안
 
+- [목표 달성 보상 명세](proposals/GOAL-ACHIEVEMENT-REWARDS-SPEC.md): 7일 완주 금색 수박, 기존 인포 팝업 안내와 수집·소비 제외
+
 - [공부방 데이터 갱신 개선안](proposals/STUDY-REFRESH-DESIGN.md)
 - [수박 보상과 꾸미기 시안](proposals/WATERMELON-REWARDS-DRAFT.md)
 
