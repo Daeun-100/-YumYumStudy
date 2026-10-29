@@ -5,7 +5,7 @@ import { StudyLayout } from '../screens/StudyLayouts';
 import { RoomBanner } from './RoomBanner';
 import { colors, typography } from '../../src/design/theme';
 import focusSample from './banner-samples/focus.png';
-import geumDebut from './banner-samples/geum-debut-v2.png';
+import geumDebut from './banner-samples/geum-debut-v3.png';
 
 type Props = { description: string; width: number; height: number; visible: boolean; artwork: 'sample' | 'geum-debut' };
 /** Files stay in this browser; choosing them never uploads or publishes them. */
