@@ -10,7 +10,7 @@ import bunny from '../../assets/characters/bunny/bunny-focus.png';
 import bear from '../../assets/characters/bear/bear-focus.png';
 import cat from '../../assets/characters/cat/cat-focus.png';
 import puppy from '../../assets/characters/puppy/puppy-focus.png';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AchievementBadge, Button, PressableCard } from '../../src/design/components';
 import { colors, interaction, radius, typography } from '../../src/design/theme';
@@ -32,6 +32,8 @@ export type LayoutProps = {
   name?: string;
   width?: number;
   height?: number;
+  sceneMinHeight?: number;
+  renderFocusDecoration?(scene: { width: number; height: number }): ReactNode;
 };
 const friends = [
   { name: '민지', time: '53분', active: true },
@@ -46,7 +48,7 @@ function Progress({ seconds, goalMinutes, todayLeave = false }: { seconds: numbe
   return <View style={s.progressRow}><View accessibilityRole="progressbar" accessibilityLabel="목표 달성률" accessibilityValue={percent === null ? { text: '목표 없음' } : { min: 0, max: 100, now: Math.min(percent, 100), text: `${percent}%` }} style={[s.track, todayLeave && { backgroundColor: colors.leaveTrack }]}><View style={[s.fill, { width: `${Math.min(percent ?? 0, 100)}%` }]} /></View><Text style={s.secondary}>{percent === null ? '—' : `${percent}%`}</Text></View>;
 }
 // Storybook-only presentation: no identity, API, router, or running study session.
-export function StudyLayout({ screen, character = 'bunny', activeSkinId, homeEntryPreview = false, todayLeave = false, onOpenLeave, running = true, seconds: initialSeconds = 4815, goalMinutes = 180, activeFriendCount = 2, name = '다이앤', width = 390, height = 844 }: LayoutProps) {
+export function StudyLayout({ screen, character = 'bunny', activeSkinId, homeEntryPreview = false, todayLeave = false, onOpenLeave, running = true, seconds: initialSeconds = 4815, goalMinutes = 180, activeFriendCount = 2, name = '다이앤', width = 390, height = 844, sceneMinHeight, renderFocusDecoration }: LayoutProps) {
   const [activeScreen, setActiveScreen] = useState(screen);
   const [isRunning, setRunning] = useState(running);
   const [seconds, setSeconds] = useState(initialSeconds);
@@ -109,7 +111,7 @@ export function StudyLayout({ screen, character = 'bunny', activeSkinId, homeEnt
           <Button label={isRunning ? 'Ⅱ  일시정지' : '▶  공부 시작'} accessibilityLabel={isRunning ? '공부 일시정지' : '공부 시작'} onPress={() => { if (isRunning) setRunning(false); else { setRunning(true); move('focus'); } }} style={{ flex: 1 }} />}
         </View>
       </> : <>
-        <FocusView members={[{ id: 'self', name, time: '나', active: isRunning, character, activeSkinId, self: true }, ...friends.map((friend, index) => ({ id: String(index), name: friend.name, time: friend.time, active: index < friendCount, character: (['bear', 'cat', 'puppy'] as const)[index] }))]} memberCount={4} seconds={seconds} sessionSeconds={28 * 60} goalMinutes={goalMinutes} running={isRunning} onBack={() => move('home')} onFriends={() => feedback('친구')} onToggle={() => setRunning(!isRunning)} />
+        <View style={{ flex: 1, minHeight: sceneMinHeight ? sceneMinHeight + 350 : undefined }}><FocusView renderBackgroundDecoration={renderFocusDecoration} members={[{ id: 'self', name, time: '나', active: isRunning, character, activeSkinId, self: true }, ...friends.map((friend, index) => ({ id: String(index), name: friend.name, time: friend.time, active: index < friendCount, character: (['bear', 'cat', 'puppy'] as const)[index] }))]} memberCount={4} seconds={seconds} sessionSeconds={28 * 60} goalMinutes={goalMinutes} running={isRunning} onBack={() => move('home')} onFriends={() => feedback('친구')} onToggle={() => setRunning(!isRunning)} /></View>
       </>}
       {!!notice && <Pressable accessibilityRole="button" accessibilityLabel="미리보기 안내 닫기" onPress={() => setNotice('')} style={s.notice}><Text accessibilityLiveRegion="polite" style={s.caption}>{notice}  ×</Text></Pressable>}
     </ScrollView>
