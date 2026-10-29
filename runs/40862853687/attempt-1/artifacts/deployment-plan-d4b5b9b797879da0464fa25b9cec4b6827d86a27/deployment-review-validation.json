@@ -1,0 +1,11 @@
+{
+  "status": "verified",
+  "mode": "apk",
+  "sha": "d4b5b9b797879da0464fa25b9cec4b6827d86a27",
+  "sourceTreeDigest": "9676d61ac56a7cf095ac8f6b57adf84c18c54467aa011dc300595076edf8fc64",
+  "baseline": {
+    "tag": "v1.0.2",
+    "sha": "710bd2e10b4eb8aa16378486f3cb3517770ac878",
+    "runtimeVersion": "4a7adc844a392bfaead47665719d0291b9f3da58"
+  }
+}

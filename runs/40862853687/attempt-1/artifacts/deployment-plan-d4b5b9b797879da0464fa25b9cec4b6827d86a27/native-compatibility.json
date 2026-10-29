@@ -1,0 +1,12 @@
+{
+  "compatible": false,
+  "exemptions": [],
+  "reasons": [
+    "Package metadata, dependencies, or non-deployment scripts changed",
+    "Native/build input changed: package-lock.json",
+    "Native/build input changed: scripts/benchmark-celebration-latency.mjs"
+  ],
+  "rawRuntime": null,
+  "normalizedRuntime": null,
+  "match": null
+}

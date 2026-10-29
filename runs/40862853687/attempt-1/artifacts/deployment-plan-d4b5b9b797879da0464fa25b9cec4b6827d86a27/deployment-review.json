@@ -1,0 +1,39 @@
+{
+  "sourceCommit": "481d46e6ad69d78188614ff2d1feae50d3c5015b",
+  "sourceTreeDigest": "9676d61ac56a7cf095ac8f6b57adf84c18c54467aa011dc300595076edf8fc64",
+  "baseline": {
+    "tag": "v1.0.2",
+    "sha": "710bd2e10b4eb8aa16378486f3cb3517770ac878",
+    "runtimeVersion": "4a7adc844a392bfaead47665719d0291b9f3da58"
+  },
+  "schema": 1,
+  "reviewer": {
+    "kind": "interactive-codex"
+  },
+  "recommendation": "apk",
+  "rationale": "사용자가 새 APK 배포를 요청하여 기능 추가 기준으로 앱 버전을 1.0.2에서 1.1.0, Android versionCode를 3에서 4로 올렸다. 결정적 경로도 apk다. 황금 수박 서버 마이그레이션 적용과 운영 SQL 회귀 검증을 완료해 선행 차단 조건을 해결했다.",
+  "evidence": [
+    "공개 APK v1.0.2: source 710bd2e10b4eb8aa16378486f3cb3517770ac878, version 1.0.2, versionCode 3, production runtime 4a7adc844a392bfaead47665719d0291b9f3da58. candidate.json과 성공한 master 빌드의 보관 EAS JSON을 review-context가 검증했다. 기준 커밋은 origin/master의 조상이다.",
+    "직전 성공 운영 배포 v1.0.2-r2의 source는 ecd94c6a9db7a1c7a822f83f3e5b723ac8807644이다. releaseNotes는 이 커밋 이후 develop까지의 실제 앱 변경을 요약한다.",
+    "전체 APK 기준 diff와 master→source diff를 검토했다. app.json/package.json/package-lock.json 버전과 Android build number를 함께 상승했다. 설치 APK 메타데이터가 변경되므로 새 APK가 필요하며 기존 runtime을 덮어쓰지 않는다.",
+    "APK 이후 expo-application 직접 의존성 추가가 있으나 이미 lock에 포함됐던 패키지다. 의존성 선언만으로 새 native 모듈 추가라고 단정하지 않는다. 이번 APK 결정은 명시적 APK 요청과 버전/build number 상승에 근거한다.",
+    "네이티브 입력 검토: app.config.js/eas.json/plugins/modules 및 launcher/splash 자원은 공개 APK와 동일하다. scripts/benchmark-celebration-latency.mjs는 운영 성능 측정 도구이며 native build hook 호출이 없다. 지문 불일치를 우회하는 제외 항목은 적용하지 않았다.",
+    "앱 검토: study 화면 수요에 따른 조회/재연결, 포스트잇 병합, 목표 달성 토스트, 수박 진행률, 연차일 공부시간, 프로필 주간 7일 및 보상 잔액, 프로필 버튼으로만 OTA 적용하는 controller/provider와 저장/입력 차단을 확인했다.",
+    "서버: 저장소 20261029063647_super_watermelon_rewards.sql을 운영 프로젝트 hxwwhgxxvyzqqnxlgqde에 적용했다. 원격 이력은 MCP가 생성한 20261029105416_super_watermelon_rewards이며 같은 SQL이다. 같은 트랜잭션에서 super_watermelon.sql DO 회귀 검증을 수행한 뒤 savepoint로 테스트 데이터/정책 변경을 되돌리고 schema만 커밋했다. 실제 starts_on=2026-10-29, daily-v1과 원장/잔액/RPC 존재를 확인했다.",
+    "실제 workflow: Check가 source digest와 baseline 및 blockers를 검증한다. 서버 선행 조건 해결 후 blockers는 비어 있으며 master 병합 시 Cloud Build는 apk를 선택하고 1.1.0 APK/웹 후보와 Release 초안을 만든다. Release Publish와 production 승인 후 웹 승격/업데이트 안내를 활성화한다.",
+    "검증: npm run lint 성공, npm run typecheck 성공, npm test 344/344 성공. 새 APK 빌드/실기기 및 web UI 시각 검증은 이번 PR 준비에서 수행하지 않았다. 기존 UpdateNotice에는 나중에 닫기 동작이 있어 구버전 사용 차단은 제공하지 않는다.",
+    "운영 회귀: super_watermelon.sql의 중복 지급 방지, 7일 달성, 월 경계, 연차/휴무/미설정/부분 달성 제외, 잔액/원장 일치, 권한/입장 검사가 통과했다. friend_history.sql의 본인/동료/다른 방/미인증/범위 검사도 통과했다. synthetic 사용자로 authenticated get_today/get_history/get_watermelon_balance 계약을 확인했고 모든 fixture는 rollback했다.",
+    "운영 보안 재점검: 새 세 테이블 모두 RLS 활성화 및 authenticated 직접 SELECT/INSERT 차단, balance RPC는 authenticated 허용/anon 차단이다. Advisors의 정책 없음 INFO 3건은 RPC 전용 테이블의 의도된 차단이며 SECURITY DEFINER WARN 1건은 입장/본인/방을 검사하는 get_watermelon_balance 공개 API다. 기존 경고는 이 작업 범위에서 변경하지 않았다. 관련 안내: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy 및 https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+    "추가 변경 검토: scripts/release-candidate.mjs는 APK 태그 커밋의 deployment-review.json을 읽고 해당 소스 tree digest와 blockers를 검증한 뒤 releaseNotes만 일반 텍스트 목록으로 앱 안내에 등록한다. GitHub Release 본문/커밋/빌드 메타데이터는 포함하지 않는다. 배포 관리 코드 변경이며 native build hook이나 앱 번들 변경은 없다. Android/web 동일 요약 및 stale/빈 요약/blocker 차단 회귀 검증을 포함해 lint/typecheck와 테스트 344/344가 통과했다."
+  ],
+  "releaseNotes": [
+    "목표를 달성하면 수박 도장과 축하 알림을 볼 수 있으며, 연차 보상이 확정되면 같은 알림에서 안내합니다.",
+    "연차 없이 월요일부터 일요일까지 7일 모두 목표를 달성하면 일요일에 황금 수박을 표시하고, 프로필에서 일반·황금 수박 보유량을 확인할 수 있습니다.",
+    "기록과 프로필의 수박이 목표 진행률에 따라 채워지며, 프로필의 주간 달성을 7일 기준으로 표시합니다.",
+    "월간 기록에서 연차를 사용한 날에도 실제 공부 시간을 확인할 수 있습니다.",
+    "열린 화면과 실시간 연결 상태에 맞춰 공부 기록과 포스트잇을 갱신하도록 개선했습니다.",
+    "다운로드된 앱 업데이트는 프로필에서 직접 적용하며, 공부나 저장 작업 중에는 적용을 미룹니다."
+  ],
+  "exemptions": [],
+  "blockers": []
+}

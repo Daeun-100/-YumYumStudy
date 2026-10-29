@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "repository": "Daeun-100/-YumYumStudy",
+  "runId": 40862853687,
+  "sha": "d4b5b9b797879da0464fa25b9cec4b6827d86a27",
+  "version": "1.1.0",
+  "revision": 4,
+  "runtimeVersion": "4a7adc844a392bfaead47665719d0291b9f3da58",
+  "buildId": "88a5d2ee-6116-4f6d-99b4-c43dce603662",
+  "deploymentId": "production-d4b5b9b79787-11-1",
+  "apkName": "yumyumstudy-v1.1.0.apk",
+  "apkSha256": "91f76930db6fbabfba832a75902ef965395b334af3de47adcbdc53ef0eab2184"
+}
