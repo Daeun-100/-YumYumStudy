@@ -1,3 +1,4 @@
+import { OtaUpdateProvider } from '../features/ota/OtaUpdateProvider';
 import { AppVersionReporter } from '../features/app-version/AppVersionReporter';
 import { StartupBoundary } from '../components/StartupBoundary';
 import { CallNotificationLifecycle } from '../features/call-friend/CallNotifications';
@@ -20,9 +21,9 @@ export default function RootLayout() {
       <AppVersionReporter />
       <CallNotificationLifecycle />
       <UpdateNotice variant="global" />
-      <StartupBoundary><AppToastProvider><TestRoomSelector /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+      <StartupBoundary><AppToastProvider><OtaUpdateProvider><TestRoomSelector /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
-      </Stack><AchievementCelebrations /></AppToastProvider></StartupBoundary>
+      </Stack><AchievementCelebrations /></OtaUpdateProvider></AppToastProvider></StartupBoundary>
       <StatusBar style="dark" />
     </SafeAreaView>
   </LeaveProvider></StudyProvider></AdmissionGate></IdentityProvider></UpdateProvider></RoomBuildBoundary></SafeAreaProvider>;

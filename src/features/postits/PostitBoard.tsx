@@ -1,3 +1,4 @@
+import { useUpdateReloadBlocker } from '../ota/useUpdateReloadBlocker';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { StickyNote, Trash2 } from 'lucide-react-native';
@@ -25,6 +26,7 @@ export function PostitBoard({ createId, scene, notes, add, remove, error, noteBo
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const lock = useRef(false);
+  useUpdateReloadBlocker(writing || placing || busy || selected !== null);
   const pending = useRef<string | null>(null);
   useEffect(() => { pending.current = null; }, [draft, color]);
   async function addAt(x: number, y: number) {
