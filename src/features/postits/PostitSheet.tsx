@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import type { PostitArtwork } from './designs';
 import { PostitPaper, type PostitImagePart } from './PostitPaper';
 
-export const POSTIT_PAPER_ASPECT_RATIO = 420 / 320;
+export const POSTIT_PAPER_ASPECT_RATIO = 1;
 
 type Props = PropsWithChildren<{ artwork?: PostitArtwork; color: string; imageUrl?(a: PostitArtwork, part?: PostitImagePart): string; onImageError?(): void }>;
 /** Writing and reading use the same compact paper bounds and padding. */

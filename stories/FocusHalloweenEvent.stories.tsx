@@ -65,7 +65,7 @@ const s = StyleSheet.create({
   candies: { flexDirection: 'row', gap: 5 }, step: { gap: 3, alignItems: 'center' }, candy: { width: 31, height: 31, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   emptyCandy: { backgroundColor: '#F0E8DE', borderWidth: 1, borderStyle: 'dashed', borderColor: '#D3C7B9' }, stepLabel: { fontSize: 9, color: '#9B9084', fontWeight: '600' },
   detail: { padding: 22, backgroundColor: '#FFFCF7', borderRadius: 24, gap: 14, alignItems: 'center' }, detailEyebrow: { fontSize: 10, letterSpacing: 2, color: '#A5784E', fontWeight: '700' }, detailTitle: { ...typography.title, color: '#68472E', textAlign: 'center' },
-  largePaper: { width: 180, height: 180 * 320 / 420, alignItems: 'center', justifyContent: 'center' }, paperText: { padding: 24 }, paperMessage: { fontSize: 15, lineHeight: 23, textAlign: 'center', color: '#68472E', fontWeight: '600' },
+  largePaper: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center' }, paperText: { padding: 24 }, paperMessage: { fontSize: 15, lineHeight: 23, textAlign: 'center', color: '#68472E', fontWeight: '600' },
   detailCopy: { fontSize: 12, lineHeight: 21, textAlign: 'center', color: '#795B42' }, detailReward: { flexDirection: 'row', gap: 5, alignItems: 'center' }, detailRewardText: { fontSize: 10, color: '#967A62', flexShrink: 1 },
   previewControls: { flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }, previewLabel: { fontSize: 11, color: colors.secondary },
 });
