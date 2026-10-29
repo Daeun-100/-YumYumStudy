@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AchievementBadge, AchievementIcon, Card } from '../../design/components';
 import { colors, radius, spacing, typography } from '../../design/theme';
@@ -33,7 +33,7 @@ export function WeeklyChart({ days, selected, onSelect, today = previewToday }: 
     {days.map(day => <Pressable key={day.date} accessibilityRole="button" accessibilityState={{ selected: day.date === selected, disabled: day.date > today }} disabled={day.date > today} accessibilityLabel={dayLabel(day)} onPress={() => onSelect(day.date)} style={s.column}><View style={s.barArea}>{day.status !== 'leave' && <View style={[s.bar, { height: `${(day.goal ?? 0) / ceiling * 100}%`, backgroundColor: colors.goal }]} />}<View style={[s.bar, { height: `${day.minutes / ceiling * 100}%`, backgroundColor: colors.primary }]} /></View><View style={[s.daySelection, day.date === selected && { backgroundColor: day.status === 'leave' ? colors.leaveBackground : colors.soft }]}><Text style={[s.label, day.date === today && { fontWeight: '800', color: colors.primary }]}>{['일', '월', '화', '수', '목', '금', '토'][parseDate(day.date).getUTCDay()]}</Text><View style={{ alignItems: 'center', gap: 2 }}><Text style={[s.caption, day.date === today && { fontWeight: '800', color: colors.primary }]}>{parseDate(day.date).getUTCDate()}</Text></View><View style={s.weeklyMark}><RecordMark kind={achieved(day) ? 'achieved' : day.status} /></View></View></Pressable>)}
   </View></View>;
 }
-export function MonthlyCalendar({ days, selected, onSelect, today, allowFutureSelection = false, variant = 'records', compact = false }: { compact?: boolean; days: StudyRecord[]; selected: string; onSelect(date: string): void; today: string; allowFutureSelection?: boolean; variant?: 'records' | 'leave' }) {
+export function MonthlyCalendar({ days, selected, onSelect, today, allowFutureSelection = false, variant = 'records', compact = false, renderDayMark }: { compact?: boolean; days: StudyRecord[]; selected: string; onSelect(date: string): void; today: string; allowFutureSelection?: boolean; variant?: 'records' | 'leave'; renderDayMark?(day: StudyRecord): ReactNode }) {
   const offset = days.length ? parseDate(days[0].date).getUTCDay() : 0;
   const CalendarContainer = View;
   return <CalendarContainer style={variant === 'leave' ? s.leaveCalendar : undefined}><View style={s.grid}>{['일', '월', '화', '수', '목', '금', '토'].map(label => <Text key={label} style={[s.caption, s.weekday]}>{label}</Text>)}{Array.from({ length: offset }, (_, i) => <View key={`blank${i}`} style={s.cellSlot} />)}{days.map(day => {
@@ -49,7 +49,7 @@ export function MonthlyCalendar({ days, selected, onSelect, today, allowFutureSe
       {isRest && <View pointerEvents="none" accessible={false} accessibilityElementsHidden style={StyleSheet.absoluteFill}>{Array.from({ length: 23 }, (_, i) => <View key={i} style={{ position: 'absolute', left: -80, top: i * 12 - 90, width: 240, height: 2, backgroundColor: colors.restStripe, transform: [{ rotate: '-45deg' }] }} />)}</View>}
       <View style={{ alignItems: 'center', gap: 2 }}><Text style={[s.label, isToday && { fontWeight: '800', color: colors.primary }, disabled && { color: colors.disabledText }]}>{parseDate(day.date).getUTCDate()}</Text>{isToday && <View style={{ width: 4, height: 4, borderRadius: radius.pill, backgroundColor: colors.primary }} />}</View>
       <Text style={s.cellTime}>{description}</Text>
-      {isLeave ? <RecordMark kind="leave" /> : variant === 'leave' || isRest ? <View style={{ height: 20 }} /> : day.date <= today && <RecordMark kind={achieved(day) ? 'achieved' : day.status} />}
+      {isLeave ? <RecordMark kind="leave" /> : variant === 'leave' || isRest ? <View style={{ height: 20 }} /> : day.date <= today && (renderDayMark ? renderDayMark(day) : <RecordMark kind={achieved(day) ? 'achieved' : day.status} />)}
     </Pressable></View>;
   })}</View></CalendarContainer>;
 }

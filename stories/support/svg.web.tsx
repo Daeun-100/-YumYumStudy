@@ -1,6 +1,6 @@
-import type { CSSProperties } from 'react';
-import type { SvgProps, PathProps, CircleProps } from 'react-native-svg';
-import { StyleSheet } from 'react-native';
+import type { CSSProperties, ReactNode } from 'react';
+import type { SvgProps, PathProps, CircleProps, ClipPathProps, PolygonProps, ImageProps } from 'react-native-svg';
+import { Image as RNImage, StyleSheet } from 'react-native';
 
 // Storybook renders the SVG primitives directly in the DOM. This avoids loading
 // native modules and the package's CommonJS transform parser through Vite.
@@ -12,4 +12,12 @@ export function Path({ d, fill, stroke, strokeWidth, strokeLinecap, strokeLinejo
 }
 export function Circle({ cx, cy, r, fill, stroke, strokeWidth, opacity }: CircleProps) {
   return <circle cx={cx} cy={cy} r={r} fill={fill as string} stroke={stroke as string} strokeWidth={strokeWidth} opacity={opacity} />;
+}
+export function Defs({ children }: { children?: ReactNode }) { return <defs>{children}</defs>; }
+export function ClipPath({ children, id }: ClipPathProps) { return <clipPath id={id}>{children}</clipPath>; }
+export function Polygon({ points }: PolygonProps) { return <polygon points={typeof points === 'string' ? points : points?.join(' ')} />; }
+export function Image({ href, width, height, preserveAspectRatio, clipPath }: ImageProps) {
+  const source = Array.isArray(href) ? href[0] : href;
+  const uri = typeof source === 'string' ? source : typeof source === 'object' ? source?.uri : source ? RNImage.resolveAssetSource?.(source)?.uri : undefined;
+  return <image href={uri} width={width} height={height} preserveAspectRatio={preserveAspectRatio} clipPath={clipPath} />;
 }
