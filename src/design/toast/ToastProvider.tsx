@@ -32,8 +32,8 @@ function MessageToast({ entry, environment }: { entry: ToastEntry; environment: 
   const tone = entry.tone ?? 'info', Icon = tone === 'success' ? Check : tone === 'reward' ? Gift : Bell;
   const color = tone === 'success' ? colors.primary : tone === 'reward' ? colors.leave : colors.secondary;
   return <Animated.View testID="common-toast" accessibilityLiveRegion="polite" style={[s.card, { opacity: entrance, transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }] }]}>
-    <View accessible={false} accessibilityElementsHidden style={[s.icon, { backgroundColor: tone === 'reward' ? colors.leaveBackground : colors.soft }]}><Icon size={21} color={color} strokeWidth={1.8} /></View>
-    <View style={s.copy}><Text accessibilityRole="header" style={s.title}>{entry.title}</Text>{!!entry.message && <Text style={s.message}>{entry.message}</Text>}</View>
+    {entry.showIcon !== false && <View accessible={false} accessibilityElementsHidden style={[s.icon, { backgroundColor: tone === 'reward' ? colors.leaveBackground : colors.soft }]}><Icon size={21} color={color} strokeWidth={1.8} /></View>}
+    <View style={s.copy}>{!!entry.title?.trim() && <Text accessibilityRole="header" style={s.title}>{entry.title}</Text>}{!!entry.message?.trim() && <Text style={s.message}>{entry.message}</Text>}</View>
   </Animated.View>;
 }
 function ActiveToast({ entry, store, scope, environment, dismiss }: { entry: ToastEntry; store: ReturnType<typeof createToastStore>; scope: string; environment: Environment; dismiss(): void }) {

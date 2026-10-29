@@ -17,6 +17,14 @@ function mount({ reducedMotion = true } = {}) {
     },
   };
 }
+test('message-only toasts are accepted while empty content is rejected', () => {
+  const app = mount();
+  assert.equal(app.show({}), null);
+  assert.equal(app.show({ title: '  ', message: '\n' }), null);
+  assert.ok(app.show({ message: '변경사항을 저장했어요.', showIcon: false }));
+  app.present(); app.advance(4000);
+  assert.equal(app.store.read().active, null);
+});
 test('default auto dismissal starts when the host presents, not when enqueued', () => {
   const app = mount(), shown = [], dismissed = [];
   const id = app.show({ title: '공지', onShow: () => shown.push(id), onDismiss: reason => dismissed.push(reason) });

@@ -7,6 +7,7 @@ export type ToastOptions = {
   dedupeKey?: string;
   title?: string;
   message?: string;
+  showIcon?: boolean;
   tone?: 'info' | 'success' | 'reward';
   /** null is reserved for custom content that owns a multi-phase lifetime. */
   durationMs?: number | null;
@@ -84,7 +85,7 @@ export function createToastStore(clock: Clock = { setTimer: (run, ms) => setTime
       pump();
     },
     show(options: ToastOptions, expectedScope: string): string | null {
-      if (scope !== expectedScope || !environment.enabled || !environment.active || (!options.render && !options.title?.trim())) return null;
+      if (scope !== expectedScope || !environment.enabled || !environment.active || (!options.render && !options.title?.trim() && !options.message?.trim())) return null;
       const existing = [active, ...queue].find(entry => entry && ((!!options.id && entry.id === options.id) || (!!options.dedupeKey && entry.dedupeKey === options.dedupeKey)));
       if (existing) return existing.id;
       if (options.dedupeKey && completed.has(options.dedupeKey)) return null;
