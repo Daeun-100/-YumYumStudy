@@ -16,13 +16,13 @@ function member(id, seconds, goalMinutes, active = false) {
     activeSession: active ? { id: `session-${id}`, userId: id, startedAt: new Date(Date.parse(serverNow) - seconds * 1000).toISOString(), endedAt: null } : null,
   };
 }
-function focusProps(study, ownerId) {
+function focusProps(study, ownerId, focused = true) {
   const element = (type, props) => ({ type, props });
   const modules = {
     react: { useState: initial => [initial, () => {}] },
     'react/jsx-runtime': { jsx: element, jsxs: element },
     'react-native': { View: 'View' },
-    'expo-router': { router: {} },
+    'expo-router': { router: {}, useIsFocused: () => focused },
     '../../components/IdentityProvider': { useIdentity: () => ({ profile: { id: ownerId, displayName: ownerId } }) },
     './StudyProvider': { useStudy: () => study },
     './useScreenNow': { useScreenNow: () => study.now },
@@ -59,4 +59,10 @@ test('friend aura activates at the goal boundary between room snapshots and surv
   assert.equal(achieved(), true);
   study.room.data = [member('friend', 3600, 60)];
   assert.equal(achieved(), true);
+});
+
+test('focus screen stops skin effects when navigation leaves the screen', () => {
+  const study = { room: { serverNow, data: [] }, now: Date.parse(serverNow), today: null };
+  assert.equal(focusProps(study, 'owner', true).effectsEnabled, true);
+  assert.equal(focusProps(study, 'owner', false).effectsEnabled, false);
 });
