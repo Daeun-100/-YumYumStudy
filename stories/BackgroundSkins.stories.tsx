@@ -6,12 +6,30 @@ import homeOriginal from '../assets/backgrounds/home-background.png';
 import homeHalloween from '../assets/backgrounds/home-background-halloween.png';
 import focusOriginal from '../assets/backgrounds/focus-background.png';
 import focusHalloween from '../assets/backgrounds/focus-background-halloween.png';
+import blackcatHome from '../assets/characters/black-cat/black-cat-home-halloween.png';
+import blackcatFocus from '../assets/characters/black-cat/black-cat-focus-halloween.png';
+import malteseHome from '../assets/characters/maltese/maltese-home-halloween.png';
+import malteseFocus from '../assets/characters/maltese/maltese-focus-halloween.png';
+import bunnyHome from '../assets/characters/bunny/bunny-home-halloween.png';
+import bunnyFocus from '../assets/characters/bunny/bunny-focus-halloween.png';
+import pomeranianHome from '../assets/characters/pomeranian/pomeranian-home-halloween-pumpkin.png';
+import pomeranianFocus from '../assets/characters/pomeranian/pomeranian-focus-halloween-pumpkin-v2.png';
 import { Button } from '../src/design/components';
 import { colors, typography } from '../src/design/theme';
 import type { CharacterId } from '../src/lib/characters';
 import { StudyLayout } from './screens/StudyLayouts';
+import type { FocusMember } from '../src/features/study/FocusView';
 
 const source = (asset: number | string): ImageSourcePropType => typeof asset === 'string' ? { uri: asset } : asset;
+const halloweenCharacters = [
+  { id: 'blackcat', label: '검은고양이', costume: '꼬마 마법사' },
+  { id: 'maltese', label: '말티즈', costume: '꼬마 유령' },
+  { id: 'bunny', label: '토끼', costume: '견습 뱀파이어' },
+  { id: 'pomeranian', label: '포메', costume: '호박 요정' },
+] as const;
+const homeSources: Partial<Record<CharacterId, ImageSourcePropType>> = { blackcat: source(blackcatHome), maltese: source(malteseHome), bunny: source(bunnyHome), pomeranian: source(pomeranianHome) };
+const focusSources = { blackcat: source(blackcatFocus), maltese: source(malteseFocus), bunny: source(bunnyFocus), pomeranian: source(pomeranianFocus) };
+const halloweenMembers: FocusMember[] = halloweenCharacters.map(({ id, label }, index) => ({ id, character: id, name: label, time: '공부 중', active: true, self: index === 0 }));
 const backgrounds = {
   home: { original: homeOriginal, halloween: homeHalloween, width: 1536, height: 1024 },
   focus: { original: focusOriginal, halloween: focusHalloween, width: 1024, height: 1536 },
@@ -31,6 +49,7 @@ function BackgroundPreview({ screen, theme, character, width, height, overlay, g
   const [activeTheme, setTheme] = useState(theme);
   const [showOverlay, setOverlay] = useState(overlay);
   const [showGuides, setGuides] = useState(guides);
+  const [activeCharacter, setCharacter] = useState(character);
   const scene = backgrounds[activeScreen];
   const imageWidth = Math.min(width, 480);
   const imageHeight = imageWidth * scene.height / scene.width;
@@ -40,15 +59,19 @@ function BackgroundPreview({ screen, theme, character, width, height, overlay, g
     : [{ x: 512, y: 913 }, { x: 512, y: 1071 }, { x: 512, y: 1122 }];
   return <View style={s.root}>
     <Text accessibilityRole="header" style={s.title}>할로윈 배경 테스트</Text>
-    <Text style={s.description}>화면과 배경을 바꿔 캐릭터 접지감을 확인하세요. 아래 원본 크기 비율 비교에서 책상 경계를 확인할 수 있어요.</Text>
+    <Text style={s.description}>홈은 캐릭터를 골라 보고, 집중은 네 캐릭터를 네 자리에 한 명씩 배치한 장면으로 확인하세요.</Text>
     <View style={s.controls}>
       {(['home', 'focus'] as const).map(value => <Button key={value} label={value === 'home' ? '홈' : '집중'} variant={activeScreen === value ? 'primary' : 'secondary'} onPress={() => setScreen(value)} />)}
       {(['original', 'halloween'] as const).map(value => <Button key={value} label={value === 'original' ? '기본 배경' : '할로윈 배경'} variant={activeTheme === value ? 'primary' : 'secondary'} onPress={() => setTheme(value)} />)}
     </View>
+    {activeScreen === 'home' ? <View style={s.controls}>
+      {halloweenCharacters.map(item => <Button key={item.id} label={item.label} accessibilityLabel={`${item.label} 홈 보기`} variant={activeCharacter === item.id ? 'primary' : 'secondary'} onPress={() => setCharacter(item.id)} />)}
+    </View> : <Text style={s.description}>왼쪽부터 검은고양이 · 말티즈 · 토끼 · 포메, 각 한 자리씩이에요.</Text>}
     <View style={s.columns}>
       <View style={[s.section, { width, maxWidth: '100%' }]}>
         <Text style={s.heading}>앱 화면 미리보기</Text>
-        <StudyLayout key={`${activeScreen}-${width}-${height}-${character}`} screen={activeScreen} onScreenChange={setScreen} homeEntryPreview character={character} running={false} width={width} height={height}
+        <StudyLayout key={`${activeScreen}-${width}-${height}-${activeCharacter}`} screen={activeScreen} onScreenChange={setScreen} homeEntryPreview character={activeCharacter} running={false} width={width} height={height}
+          homeArtworkSource={homeSources[activeCharacter]} focusArtworkSources={focusSources} focusMembers={halloweenMembers}
           homeBackgroundSource={source(backgrounds.home[activeTheme])} focusBackgroundSource={source(backgrounds.focus[activeTheme])} />
       </View>
       <View style={[s.section, { width: imageWidth, maxWidth: '100%' }]}>
@@ -104,6 +127,5 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Home: Story = { name: '할로윈 · 홈' };
-export const Focus: Story = { name: '할로윈 · 집중', args: { screen: 'focus' } };
-export const DeskComparison: Story = { name: '책상 위치 · 50% 겹쳐보기', args: { screen: 'focus', overlay: true } };
+export const Focus: Story = { name: '할로윈 · 집중 네 캐릭터', args: { screen: 'focus' } };
 export const SmallPhone: Story = { name: '작은 화면 · 320px', args: { width: 320, height: 640 } };
