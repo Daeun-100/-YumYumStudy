@@ -35,7 +35,7 @@ export function WeeklyAchievement({ achievedDays = 4, achievedWeekdays, weekdayP
   return <View style={{ gap: spacing.lg, paddingVertical: spacing.xl }}>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
       <Text style={[typography.link, { color: colors.text }]}>이번 주 목표 달성</Text>
-      <Text style={[typography.title, { color: colors.primary }]}>{count}<Text style={[typography.secondary, { color: colors.secondary }]}> / 6일</Text></Text>
+      <Text style={[typography.title, { color: colors.primary }]}>{count}<Text style={[typography.secondary, { color: colors.secondary }]}> / 7일</Text></Text>
     </View>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
       {['월', '화', '수', '목', '금', '토', '일'].map((day, index) => <View key={day} accessible accessibilityLabel={`${day}요일 ${days[index] ? '목표 달성' : '미달성'}`} style={{ alignItems: 'center', gap: spacing.sm }}>
