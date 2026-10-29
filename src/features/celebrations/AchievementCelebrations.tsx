@@ -1,21 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
 import { useIdentity } from '../../components/IdentityProvider';
 import { useStartupVisible } from '../../components/StartupBoundary';
 import { getHistory } from '../../data/study';
 import { getLeaveStatus } from '../../data/leave';
+import type { DayRecord } from '../../lib/contracts';
 import { studyRoomId } from '../../lib/room';
 import { getStudyDate } from '../../lib/study-day';
 import { useStudy } from '../study/StudyProvider';
 import { useStudyNow } from '../study/study-clock';
 import { displayedSeconds } from '../study/presentation';
-import { celebrationForToday, createDailyCelebrationTracker, weekDates, type Celebration } from './model';
+import { celebrationForProgress, celebrationForToday, createDailyCelebrationTracker, rewardCandidate, weekDates, type Celebration } from './model';
 import { CelebrationToast } from './CelebrationToast';
 import { useToastEnvironment } from './useToastEnvironment';
 
 const tracker = createDailyCelebrationTracker(AsyncStorage);
+type Warm = { key: string; seen?: boolean; seenRead: Promise<boolean>; history?: DayRecord[]; historyRead: Promise<DayRecord[] | null> };
 export function AchievementCelebrations() {
   const identity = useIdentity();
   const study = useStudy();
@@ -23,10 +24,8 @@ export function AchievementCelebrations() {
   const startupVisible = useStartupVisible();
   const now = useStudyNow(environment.active);
   const [notice, setNotice] = useState<Celebration | null>(null);
-  const flight = useRef(false);
-  const attempted = useRef('');
-  const shown = useRef('');
-  const generation = useRef(0);
+  const flight = useRef(false), attempted = useRef(''), shown = useRef('');
+  const generation = useRef(0), warm = useRef<Warm | null>(null);
   const ready = startupVisible && environment.ready && environment.active && !environment.blocked && study.startupReady && !identity.loading && !identity.error && !study.busy && !study.actionFailed;
   const scope = `${studyRoomId}:${identity.uid ?? ''}`;
   const current = useRef({ ready, scope, now });
@@ -37,39 +36,74 @@ export function AchievementCelebrations() {
   const viewKey = `${ready}:${scope}:${date}`;
   const [previousView, setPreviousView] = useState(viewKey);
   if (previousView !== viewKey) { setPreviousView(viewKey); setNotice(null); }
-  const candidate = !!snapshot && !!date && snapshot.data.day.studyDate === date && snapshot.data.day.goalMinutes !== null && snapshot.data.day.goalMinutes > 0
-    && displayedSeconds(snapshot.data.day, snapshot.data.activeSession, snapshot.serverNow, now || Date.parse(snapshot.serverNow)) >= snapshot.data.day.goalMinutes * 60;
+  const seconds = snapshot ? displayedSeconds(snapshot.data.day, snapshot.data.activeSession, snapshot.serverNow, now || Date.parse(snapshot.serverNow)) : 0;
+  const candidate = !!snapshot && snapshot.data.day.studyDate === date && !!snapshot.data.day.goalMinutes && snapshot.data.day.goalMinutes > 0 && seconds >= snapshot.data.day.goalMinutes * 60;
   useEffect(() => {
-    generation.current++; attempted.current = ''; flight.current = false;
+    const version = ++generation.current;
+    attempted.current = ''; flight.current = false; warm.current = null;
+    return () => { generation.current = version + 1; };
   }, [ready, scope, date]);
+  // Prepare stamps and the duplicate marker before the goal crossing. No reward is inferred here.
+  useEffect(() => {
+    if (!ready || !identity.uid || !date || shown.current === `${scope}:${date}`) return;
+    const entry = { key: viewKey } as Warm;
+    entry.seenRead = tracker.wasStarted(identity.uid, studyRoomId, date).then(seen => { entry.seen = seen; return seen; });
+    entry.historyRead = getHistory(weekDates(date)[0], date).then(history => { entry.history = history.data; return history.data; }).catch(() => null);
+    warm.current = entry;
+    // Screens without a timer consumer still need a fresh foreground/guard reconciliation.
+    void confirmToday();
+  }, [ready, scope, date, viewKey, identity.uid, confirmToday]);
   useEffect(() => {
     if (!ready || !candidate || !identity.uid || !snapshot || notice || shown.current === `${scope}:${date}`) return;
     const key = `${scope}:${date}:${snapshot.serverNow}`;
     if (flight.current || attempted.current === key) return;
     const uid = identity.uid, room = studyRoomId, requestGeneration = generation.current;
-    const valid = () => current.current.ready && current.current.scope === scope && generation.current === requestGeneration
-      && getStudyDate(current.current.now) === date;
+    const entry = warm.current?.key === viewKey ? warm.current : null;
+    const valid = () => current.current.ready && current.current.scope === scope && generation.current === requestGeneration && getStudyDate(current.current.now) === date;
+    const update = (result: Celebration) => {
+      if (valid()) setNotice(previous => previous?.date === date ? result : previous);
+    };
+    let promotionSettled = false;
     flight.current = true; attempted.current = key;
     void (async () => {
-      if (await tracker.wasStarted(uid, room, date) || !valid()) { if (valid()) shown.current = `${scope}:${date}`; return; }
-      const today = await confirmToday();
+      const seen = entry?.seen ?? await (entry?.seenRead ?? tracker.wasStarted(uid, room, date));
+      if (!valid()) return;
+      if (seen) { shown.current = `${scope}:${date}`; return; }
+      // Only an already reconciled foreground snapshot may extrapolate live timer progress.
+      const today = study.canCelebrateLive ? snapshot : await confirmToday();
       if (!today || !valid()) return;
-      // These reads also recover a lazily issued reward. No notification data is written to the server.
-      const [history, leave] = await Promise.all([getHistory(weekDates(date)[0], date), getLeaveStatus()]);
-      if (!valid()) return;
-      const result = celebrationForToday(uid, date, today, history.data, leave.data);
-      if (!result) return;
-      // Mark only when a real view is about to start; a blocked view must remain eligible.
-      if (!valid()) return;
+      const progress = study.canCelebrateLive ? seconds : today.data.day.closedSeconds + today.data.day.runningSeconds;
+      const first = celebrationForProgress(uid, date, today, entry?.history ?? [], progress);
+      if (!first) return;
       shown.current = `${scope}:${date}`;
-      setNotice(result);
+      setNotice({ ...first, rewardPending: rewardCandidate(first) });
       void tracker.start(uid, room, date);
-    })().catch(() => { /* A later confirmed snapshot or foreground entry retries within this day. */ }).finally(() => { if (requestGeneration === generation.current) flight.current = false; });
-  }, [ready, candidate, identity.uid, snapshot, date, scope, notice, confirmToday]);
+      // Server work is now after the first stamp view. A failed reward read cannot hide it.
+      const verifiedRead = study.canCelebrateLive ? confirmToday() : Promise.resolve(today);
+      const historyRead = (async () => {
+        // Warm history paints immediately; promotion uses a new read for remote edits/leaves.
+        const history = (await getHistory(weekDates(date)[0], date)).data;
+        const enriched = celebrationForProgress(uid, date, today, history, progress);
+        if (enriched && !promotionSettled) update({ ...enriched, rewardPending: rewardCandidate(enriched) });
+        return history;
+      })();
+      // Issuance is queried only after fresh guard/server confirmation.
+      const leaveRead = verifiedRead.then(verified => verified ? getLeaveStatus() : null);
+      const [verified, history, leave] = await Promise.all([verifiedRead, historyRead, leaveRead]);
+      promotionSettled = true;
+      if (!valid()) return;
+      const result = verified && leave ? celebrationForToday(uid, date, verified, history, leave.data) : null;
+      if (result) update({ ...result, rewardPending: false });
+      else setNotice(previous => previous?.date === date ? { ...previous, rewardPending: false } : previous);
+    })().catch(() => {
+      promotionSettled = true;
+      // A visible goal remains valid as a celebration; only reward promotion is abandoned.
+      if (valid()) setNotice(previous => previous?.date === date ? { ...previous, rewardPending: false } : previous);
+    }).finally(() => { if (requestGeneration === generation.current) flight.current = false; });
+  }, [ready, candidate, seconds, identity.uid, snapshot, date, scope, viewKey, notice, confirmToday, study.canCelebrateLive]);
   if (!ready || !notice || notice.date !== date) return null;
   return <View pointerEvents="box-none" style={s.host}>
-    <CelebrationToast key={`${scope}:${notice.date}`} notice={notice} reducedMotion={environment.reducedMotion} screenReader={environment.screenReader}
-      onDismiss={() => setNotice(null)} onViewReward={() => { setNotice(null); router.navigate('/leave'); }} />
+    <CelebrationToast key={`${scope}:${notice.date}`} notice={notice} reducedMotion={environment.reducedMotion} screenReader={environment.screenReader} onDismiss={() => setNotice(null)} />
   </View>;
 }
 const s = StyleSheet.create({ host: { position: 'absolute', top: 8, left: 16, right: 16, zIndex: 100, elevation: 12 } });

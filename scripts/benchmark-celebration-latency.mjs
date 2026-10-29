@@ -19,12 +19,12 @@ async function trial({name,todayMs,historyMs,leaveMs,tickMs=0,reward=false,stora
  const runtime=createHookRuntime(); let now=epoch-1; const calls=[];
  const initial={serverNow:new Date(epoch-1000).toISOString(),data:{profile:{id:'owner'},day:{...makeDay(date,false),runningSeconds:7199},activeSession:{startedAt:new Date(epoch-7200000).toISOString()}}};
  const confirmed={serverNow:new Date(epoch+tickMs).toISOString(),data:{profile:{id:'owner'},day:makeDay(date,true),activeSession:null}};
- const study={today:initial,startupReady:true,busy:false,actionFailed:false,confirmToday:async()=>{calls.push('today:start');await pause(todayMs);calls.push('today:end');study.today=confirmed;return confirmed;}};
+ const study={canCelebrateLive:true,today:initial,startupReady:true,busy:false,actionFailed:false,confirmToday:async()=>{calls.push('today:start');await pause(todayMs);calls.push('today:end');study.today=confirmed;return confirmed;}};
  const storage={getItem:async()=>{await pause(storageMs);return null;},setItem:async()=>{}};
  const modules={
  'react':runtime.react,'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},
  'react-native':{StyleSheet:{create:s=>s},View:'View'},'expo-router':{router:{navigate:()=>{}}},
- '@react-native-async-storage/async-storage':{default:storage},
+ '@react-native-async-storage/async-storage':{__esModule:true,default:storage},
  '../../components/IdentityProvider':{useIdentity:()=>({uid:'owner',profile:{id:'owner'},loading:false,error:null})},
  '../../components/StartupBoundary':{useStartupVisible:()=>true},
  '../../data/study':{getHistory:async()=>{calls.push('history:start');await pause(historyMs);calls.push('history:end');return {data:model.weekDates(date).slice(0,6).map(d=>makeDay(d,reward||d===date))};}},
@@ -37,12 +37,17 @@ async function trial({name,todayMs,historyMs,leaveMs,tickMs=0,reward=false,stora
  vm.runInNewContext(source,context);
  const render=()=>runtime.render(()=>context.exports.AchievementCelebrations());
  assert.equal(render(),null,'No toast before 2 hours');
+ await pause(storageMs + 2); // The marker is prefetched before crossing.
  const started=performance.now();await pause(tickMs); now=epoch+tickMs;
  let output=render();const detection=performance.now()-started;
  while(!output&&performance.now()-started<tickMs+todayMs+Math.max(historyMs,leaveMs)+150){await pause(2);output=render();}
  const total=performance.now()-started;
- if(fail)assert.equal(output,null,'Failed server request must not show toast');
- else {assert.equal(output.props.children.type,'Toast');assert.equal(output.props.children.props.notice.reward,reward);}
+ assert.equal(output.props.children.type,'Toast');
+ // A reward must not be claimed before confirmation. Fast zero-delay replies may already be known.
+ assert.equal(output.props.children.props.notice.reward && !reward, false);
+ await pause(todayMs + Math.max(historyMs, leaveMs) + 20);
+ const settled = render();
+ assert.equal(settled.props.children.props.notice.reward, reward && !fail);
  runtime.dispose();
  return {name,todayMs,historyMs,leaveMs,tickMs,reward,shown:!!output,detectMs:Math.round(detection),toastMountedMs:output?Math.round(total):null,callOrder:calls};
 }
@@ -57,4 +62,4 @@ const cases=[
  {name:'leave failure / goal',todayMs:100,historyMs:100,leaveMs:200,fail:true},
 ];
 const results=[];for(const c of cases){const row=await trial(c);results.push(row);console.log(JSON.stringify(row));}
-writeFileSync('/private/tmp/celebration-latency-results.json',JSON.stringify({kind:'actual controller with injected RPC delays; not real device/network',results},null,2));
+writeFileSync('/private/tmp/celebration-latency-results.json',JSON.stringify({kind:'improved controller first mount with injected RPC delays; not real device/network',results},null,2));

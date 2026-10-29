@@ -316,3 +316,26 @@ test('failed guard reconciliation or server read cannot turn a cached timer into
   app.data.getToday = async () => { throw Error('offline'); };
   assert.equal(await app.render().confirmToday(), null);
 });
+
+test('live celebrations require reconciliation in the current foreground epoch', async () => {
+  const app = mount({ resources: [] });
+  app.render(); await app.render().refresh();
+  assert.equal(app.render().canCelebrateLive, true);
+  app.setActive(false); assert.equal(app.render().canCelebrateLive, false);
+  app.setActive(true); assert.equal(app.render().canCelebrateLive, false);
+  assert.ok(await app.render().confirmToday());
+  assert.equal(app.render().canCelebrateLive, true);
+});
+
+test('a server response started before background cannot authorize resumed live progress', async () => {
+  const app = mount({ resources: [] }); app.render();
+  const slow = deferred(); app.data.getToday = () => slow.promise;
+  const pending = app.render().confirmToday();
+  app.setActive(false); app.render(); app.setActive(true); app.render();
+  slow.resolve(snapshot('old-session'));
+  assert.equal(await pending, null);
+  assert.equal(app.render().canCelebrateLive, false);
+  app.data.getToday = async () => snapshot('fresh-session');
+  assert.ok(await app.render().confirmToday());
+  assert.equal(app.render().canCelebrateLive, true);
+});
