@@ -135,6 +135,48 @@ export function nativeInputReasons(files, scripts) {
   }
   return reasons;
 }
+const dependencyFields = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
+function withoutDependencyDeclarations(files) {
+  const pkg = JSON.parse(files['package.json']);
+  for (const name of dependencyFields) delete pkg[name];
+  return { ...files, 'package.json': JSON.stringify(pkg) };
+}
+
+/** Dependency declarations may change without changing the resolved native graph.
+ * Only an unmodified, complete fingerprint can prove that case; normalization
+ * must never hide dependency changes, native hooks, sources or ignore rules.
+ */
+export async function compareNativeFingerprints({ baseline, before, after, files }, fingerprint) {
+  const result = (compatible, exemptions, reasons, rawRuntime = null, normalizedRuntime = null, match = null) =>
+    ({ compatible, exemptions, reasons, rawRuntime, normalizedRuntime, match });
+  if (!baseline?.runtimeVersion) return result(false, [], ['No published fingerprint runtime']);
+  const analysis = inspectAdministrativeChanges(before, after);
+  const newScripts = JSON.parse(after['package.json']).scripts ?? {};
+  const inputReasons = paths => [...new Set([
+    ...nativeInputReasons(paths, analysis.oldScripts), ...nativeInputReasons(paths, newScripts),
+  ])];
+  const exactAnalysis = inspectAdministrativeChanges(
+    withoutDependencyDeclarations(before), withoutDependencyDeclarations(after));
+  const exactReasons = [...exactAnalysis.reasons, ...inputReasons(files.filter(file => file !== 'package-lock.json'))];
+  const resolve = async hook => {
+    const value = await fingerprint(hook);
+    assert.match(value.hash, /^[a-f0-9]{40,64}$/i, 'Invalid native fingerprint');
+    return value.hash;
+  };
+  let rawRuntime = null;
+  if (exactReasons.length === 0) {
+    rawRuntime = await resolve();
+    if (rawRuntime === baseline.runtimeVersion) return result(true, [], [], rawRuntime, rawRuntime, 'exact');
+  }
+  const reasons = [...new Set([...analysis.reasons, ...inputReasons(files)])];
+  if (reasons.length) return result(false, analysis.exemptions, reasons, rawRuntime);
+  const normalizedRuntime = await resolve(normalizationHook(before, analysis.oldScripts));
+  const compatible = normalizedRuntime === baseline.runtimeVersion;
+  return result(compatible, analysis.exemptions,
+    compatible ? [] : ['Unexplained native fingerprint differences remain'], rawRuntime, normalizedRuntime,
+    compatible ? 'administrative-normalization' : null);
+}
+
 export async function nativeCompatibility(cwd, baseline) {
   if (!baseline?.runtimeVersion) return { compatible: false, exemptions: [], reasons: ['No published fingerprint runtime'], normalizedRuntime: null };
   const before = {}, after = {};
@@ -142,17 +184,13 @@ export async function nativeCompatibility(cwd, baseline) {
     before[file] = git(cwd, ['show', `${baseline.sha}:${file}`]);
     after[file] = readFileSync(`${cwd}/${file}`, 'utf8');
   }
-  const analysis = inspectAdministrativeChanges(before, after);
   const files = git(cwd, ['diff', '--name-only', baseline.sha, 'HEAD']).trim().split('\n').filter(Boolean);
-  analysis.reasons.push(...nativeInputReasons(files, analysis.oldScripts));
-  if (analysis.reasons.length) return { compatible: false, exemptions: analysis.exemptions, reasons: analysis.reasons, normalizedRuntime: null };
   const { createFingerprintAsync } = require('expo/fingerprint');
-  const fingerprint = await createFingerprintAsync(cwd, { platforms: ['android'], ignorePaths: ['android/**/*', 'ios/**/*'],
-    silent: true, fileHookTransform: normalizationHook(before, analysis.oldScripts) });
-  return { compatible: fingerprint.hash === baseline.runtimeVersion, normalizedRuntime: fingerprint.hash,
-    exemptions: analysis.exemptions,
-    reasons: fingerprint.hash === baseline.runtimeVersion ? [] : ['Unexplained native fingerprint differences remain'] };
+  return compareNativeFingerprints({ baseline, before, after, files }, hook =>
+    createFingerprintAsync(cwd, { platforms: ['android'], ignorePaths: ['android/**/*', 'ios/**/*'],
+      silent: true, ...(hook ? { fileHookTransform: hook } : {}) }));
 }
+
 function main() {
   if (process.argv[2] === 'snapshot') {
     console.log(encode(sourceSnapshot()).trim()); return;
