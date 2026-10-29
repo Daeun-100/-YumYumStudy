@@ -20,10 +20,8 @@ export function decodeEventBackgrounds(value: unknown): EventBackgroundSnapshot 
 }
 export function selectEventBackgrounds(windows: EventBackgroundWindow[], now: number) {
   const current = windows.filter(w => Date.parse(w.startsAt) <= now && now < Date.parse(w.endsAt));
-  const boundaries = windows.flatMap(w => [Date.parse(w.startsAt), Date.parse(w.endsAt)]).filter(t => t > now);
   return {
     home: current.find(w => w.screens.includes('home'))?.homeAsset,
     focus: current.find(w => w.screens.includes('focus'))?.focusAsset,
-    nextAt: boundaries.length ? Math.min(...boundaries) : null,
   };
 }
