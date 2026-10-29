@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, typography } from '../../design/theme';
+import { LeavePlaneIcon } from '../../design/LeavePlaneIcon';
 
 type Item = { kind?: 'free' | 'reward' | 'admin'; id: string; date: string; state: 'used' | 'scheduled' };
 const dateLabel = (date: string) => {
@@ -14,7 +15,7 @@ export function LeaveScheduleList({ items, today, onSelect }: { items: Item[]; t
       const used = item.state === 'used';
       const label = item.date === today ? '오늘' : dateLabel(item.date);
       return <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${label} 연차 ${used ? '사용 중' : '예약'}, 달력에서 확인`} onPress={() => onSelect(item.date)} style={({ pressed }) => [s.row, index > 0 && s.divider, pressed && { backgroundColor: colors.surfacePressed }]}>
-        <View style={s.dateGroup}><Text style={s.date}>{label}</Text>{used && <Text accessibilityElementsHidden style={s.plane}>✈</Text>}</View>
+        <View style={s.dateGroup}><Text style={s.date}>{label}</Text>{used && <LeavePlaneIcon size={16} />}</View>
         {item.kind === 'admin' && <Text style={s.status}>관리자 지급</Text>}<Text style={[s.status, used && { color: colors.leave }]}>{used ? '사용 중' : '예약'}</Text><Text style={s.status}>›</Text>
       </Pressable>;
     })}
@@ -28,7 +29,6 @@ const s = StyleSheet.create({
   divider: { borderTopWidth: 1, borderColor: colors.track },
   dateGroup: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   date: { ...typography.body, color: colors.text, flexShrink: 1 },
-  plane: { ...typography.secondary, color: colors.leave },
   status: { ...typography.secondary, color: colors.secondary },
   empty: { ...typography.secondary, color: colors.secondary, paddingVertical: 16 },
 });

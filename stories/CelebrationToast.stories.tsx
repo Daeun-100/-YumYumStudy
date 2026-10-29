@@ -43,6 +43,7 @@ type Story = StoryObj<typeof meta>;
 export const Goal: Story = { name: '오늘 목표 달성 · 도장 찍기', args: {} };
 export const Reward: Story = { name: '목표와 보상 · 도장 모으기', args: { reward: true } };
 export const StampStill: Story = { name: '도장판 정지 화면', args: { reward: true, phase: 'stamp' } };
+export const RestStampStill: Story = { name: '오늘 연두색 · 휴무 비행기 · 반짝임', args: { phase: 'stamp' } };
 export const RewardStill: Story = { name: '연차 티켓 정지 화면', args: { reward: true, phase: 'reward' } };
 export const Narrow: Story = { name: '좁은 320px 화면', args: { reward: true, width: 320 } };
 export const ReduceMotion: Story = { name: '동작 줄이기', args: { reward: true, reducedMotion: true } };
