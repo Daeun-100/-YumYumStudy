@@ -42,6 +42,9 @@
 
 ## 기획과 개선안
 
+- [포스트잇 디자인 보유·지급](proposals/POSTIT-DESIGNS-SPEC.md): 서버 PNG와 조건 보상, 원형 디자인 선택
+- [포스트잇 디자인 운영](operations/POSTIT-DESIGNS.md): PNG 등록·게시와 공부 조건 등록·조회·중지
+
 - [이벤트 기록과 예약 운영 명세](proposals/EVENT-OPERATIONS-SPEC.md)
 
 - [목표 달성 보상 명세](proposals/GOAL-ACHIEVEMENT-REWARDS-SPEC.md): 7일 완주 금색 수박, 기존 인포 팝업 안내와 수집·소비 제외

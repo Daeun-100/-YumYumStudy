@@ -50,6 +50,6 @@ export function decodeArtwork(value: unknown): ArtworkManifest {
 export function artworkUrl(base: string, file: ArtworkFile): string {
  const u = new URL(base);
  if (u.protocol !== 'https:' || !u.hostname.endsWith('.supabase.co') || u.username || u.password || u.pathname !== '/' || u.search || u.hash
-  || !/^(skin|background)\/[a-z0-9][a-z0-9_-]{0,79}\/[a-f0-9-]{36}\/(home|focus)\.png$/.test(file.path)) throw Error('Untrusted artwork URL');
+  || !/^(?:(?:skin|background)\/[a-z0-9][a-z0-9_-]{0,79}\/[a-f0-9-]{36}\/(?:home|focus)|postit\/[a-z0-9][a-z0-9_-]{0,79}\/[a-f0-9-]{36}\/paper)\.png$/.test(file.path)) throw Error('Untrusted artwork URL');
  return `${u.origin}/storage/v1/object/public/${ARTWORK_BUCKET}/${file.path}`;
 }

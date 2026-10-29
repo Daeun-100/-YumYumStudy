@@ -31,6 +31,7 @@ function mount() {
     './useAppActive': { useAppActive: () => active },
     './useRefreshOnResume': { isAppActive: () => active, useRefreshOnResume: callback => callback },
   });
+  const syncDesigns = async () => {};
   const { usePostits } = load('../src/features/postits/usePostits.ts', {
     react: runtime.react, 'expo-router': { useIsFocused: () => focused },
     '../../lib/performance': { measure: (_name, run) => run() },
@@ -44,6 +45,7 @@ function mount() {
     '../../lib/study-day': { getStudyDate },
     '../study/useScreenNow': { useScreenNow: () => now },
     './model': { decodePostit, mergePostit },
+    './PostitDesignProvider': { usePostitDesigns: () => ({ refresh: syncDesigns }) },
   });
   return { rpc, render: () => runtime.render(usePostits), reads: () => reads, removals: () => removals,
     message: payload => broadcast?.({ payload }), status: value => status?.(value),
