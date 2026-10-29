@@ -8,7 +8,14 @@ const db = new PGlite();
 try {
  await db.exec(`
  create role anon; create role authenticated; create role service_role bypassrls;
- create schema auth; create schema extensions; create schema realtime;
+ create schema auth; create schema extensions; create schema realtime; create schema storage;
+ create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+ create table storage.objects(bucket_id text references storage.buckets(id),name text,primary key(bucket_id,name));
+ alter table storage.objects enable row level security;
+ grant usage on schema storage to anon,authenticated,service_role;
+ grant select,insert,update,delete on storage.objects to anon,authenticated,service_role;
+ -- Simulate an unrelated broad permissive policy: the bucket restriction must win.
+ create policy old_permissive_policy on storage.objects for all to anon,authenticated using(true) with check(true);
  create table auth.users(id uuid primary key);
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
  grant usage on schema public,auth to anon,authenticated,service_role;
@@ -42,70 +49,78 @@ try {
  ('00000000-0000-4000-8000-000000000003',0,'미입장','bear',null,false);
  `);
 
+
  const user='00000000-0000-4000-8000-000000000001';
  const other='00000000-0000-4000-8000-000000000002';
  const unadmitted='00000000-0000-4000-8000-000000000003';
- async function role(roleName,uid,sql) {
-  await db.exec(`set role ${roleName}; select set_config('request.jwt.claim.sub','${uid ?? ''}',false);`);
+ const folder='00000000-0000-4000-8000-000000000010';
+ const home=`rooms/0/${folder}/home.png`,focus=`rooms/0/${folder}/focus.png`;
+ const home1=`rooms/1/${folder}/home.png`,focus1=`rooms/1/${folder}/focus.png`;
+ async function role(name,uid,sql) {
+  await db.exec(`set role ${name}; select set_config('request.jwt.claim.sub','${uid ?? ''}',false);`);
   try { return await db.query(sql); } finally { await db.exec('reset role;'); }
  }
- const asUser=sql=>role('authenticated',user,sql);
  const admin=sql=>role('service_role',null,sql);
+ const asUser=sql=>role('authenticated',user,sql);
  const today=async(uid=user)=>(await role('authenticated',uid,'select public.get_today() as t')).rows[0].t;
+ const publish=(room=0,alt='같이 달려요!',start="'2026-11-01T06:00:00+09:00'",end="'2026-11-08T06:00:00+09:00'",h=room===0?home:home1,f=room===0?focus:focus1)=>`select public.admin_publish_room_banner(${room}::smallint,'${h}','${f}','${alt}',${start},${end}) as b`;
  assert.equal((await today()).data.roomBanner,null);
- const publish=`select public.admin_publish_room_banner(0::smallint,'  같이 달려요!  ','2026-11-01T06:00:00+09:00','2026-11-08T06:00:00+09:00') as b`;
- let saved=(await admin(publish)).rows[0].b;
- assert.equal(saved.message,'같이 달려요!');
- assert.equal(saved.enabled,true);
+ assert.equal((await admin('select public.admin_hide_room_banner(0::smallint) as b')).rows[0].b,null);
+ await assert.rejects(()=>admin(publish()),/Both banner images/);
+ await admin(`insert into storage.objects(bucket_id,name) values('room-banners','${home}')`);
+ await assert.rejects(()=>admin(publish()),/Both banner images/);
+ await admin(`insert into storage.objects(bucket_id,name) values('room-banners','${focus}'),('room-banners','${home1}'),('room-banners','${focus1}')`);
+ let saved=(await admin(publish(0,'  같이 달려요!  '))).rows[0].b;
+ assert.equal(saved.alt_text,'같이 달려요!');assert.equal(saved.enabled,true);
  let snapshot=await today();
- assert.equal(snapshot.data.roomBanner.message,'같이 달려요!');
+ assert.equal(snapshot.data.roomBanner.homeImagePath,home);
+ assert.equal(snapshot.data.roomBanner.focusImagePath,focus);
+ assert.equal(snapshot.data.roomBanner.altText,'같이 달려요!');
  assert.equal(Date.parse(snapshot.data.roomBanner.startsAt),Date.parse('2026-11-01T06:00:00+09:00'));
  assert.ok(snapshot.serverNow && snapshot.data.profile && snapshot.data.day);
  assert.equal((await today(other)).data.roomBanner,null);
  assert.equal((await role('authenticated',other,'select * from public.room_banners')).rows.length,0);
  assert.equal((await role('authenticated',unadmitted,'select * from public.room_banners')).rows.length,0);
  await assert.rejects(()=>today(unadmitted),/Onboarding required/);
- // Anonymous reads/writes and all regular-user mutations/RPCs must fail.
  for(const name of ['anon','authenticated']) {
   for(const sql of [
-   `insert into public.room_banners(room_id,message) values(1,'hack')`,
-   `update public.room_banners set enabled=false where room_id=0`,
-   `delete from public.room_banners where room_id=0`,
-   publish,`select public.admin_hide_room_banner(0::smallint)`,
+   `insert into public.room_banners(room_id,home_image_path,focus_image_path,alt_text) values(1,'${home1}','${focus1}','hack')`,
+   'update public.room_banners set enabled=false where room_id=0',
+   'delete from public.room_banners where room_id=0',publish(),'select public.admin_hide_room_banner(0::smallint)',
   ]) await assert.rejects(()=>role(name,user,sql),/permission denied/);
+  await assert.rejects(()=>role(name,user,`insert into storage.objects(bucket_id,name) values('room-banners','hack.png')`),/row-level security/);
+  assert.equal((await role(name,user,`select * from storage.objects where bucket_id='room-banners'`)).rows.length,0);
+  assert.equal((await role(name,user,`update storage.objects set name='hack' where bucket_id='room-banners' returning *`)).rows.length,0);
+  assert.equal((await role(name,user,`delete from storage.objects where bucket_id='room-banners' returning *`)).rows.length,0);
  }
  await assert.rejects(()=>role('anon',null,'select * from public.room_banners'),/permission denied/);
  await assert.rejects(()=>role('anon',null,'select public.get_today()'),/permission denied/);
- for (const args of [
-  `0::smallint,'',now(),null`, `0::smallint,'   ',now(),null`,
-  `0::smallint,repeat('a',41),now(),null`, `0::smallint,E'a\\nb',now(),null`,
-  `0::smallint,'a',now(),now()`, `0::smallint,'a',now(),now()-interval '1 second'`,
-  `0::smallint,'a','infinity',null`, `0::smallint,'a',now(),'infinity'`,
-  `0::smallint,'a',null,null`, `2::smallint,'a',now(),null`,
- ]) await assert.rejects(()=>admin(`select public.admin_publish_room_banner(${args})`));
- await admin(`select public.admin_publish_room_banner(1::smallint,'다른 방')`);
- assert.equal((await today(other)).data.roomBanner.message,'다른 방');
- await admin(`select public.admin_publish_room_banner(0::smallint,'새 문구')`);
+ for(const sql of [publish(0,''),publish(0,'a'.repeat(161)),publish(0,'a','now()','now()'),
+  publish(0,'a',"'infinity'",'null'),publish(0,'a','now()',"'infinity'"),publish(0,'a','null','null'),
+  publish(0,'a','now()','null',home1,focus1),publish(0,'a','now()','null',home,home),
+ ]) await assert.rejects(()=>admin(sql));
+ // Failed validation cannot replace the currently published pair.
+ assert.equal((await today()).data.roomBanner.homeImagePath,home);
+ await admin(publish(1,'다른 방','now()','null'));
+ assert.equal((await today(other)).data.roomBanner.altText,'다른 방');
+ await admin(publish(0,'새 세트','now()','null'));
  assert.equal((await asUser('select * from public.room_banners')).rows.length,1);
  assert.equal((await today()).data.roomBanner.endsAt,null);
- await admin(`select public.admin_publish_room_banner(0::smallint,'과거','2020-01-01','2020-01-02')`);
- snapshot=await today();
- assert.equal(snapshot.data.roomBanner.message,'과거');
- assert.ok(Date.parse(snapshot.data.roomBanner.endsAt)<Date.parse(snapshot.serverNow));
- // Future/expired schedules remain available for local interval evaluation.
- await admin(`select public.admin_publish_room_banner(0::smallint,'미래','2099-01-01',null)`);
- assert.equal((await today()).data.roomBanner.message,'미래');
- saved=(await admin(`select public.admin_hide_room_banner(0::smallint) as b`)).rows[0].b;
- assert.equal(saved.enabled,false);
- assert.equal((await today()).data.roomBanner,null);
+ await admin(publish(0,'과거',"'2020-01-01'","'2020-01-02'"));
+ snapshot=await today();assert.ok(Date.parse(snapshot.data.roomBanner.endsAt)<Date.parse(snapshot.serverNow));
+ await admin(publish(0,'미래',"'2099-01-01'",'null'));
+ assert.equal((await today()).data.roomBanner.altText,'미래');
+ saved=(await admin('select public.admin_hide_room_banner(0::smallint) as b')).rows[0].b;
+ assert.equal(saved.enabled,false);assert.equal((await today()).data.roomBanner,null);
  assert.equal((await asUser('select * from public.room_banners')).rows.length,0);
- assert.equal((await admin('select * from public.room_banners where room_id=0')).rows[0].message,'미래');
- await assert.rejects(()=>admin(`select public.admin_hide_room_banner(null::smallint)`),/Invalid room/);
- // Triggers stamp even direct trusted SQL writes.
+ assert.equal((await admin('select * from public.room_banners where room_id=0')).rows[0].home_image_path,home);
+ await assert.rejects(()=>admin('select public.admin_hide_room_banner(null::smallint)'),/Invalid room/);
  await admin(`update public.room_banners set updated_at='2000-01-01' where room_id=0`);
  assert.ok(Date.parse((await admin('select updated_at from public.room_banners where room_id=0')).rows[0].updated_at)>Date.parse('2026-01-01'));
  assert.equal((await db.query(`select relrowsecurity from pg_class where oid='public.room_banners'::regclass`)).rows[0].relrowsecurity,true);
  const functions=(await db.query(`select prosecdef from pg_proc where proname in ('admin_publish_room_banner','admin_hide_room_banner','stamp_room_banner')`)).rows;
- assert.equal(functions.length,3); assert.ok(functions.every(f=>!f.prosecdef));
- console.log('PASS: snapshots, one-per-room upsert, future/expired/open-ended schedules, hide, timestamps, validation, anonymous/user/admin permissions and room/admission isolation.');
+ assert.equal(functions.length,3);assert.ok(functions.every(f=>!f.prosecdef));
+ const bucket=(await db.query("select * from storage.buckets where id='room-banners'")).rows[0];
+ assert.equal(bucket.public,true);assert.equal(Number(bucket.file_size_limit),2097152);assert.deepEqual(bucket.allowed_mime_types,['image/png']);
+ console.log('PASS: atomic image pair publication, missing/wrong-room images, bucket restrictions, snapshots, schedules, hide, timestamps, anonymous/user/admin permissions and admission isolation.');
 } finally { await db.close(); }
