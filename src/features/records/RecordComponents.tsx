@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { AchievementProgressIcon } from '../../design/AchievementProgressIcon';
+import { LeavePlaneIcon } from '../../design/LeavePlaneIcon';
 import { watermelonGoalPercent } from '../../design/watermelon-fill';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AchievementBadge, AchievementIcon, Card } from '../../design/components';
@@ -22,7 +23,7 @@ export function GoalProgress({ minutes, goal }: { minutes: number; goal: number 
 }
 export function RecordMark({ kind }: { kind: 'achieved' | StudyRecord['status'] }) {
   if (kind === 'achieved') return <AchievementIcon size={18} />;
-  if (kind === 'leave') return <View accessible accessibilityLabel="연차" style={{ width: 20, height: 20, borderRadius: radius.pill, backgroundColor: colors.leaveIconBackground, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 14, lineHeight: 18, color: colors.leave }}>✈</Text></View>;
+  if (kind === 'leave') return <View accessible accessibilityLabel="연차" style={{ width: 20, height: 20, borderRadius: radius.pill, backgroundColor: colors.leaveIconBackground, alignItems: 'center', justifyContent: 'center' }}><LeavePlaneIcon size={14} /></View>;
   if (kind === 'rest') return <Text style={{ fontSize: 15, color: colors.inactive }}>／</Text>;
   return <View style={[s.dot, { backgroundColor: kind === 'study' ? colors.study : colors.track }]} />;
 }
