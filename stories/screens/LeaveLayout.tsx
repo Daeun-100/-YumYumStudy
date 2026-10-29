@@ -5,8 +5,7 @@ import { LeaveView, type LeaveViewProps } from '../../src/features/leave/LeaveVi
 import { reservationReason } from '../../src/features/leave/model';
 import { monthStart, parseDate, previewRecord, shiftDate, shiftMonth } from '../../src/features/records/model';
 import type { LeaveGrant } from '../../src/lib/contracts';
-import { BottomTabs } from './StudyLayouts';
-export { LeaveBadge, LeaveIcon, LeaveInfo, WeeklyLeaveProgress } from '../../src/features/leave/LeaveView';
+import { BottomTabs } from '../../src/features/navigation/BottomTabs';
 export type { LeaveLayoutProps } from '../../src/features/leave/LeaveView';
 import type { LeaveLayoutProps } from '../../src/features/leave/LeaveView';
 

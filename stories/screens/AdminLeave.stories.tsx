@@ -6,7 +6,7 @@ import { decodeLeaveStatus } from '../../src/data/decode';
 import { leaveGrantView } from '../../src/features/leave/model';
 import { colors, typography } from '../../src/design/theme';
 import { monthStart, parseDate, previewRecord, shiftDate, shiftMonth } from '../../src/features/records/model';
-import { BottomTabs } from './StudyLayouts';
+import { BottomTabs } from '../../src/features/navigation/BottomTabs';
 
 const today = '2026-10-28';
 const earnedAt = '2026-10-28T12:00:00+09:00';
@@ -36,7 +36,7 @@ function Preview({ date, home = false, width = 390 }: { date?: string; home?: bo
   </View>;
 }
 const meta = {
-  title: '화면 시안/관리자 연차', component: Preview,
+  title: '화면/관리자 연차', component: Preview,
   parameters: { screenLayout: true, layout: 'fullscreen', docs: { description: { component: '관리자 연차 UI 미리보기. 잔액 2개는 무료·보상만 집계합니다. 관리자 연차는 지정일에 표시되며 변경·취소 버튼과 만료일, 운영 사유를 노출하지 않습니다. DB와 연결하지 않은 샘플입니다.' } } },
   args: { date: '2026-10-30', home: false, width: 390 },
   render: args => <Preview key={JSON.stringify(args)} {...args} />,
