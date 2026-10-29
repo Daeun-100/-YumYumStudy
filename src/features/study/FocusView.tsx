@@ -1,3 +1,4 @@
+import { SkinEffects } from './SkinEffects';
 import { resolveCharacterArtwork } from '../../design/skin-artwork';
 import type { ReactNode } from 'react';
 import roomBackground from '../../../assets/backgrounds/focus-background.png';
@@ -13,6 +14,8 @@ const imageSource = (asset: number | string) => typeof asset === 'string' ? { ur
 
 export type FocusMember = { id: string; name: string; time: string; active: boolean; character: CharacterId; activeSkinId?: string | null; self?: boolean; achieved?: boolean };
 export type FocusViewProps = {
+  effectsEnabled?: boolean;
+  effectStrength?: number;
   onWake?(member: FocusMember): void;
   wakeSentIds?: string[];
   timerControl?: ReactNode;
@@ -24,7 +27,7 @@ export type FocusViewProps = {
 };
 
 /** Shared Storybook and app layout. All session state comes from the caller. */
-export function FocusView({ onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl, initialSceneSize }: FocusViewProps) {
+export function FocusView({ effectsEnabled = true, effectStrength = 1, onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl, initialSceneSize }: FocusViewProps) {
   const { height } = useWindowDimensions();
   const compact = height < 740;
   const artwork = useMeasuredLayout('focus-art', String(compact));
@@ -45,9 +48,11 @@ export function FocusView({ onWake, wakeSentIds = [], members, memberCount, seco
       <View style={[s.seats, { bottom: sceneHeight - tableTop - 72 * scale }]}>{Array.from({ length: 4 }, (_, index) => {
         const member = members[index];
         const size = characterSize * (member?.character === 'bunny' ? 1.20 : 1);
+        const skin = member ? resolveCharacterArtwork(member.character, member.activeSkinId) : undefined;
+        const bottom = member ? -size * (1 - (skin?.focusBottom ?? characterBottom[member.character]) / 1254) + (['bunny', 'maltese', 'pomeranian', 'blackcat'].includes(member.character) ? 32 * scale : 0) : 0;
         return <View key={member?.id ?? `empty-${index}`} style={s.seat}>{member && <>
           <Pressable accessibilityRole={onWake && !member.self && !member.active ? "button" : undefined} accessibilityLabel={onWake && !member.self && !member.active ? `${member.name} 부르기${wakeSentIds.includes(member.id) ? ", 부르기 알림 보냄" : ""}` : undefined} disabled={!onWake || member.self || member.active || wakeSentIds.includes(member.id)} onPress={() => onWake?.(member)} style={s.nameTag}><View style={s.tagRow}><View style={[s.dot, { backgroundColor: member.active ? colors.primary : colors.resting }]} /><Text numberOfLines={1} style={s.name}>{member.name}</Text></View><Text numberOfLines={1} style={s.caption}>{member.time}</Text></Pressable>
-          <View style={{ width: characterSize, height: characterSize, alignItems: 'center' }}>{(member.achieved ?? (member.self && achieved)) && <View style={{ position: 'absolute', width: size, height: size, bottom: -size * (1 - (resolveCharacterArtwork(member.character, member.activeSkinId).focusBottom ?? characterBottom[member.character]) / 1254) + (['bunny', 'maltese', 'pomeranian', 'blackcat'].includes(member.character) ? 32 * scale : 0) }}><AchievementAura character={member.character} size={size} /></View>}<Image fadeDuration={0} source={resolveCharacterArtwork(member.character, member.activeSkinId).focus} resizeMode="contain" style={{ position: 'absolute', width: size, height: size, bottom: -size * (1 - (resolveCharacterArtwork(member.character, member.activeSkinId).focusBottom ?? characterBottom[member.character]) / 1254) + (['bunny', 'maltese', 'pomeranian', 'blackcat'].includes(member.character) ? 32 * scale : 0) }} accessibilityLabel={`${member.name}${member.self ? ' (나)' : ''}, ${member.active ? '공부 중' : '쉬는 중'}`} /></View>
+          <View style={{ width: characterSize, height: characterSize, alignItems: 'center' }}>{(member.achieved ?? (member.self && achieved)) && <View style={{ position: 'absolute', width: size, height: size, bottom }}><AchievementAura character={member.character} size={size} /></View>}<View pointerEvents="none" style={{ position: 'absolute', width: size, height: size, bottom }}><Image fadeDuration={0} source={skin!.focus} resizeMode="contain" style={{ width: size, height: size }} accessibilityLabel={`${member.name}${member.self ? ' (나)' : ''}, ${member.active ? '공부 중' : '쉬는 중'}`} /><SkinEffects effects={skin?.effects} screen="focus" width={size} height={size} enabled={effectsEnabled} strength={effectStrength} phase={index * 650} /></View></View>
         </>}</View>;
       })}</View>
       </>}
