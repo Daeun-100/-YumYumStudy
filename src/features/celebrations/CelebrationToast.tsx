@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { ArrowRight, Sparkle, X } from 'lucide-react-native';
+import { ArrowRight, X } from 'lucide-react-native';
+import Svg, { Path } from 'react-native-svg';
 import { LeavePlaneIcon } from '../../design/LeavePlaneIcon';
 import { designAssets } from '../../design/assets';
 import { colors, layout, typography } from '../../design/theme';
@@ -25,7 +26,7 @@ function CelebrationSparkle({ still }: { still: boolean }) {
   return <View pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={s.spark}>
     <Animated.View style={{ opacity: twinkle.interpolate({ inputRange: [0, 0.18, 1], outputRange: [0, 1, 1] }),
       transform: [{ scale: twinkle.interpolate({ inputRange: [0, 0.3, 0.65, 1], outputRange: [0.45, 1.25, 0.88, 1] }) }],
-    }}><Sparkle size={20} color={colors.primary} fill={colors.primary} strokeWidth={0} /></Animated.View>
+    }}><Svg width={20} height={23} viewBox="0 0 24 24"><Path d="M12 0C12 8 16 12 24 12C16 12 12 16 12 24C12 16 8 12 0 12C8 12 12 8 12 0Z" fill={colors.primary} /></Svg></Animated.View>
   </View>;
 }
 export function CelebrationToast({ notice, onDismiss, onViewReward, reducedMotion = false, screenReader = false, previewPhase, autoDismiss = true }: Props) {
