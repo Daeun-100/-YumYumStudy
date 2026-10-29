@@ -24,6 +24,7 @@ function focusProps(study, ownerId, focused = true) {
     'react-native': { View: 'View' },
     'expo-router': { router: {}, useIsFocused: () => focused },
     '../../components/IdentityProvider': { useIdentity: () => ({ profile: { id: ownerId, displayName: ownerId } }) },
+    '../events/useEventBackgrounds': { useEventBackgrounds: () => ({}) },
     './StudyProvider': { useStudy: () => study },
     './study-resources': { useStudyResources: () => {} },
     './useScreenNow': { useScreenNow: () => study.now },

@@ -1,7 +1,8 @@
 import { SkinEffects } from './SkinEffects';
 import { resolveCharacterArtwork } from '../../design/skin-artwork';
 import type { ReactNode } from 'react';
-import roomBackground from '../../../assets/backgrounds/focus-background.png';
+import { useState } from 'react';
+import { resolveBackgroundArtwork } from '../../design/background-artwork';
 import { useMeasuredLayout } from '../../hooks/useMeasuredLayout';
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { AchievementBadge, Button, Card } from '../../design/components';
@@ -10,10 +11,9 @@ import type { CharacterId } from '../../lib/characters';
 import { AchievementAura } from './AchievementAura';
 import { duration, goalLabel, progress, timer } from './presentation';
 
-const imageSource = (asset: number | string) => typeof asset === 'string' ? { uri: asset } : asset;
-
 export type FocusMember = { id: string; name: string; time: string; active: boolean; character: CharacterId; activeSkinId?: string | null; self?: boolean; achieved?: boolean };
 export type FocusViewProps = {
+  backgroundId?: string;
   effectsEnabled?: boolean;
   effectStrength?: number;
   onWake?(member: FocusMember): void;
@@ -27,7 +27,9 @@ export type FocusViewProps = {
 };
 
 /** Shared Storybook and app layout. All session state comes from the caller. */
-export function FocusView({ effectsEnabled = true, effectStrength = 1, onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl, initialSceneSize }: FocusViewProps) {
+export function FocusView({ backgroundId, effectsEnabled = true, effectStrength = 1, onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl, initialSceneSize }: FocusViewProps) {
+  const [failed, setFailed] = useState<string | undefined>();
+  const background = resolveBackgroundArtwork('focus', failed === backgroundId ? undefined : backgroundId);
   const { height } = useWindowDimensions();
   const compact = height < 740;
   const artwork = useMeasuredLayout('focus-art', String(compact));
@@ -44,7 +46,7 @@ export function FocusView({ effectsEnabled = true, effectStrength = 1, onWake, w
     <View style={s.header}><Button label="←" size="icon" variant="ghost" accessibilityLabel="홈으로 돌아가기" onPress={onBack} /><Text accessibilityRole="header" style={s.title}>우리 공부방</Text><Button label={onAllowedApps ? '허용앱' : `${memberCount ?? '—'}명`} size="compact" variant="raised" accessibilityLabel={onAllowedApps ? '내 허용앱 목록 열기' : `친구 ${memberCount ?? ''}명 현황 보기`} onPress={onAllowedApps ?? onFriends} /></View>
     <View onLayout={artwork.onLayout} style={s.art}>
       {sceneSize && <>
-      <Image fadeDuration={0} source={imageSource(roomBackground)} resizeMode="contain" style={{ position: 'absolute', width: 1024 * scale, height: 1536 * scale, left: (sceneWidth - 1024 * scale) / 2, top: tableTop - 912 * scale }} accessibilityLabel="함께 공부하는 공부방" />
+      <Image fadeDuration={0} source={background.source} onError={() => setFailed(backgroundId)} resizeMode="contain" style={{ position: 'absolute', width: 1024 * scale, height: 1536 * scale, left: (sceneWidth - 1024 * scale) / 2, top: tableTop - 912 * scale }} accessibilityLabel={background.label} />
       <View style={[s.seats, { bottom: sceneHeight - tableTop - 72 * scale }]}>{Array.from({ length: 4 }, (_, index) => {
         const member = members[index];
         const size = characterSize * (member?.character === 'bunny' ? 1.20 : 1);

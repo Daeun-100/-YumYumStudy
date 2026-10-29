@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | `product/` | 제품 방향, 현재 정책, 화면 사용 흐름과 기능 명세 | 기능을 기획하거나 기대 동작을 판단할 때 |
 | `development/` | 기술 설계, 데이터·API 계약과 개발 테스트 | 코드를 수정하거나 플랫폼 동작을 검증할 때 |
+| `events/` | 이벤트 기획·활동·보상·연출과 결과 | 행사를 기록하거나 지난 이벤트를 참고할 때 |
 | `operations/` | 배포, 버전 관리와 관리자 운영 절차 | APK·웹·OTA를 배포하거나 연차·스킨을 관리할 때 |
 | `proposals/` | 기획·개선 설계와 관련 시안 | 문서의 구현 상태를 확인하며 후속 기능과 개선을 검토할 때 |
 
@@ -27,6 +28,8 @@
 
 ## 배포와 운영
 
+- [이벤트 기록과 예약 운영](operations/EVENT-OPERATIONS.md)
+
 - [버전 및 배포 운영](operations/RELEASES.md): 배포 절차와 현재 버전관리 규칙
 - [클라우드 빌드](operations/CLOUD-BUILDS.md)
 - [EAS Update](operations/EAS_UPDATE.md)
@@ -37,6 +40,8 @@
 - 설치 안내 사이트는 [다운로드 페이지 안내](../download-site/README.md)를 참고한다.
 
 ## 기획과 개선안
+
+- [이벤트 기록과 예약 운영 명세](proposals/EVENT-OPERATIONS-SPEC.md)
 
 - [목표 달성 보상 명세](proposals/GOAL-ACHIEVEMENT-REWARDS-SPEC.md): 7일 완주 금색 수박, 기존 인포 팝업 안내와 수집·소비 제외
 
