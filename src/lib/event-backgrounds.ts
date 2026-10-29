@@ -1,4 +1,4 @@
-import { decodeArtwork, type ArtworkManifest } from './artwork-content.ts';
+import { artworkReference, decodeArtwork, type ArtworkManifest } from './artwork-content.ts';
 export type EventBackgroundWindow = { artwork?: ArtworkManifest; id: string; startsAt: string; endsAt: string; screens: ('home' | 'focus')[]; homeAsset: string; focusAsset: string };
 export type EventBackgroundSnapshot = { serverNow: string; roomId: number; windows: EventBackgroundWindow[] };
 export function decodeEventBackgrounds(value: unknown): EventBackgroundSnapshot {
@@ -14,7 +14,7 @@ export function decodeEventBackgrounds(value: unknown): EventBackgroundSnapshot 
       || typeof w.homeAsset !== 'string' || typeof w.focusAsset !== 'string') throw new Error('Invalid background window');
     let artwork: ArtworkManifest | undefined;
     try { if (w.artwork) { const candidate=decodeArtwork(w.artwork); if(candidate.kind==='background')artwork=candidate; } } catch { /* Old/local fallback remains valid. */ }
-    return { ...w, ...(artwork?{artwork,homeAsset:`remote:${artwork.revision}:home`,focusAsset:`remote:${artwork.revision}:focus`}:{}) } as EventBackgroundWindow;
+    return { ...w, ...(artwork?{artwork,homeAsset:`remote:${artworkReference(artwork)}:home`,focusAsset:`remote:${artworkReference(artwork)}:focus`}:{}) } as EventBackgroundWindow;
   });
   return { serverNow: row.serverNow, roomId: row.roomId as number, windows };
 }

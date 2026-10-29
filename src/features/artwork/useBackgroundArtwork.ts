@@ -7,7 +7,7 @@ const noSubscribe=()=>()=>{},readEmpty=()=>empty;
 export function useBackgroundArtwork(screen:'home'|'focus',id?:string){
  const store=useContext(ArtworkContext);
  const entries=useSyncExternalStore(store?.subscribe??noSubscribe,store?.read??readEmpty,readEmpty);
- const match=/^remote:([a-f0-9-]{36}):(home|focus)$/.exec(id??'');
+ const match=/^remote:([a-f0-9-]{36}|asset-[a-z0-9][a-z0-9_-]{0,79}):(home|focus)$/.exec(id??'');
  const entry=match?entries.get(`background:${match[1]}`):undefined;
  if(match?.[2]===screen&&entry?.state==='ready'&&entry.manifest){
   return {source:{uri:store!.url(entry.manifest[screen])},label:entry.manifest.name};

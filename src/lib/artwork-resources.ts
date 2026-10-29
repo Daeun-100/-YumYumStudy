@@ -1,4 +1,4 @@
-import { decodeArtwork, type ArtworkManifest, type ArtworkFile } from './artwork-content.ts';
+import { artworkReference, artworkSignature, decodeArtwork, type ArtworkManifest, type ArtworkFile } from './artwork-content.ts';
 export type ArtworkEntry = { manifest?: ArtworkManifest; state: 'loading' | 'ready' | 'failed' | 'unsupported'; checkedAt: number };
 type Deps = { fetchSkins(ids: string[]): Promise<unknown[]>; prepare(manifest: ArtworkManifest): Promise<void>; now(): number; url?(asset: ArtworkFile): string; save?(manifests: ArtworkManifest[]): void };
 /** One store per identity + room. Responses from disposed stores cannot cross scopes. */
@@ -15,17 +15,17 @@ export function createArtworkResources(deps: Deps) {
  const ingest = (raw: unknown, restore = false): Promise<void> => {
   let manifest: ArtworkManifest;
   try {manifest = decodeArtwork(raw);} catch {return Promise.resolve();}
-  const key = manifest.kind === 'skin' ? `skin:${manifest.id}` : `background:${manifest.revision}`;
+  const key = manifest.kind === 'skin' ? `skin:${manifest.id}` : `background:${artworkReference(manifest)}`;
   const old = snapshot.get(key);
-  if (restore && old && old.state !== 'failed' && !(old.state === 'loading' && !old.manifest) || old?.state==='ready' && old.manifest?.revision===manifest.revision) return Promise.resolve();
-  wanted.set(key,manifest.revision);
-  const preparingKey = `${key}:${manifest.revision}`;
+  if (restore && old && old.state !== 'failed' && !(old.state === 'loading' && !old.manifest) || old?.state==='ready' && old.manifest && artworkSignature(old.manifest)===artworkSignature(manifest)) return Promise.resolve();
+  wanted.set(key,artworkSignature(manifest));
+  const preparingKey = `${key}:${artworkSignature(manifest)}`;
   const existing = pending.get(preparingKey); if (existing) return existing;
   // Keep a verified older revision on screen until the replacement is decoded.
   if (!old || old.state !== 'ready') emit(key,{manifest,state:'loading',checkedAt:deps.now()});
   const task = (async()=>{
-   try {await deps.prepare(manifest);if (!disposed && wanted.get(key)===manifest.revision) {emit(key,{manifest,state:'ready',checkedAt:deps.now()});save();}}
-   catch {if (wanted.get(key)===manifest.revision && (!old || old.state!=='ready')) emit(key,{manifest,state:'failed',checkedAt:deps.now()});}
+   try {await deps.prepare(manifest);if (!disposed && wanted.get(key)===artworkSignature(manifest)) {emit(key,{manifest,state:'ready',checkedAt:deps.now()});save();}}
+   catch {if (wanted.get(key)===artworkSignature(manifest) && (!old || old.state!=='ready')) emit(key,{manifest,state:'failed',checkedAt:deps.now()});}
   })().finally(()=>pending.delete(preparingKey));
   pending.set(preparingKey,task);return task;
  };
@@ -62,7 +62,7 @@ export function createArtworkResources(deps: Deps) {
   },
   refresh:()=>requestSkins([...requested],true),
   restore:async(raw:unknown)=>{if(Array.isArray(raw))await Promise.all(raw.slice(0,200).map(v=>ingest(v,true)));},
-  invalidate(manifest: ArtworkManifest){const key=manifest.kind==='skin'?`skin:${manifest.id}`:`background:${manifest.revision}`;emit(key,{manifest,state:'failed',checkedAt:0});},
+  invalidate(manifest: ArtworkManifest){const key=manifest.kind==='skin'?`skin:${manifest.id}`:`background:${artworkReference(manifest)}`;emit(key,{manifest,state:'failed',checkedAt:0});},
   activate(){disposed=false;},
   dispose(){disposed=true;listeners.clear();},
  };
