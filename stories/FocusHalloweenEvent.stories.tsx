@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { useState } from 'react';
 import { Candy, Check, Gift } from 'lucide-react-native';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { PostitBoard } from '../src/features/postits/PostitBoard';
+import type { Postit } from '../src/features/postits/model';
 import { FocusView } from '../src/features/study/FocusView';
 import { Button } from '../src/design/components';
 import { Dialog, DialogCloseButton } from '../src/design/Dialog';
@@ -30,6 +32,10 @@ function EventBookmark({ minutes, confirming, onOpen }: { minutes: number; confi
 function Preview({ minutes = 20, width = 390, confirming = false }: { minutes?: number; width?: number; confirming?: boolean }) {
   const [elapsed, setElapsed] = useState(minutes), [running, setRunning] = useState(true), [details, setDetails] = useState(false);
   const received = elapsed >= 30 && !confirming;
+  const [notes, setNotes] = useState<Postit[]>([
+    { id: 'note-1', author: '다은', text: '오늘도 같이 힘내자! 🎃', color: '#F9E8A0', x: .19, y: .24, room_id: 0, study_date: '2026-10-31', deleted_at: null },
+    { id: 'note-2', author: '민지', text: '사탕 모으러 왔어요 🍬', color: '#F7CED4', x: .70, y: .41, room_id: 0, study_date: '2026-10-31', deleted_at: null },
+  ]);
   return <View style={{ gap: 16, alignItems: 'center' }}>
     <View style={[s.phone, { width, height: 844 }]}>
       <View style={s.status}><Text style={s.statusText}>9:41</Text><Text style={s.statusText}>••• ▰</Text></View>
@@ -38,7 +44,9 @@ function Preview({ minutes = 20, width = 390, confirming = false }: { minutes?: 
         { id: 'friend-1', name: '다은', time: '1시간 12분', active: true, character: 'blackcat' },
         { id: 'friend-2', name: '민지', time: '45분', active: true, character: 'maltese' },
         { id: 'friend-3', name: '지훈', time: '쉬는 중', active: false, character: 'pomeranian' },
-      ]} memberCount={4} seconds={elapsed * 60} sessionSeconds={elapsed * 60} goalMinutes={120} running={running} onBack={() => {}} onFriends={() => {}} onToggle={() => setRunning(value => !value)} renderRoomOverlay={() => <View pointerEvents="box-none" style={StyleSheet.absoluteFill}><EventBookmark minutes={elapsed} confirming={confirming} onOpen={() => setDetails(true)} /></View>} />
+      ]} memberCount={4} seconds={elapsed * 60} sessionSeconds={elapsed * 60} goalMinutes={120} running={running} onBack={() => {}} onFriends={() => {}} onToggle={() => setRunning(value => !value)} renderRoomOverlay={scene => <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+        <EventBookmark minutes={elapsed} confirming={confirming} onOpen={() => setDetails(true)} />
+        <PostitBoard scene={scene} notes={notes} embedded noteBorder createId={() => `preview-${Date.now()}`} add={async (id, text, color, x, y) => setNotes(previous => [...previous, { id, text, color, x, y, author: '나', room_id: 0, study_date: '2026-10-31', deleted_at: null }])} remove={async id => setNotes(previous => previous.filter(note => note.id !== id))} /></View>} />
       <Dialog visible={details} embedded label={received ? '할로윈 포스트잇 획득' : '할로윈 이벤트 안내'} onClose={() => setDetails(false)}><View style={s.detail}>
         <Text style={s.detailEyebrow}>HALLOWEEN · 10.31</Text><Text style={s.detailTitle}>{received ? '달콤한 선물이 도착했어요' : '공부하고 사탕을 모아요'}</Text>
         <View style={s.largePaper}><Image accessible accessibilityLabel="한정 포스트잇 종이 미리보기" source={paperSource} resizeMode="contain" style={StyleSheet.absoluteFill} /><View style={s.paperText}><Text style={s.paperMessage}>{'오늘도 함께\n공부해요 🎃'}</Text></View></View>
@@ -61,7 +69,7 @@ const s = StyleSheet.create({
   detailCopy: { fontSize: 12, lineHeight: 21, textAlign: 'center', color: '#795B42' }, detailReward: { flexDirection: 'row', gap: 5, alignItems: 'center' }, detailRewardText: { fontSize: 10, color: '#967A62', flexShrink: 1 },
   previewControls: { flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }, previewLabel: { fontSize: 11, color: colors.secondary },
 });
-const meta = { title: '화면/집중 할로윈 이벤트', component: Preview, parameters: { screenLayout: true, docs: { description: { component: '집중 공부방 오른쪽 가장자리에 붙은 작은 이벤트 북마크 시안입니다. 타이머와 공부방의 높이를 줄이지 않습니다. 10분마다 사탕 한 개, 30분에 포스트잇을 받습니다. 북마크를 누르면 설명과 종이 미리보기가 열립니다. 화면 아래 상태 확인 버튼은 Storybook 전용이며 앱에 들어가지 않습니다. 서버 연결·실제 지급·이벤트 노출은 하지 않습니다. 종이 PNG는 기존 검증용 도형입니다.' } } }, args: { minutes: 20, width: 390, confirming: false }, render: args => <Preview key={JSON.stringify(args)} {...args} /> } satisfies Meta<typeof Preview>;
+const meta = { title: '화면/집중 할로윈 이벤트', component: Preview, parameters: { screenLayout: true, docs: { description: { component: '집중 공부방 오른쪽 가장자리에 붙은 작은 이벤트 북마크 시안입니다. 타이머와 공부방의 높이를 줄이지 않습니다. 10분마다 사탕 한 개, 30분에 포스트잇을 받습니다. 기존 PostitBoard의 붙이기 버튼·작성·열람·삭제를 함께 표시해 겹침을 확인할 수 있습니다. 북마크를 누르면 설명과 종이 미리보기가 열립니다. 화면 아래 상태 확인 버튼은 Storybook 전용이며 앱에 들어가지 않습니다. 서버 연결·실제 지급·이벤트 노출은 하지 않습니다. 종이 PNG는 기존 검증용 도형입니다.' } } }, args: { minutes: 20, width: 390, confirming: false }, render: args => <Preview key={JSON.stringify(args)} {...args} /> } satisfies Meta<typeof Preview>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const InProgress: Story = { name: '20분 · 사탕 2개' };
