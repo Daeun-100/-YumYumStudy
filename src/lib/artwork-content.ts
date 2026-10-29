@@ -5,7 +5,7 @@ export const artworkId = /^[a-z0-9][a-z0-9_-]{0,79}$/;
 export const artworkRevision = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export type ArtworkFile = { path: string; sha256: string; bytes: number; width: number; height: number };
 export type ArtworkManifest = {
- schemaVersion: 1; revision: string; kind: 'skin' | 'background'; id: string; name: string; character?: CharacterId;
+ schemaVersion: 1 | 2; revision?: string; theme?: string; kind: 'skin' | 'background'; id: string; name: string; character?: CharacterId;
  home: ArtworkFile; focus: ArtworkFile;
  homePlacement?: { scale: number; x: number; y: number }; focusBottom?: number; effects: SkinEffect[];
 };
@@ -19,14 +19,15 @@ const number = (v: unknown, min: number, max: number): number => {
 };
 export function decodeArtwork(value: unknown): ArtworkManifest {
  const v = object(value);
- if (v.schemaVersion !== 1 || !artworkRevision.test(String(v.revision)) || (typeof v.id !== 'string' || !artworkId.test(v.id))
+ if (![1,2].includes(v.schemaVersion as number) || (v.schemaVersion===1 ? !artworkRevision.test(String(v.revision)) : typeof v.theme!=='string' || !artworkId.test(v.theme) || v.revision!==undefined) || (typeof v.id !== 'string' || !artworkId.test(v.id))
   || !['skin','background'].includes(String(v.kind)) || typeof v.name !== 'string' || !v.name.trim() || v.name.length > 60) throw Error('Unsupported artwork definition');
  const kind = v.kind as ArtworkManifest['kind'];
  if(kind==='background'&&!/^[a-z0-9][a-z0-9-]{0,79}$/.test(v.id as string))throw Error('Invalid background ID');
  if (kind === 'skin' && !characterIds.includes(v.character as CharacterId)) throw Error('Unsupported character');
  const file = (input: unknown, screen: 'home' | 'focus'): ArtworkFile => {
   const a = object(input), expected = screen === 'home' ? [1536,1024] : kind === 'skin' ? [1254,1254] : [1024,1536];
-  if (a.path !== `${kind}/${v.id}/${v.revision}/${screen}.png` || typeof a.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(a.sha256)
+  const validPath = v.schemaVersion===1 ? a.path===`${kind}/${v.id}/${v.revision}/${screen}.png` : validThemedPath(a.path,v.theme as string,kind);
+  if (!validPath || typeof a.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(a.sha256)
     || a.width !== expected[0] || a.height !== expected[1] || !Number.isSafeInteger(a.bytes)) throw Error('Invalid artwork file');
   return { path: a.path as string, sha256: a.sha256, bytes: number(a.bytes,1,5*1024*1024), width: a.width as number, height: a.height as number };
  };
@@ -44,12 +45,24 @@ export function decodeArtwork(value: unknown): ArtworkManifest {
  let homePlacement: ArtworkManifest['homePlacement'];
  if (v.homePlacement !== undefined) { const p = object(v.homePlacement); homePlacement={scale:number(p.scale,.1,2),x:number(p.x,0,1536),y:number(p.y,0,1024)}; }
  const focusBottom = v.focusBottom === undefined ? undefined : number(v.focusBottom,0,1254);
- return {schemaVersion:1,revision:v.revision as string,kind,id:v.id as string,name:v.name,home,focus,effects,
+ return {schemaVersion:v.schemaVersion as 1|2,...(v.schemaVersion===1?{revision:v.revision as string}:{theme:v.theme as string}),kind,id:v.id as string,name:v.name,home,focus,effects,
   ...(kind==='skin'?{character:v.character as CharacterId}:{}),...(homePlacement?{homePlacement}:{}),...(focusBottom===undefined?{}:{focusBottom})};
 }
+export function validThemedPath(path: unknown, theme: string, kind: 'skin'|'background'): path is string {
+ if(typeof path!=='string'||path.length>240||!artworkId.test(theme))return false;
+ const prefix=kind==='skin'?`${theme}/skins/`:`${theme}/backgrounds/`;
+ return path.startsWith(prefix) && /^[a-z0-9][a-z0-9_-]{0,79}\/(?:backgrounds|skins)\/(?:[a-z0-9][a-z0-9_-]{0,79}\/)*[a-z0-9][a-z0-9_-]{0,79}\.png$/.test(path);
+}
+// Stable library reference and change detection are internal cache details, not operator versions.
+export const artworkReference=(m:ArtworkManifest)=>m.schemaVersion===1?m.revision!:`asset-${m.id}`;
+export const artworkSignature=(m:ArtworkManifest)=>m.schemaVersion===1?m.revision!:JSON.stringify(m);
 export function artworkUrl(base: string, file: ArtworkFile): string {
  const u = new URL(base);
+ const legacy=/^(skin|background)\/[a-z0-9][a-z0-9_-]{0,79}\/[a-f0-9-]{36}\/(home|focus)\.png$/.test(file.path);
+ const theme=file.path.split('/')[0];
+ const themed=validThemedPath(file.path,theme,'skin')||validThemedPath(file.path,theme,'background');
  if (u.protocol !== 'https:' || !u.hostname.endsWith('.supabase.co') || u.username || u.password || u.pathname !== '/' || u.search || u.hash
-  || !/^(skin|background)\/[a-z0-9][a-z0-9_-]{0,79}\/[a-f0-9-]{36}\/(home|focus)\.png$/.test(file.path)) throw Error('Untrusted artwork URL');
- return `${u.origin}/storage/v1/object/public/${ARTWORK_BUCKET}/${file.path}`;
+  || (!legacy&&!themed)) throw Error('Untrusted artwork URL');
+ if(themed&&!/^[a-f0-9]{64}$/.test(file.sha256))throw Error('Invalid artwork hash');
+ return `${u.origin}/storage/v1/object/public/${ARTWORK_BUCKET}/${file.path}${themed?`?hash=${file.sha256}`:''}`;
 }

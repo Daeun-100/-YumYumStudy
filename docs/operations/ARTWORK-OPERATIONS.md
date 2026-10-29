@@ -1,100 +1,77 @@
-# 서버 배경·스킨 이미지 운영
+# 주제별 배경·스킨 이미지 운영
 
-상태: 코드 구현·공유 서버 반영·실제 Storage 검증 완료 / 앱 미배포
+배경·스킨 PNG는 Supabase Storage의 `event-artwork` 버킷에 주제별로 보관한다. 에셋은 이벤트와 독립된 `private.artwork_library`에 등록하고 여러 이벤트가 같은 배경·스킨을 참조한다. 새 등록에는 이미지 버전 UUID나 초안→리비전 게시 절차를 사용하지 않는다. 기존 스킨 보유 ID와 지난 행사·구버전 앱의 이미지 기록은 보존한다.
 
-이미지 파일은 Supabase Storage의 `event-artwork` 버킷에, 표현 정의와 게시 리비전은 서버 DB에 저장한다. 효과 실행 코드는 앱에 남기고 기존 `warmSteam` 종류와 화면별 위치·폭·투명도를 설정한다. 새 효과 동작·새 캐릭터·새 콘텐츠 스키마는 코드 업데이트가 필요하다.
+## 저장 구조
 
-## 현재 반영 상태
+```text
+event-artwork/
+├─ halloween/
+│  └─ backgrounds/
+│     ├─ home.png
+│     └─ focus.png
+└─ winter/
+   └─ skins/bungeoppang-bunny/
+      ├─ home.png
+      └─ focus.png
+```
 
-- `remote_event_artwork` 마이그레이션과 업로드·검증·게시 CLI, 앱 원격 이미지 표시를 구현했다.
-- 사용자 승인 후 공유 서버에 `20261029131156_remote_event_artwork`를 반영했다. 로컬 파일명도 실제 마이그레이션 이력과 일치시켰다.
-- 이전 이벤트 예약 서버와 원격 이미지용 서버가 모두 반영됐다. 사용자 앱에는 최초 지원 코드의 업데이트 적용이 필요하다.
-- 실제 PNG 4개를 새 리비전 경로에 업로드하고 공개 다운로드의 크기·해시를 대조했다. 비활성 스킨·배경 정의 등록과 실제 서버의 보유·착용·방별 조회 권한도 검증했다. [검증 기록](../events/2026-10-29-artwork-verification.md)을 참고한다.
-- 앱 배포·운영방 지급·실제 행사 예약은 수행하지 않았다.
+주제·폴더·PNG 파일명은 소문자 영문·숫자·하이픈·밑줄을 쓴다. 같은 주제 안에 여러 배경·스킨 폴더를 둘 수 있고 `home-2.png`처럼 파일명을 직접 정할 수 있다. 외부 URL·경로 이탈·다른 주제/종류의 경로는 거부한다.
 
-## 최초 준비
+- 라이브러리 `theme`: 핼러윈·겨울 등 주제.
+- `id`: 스킨 보유·착용 및 이벤트의 참조를 유지하는 내부 식별자. 이미지 버전이 아니다. 스킨 ID·캐릭터는 이미 지급한 후 바꾸지 않는다. 배경 ID는 생략 시 `<theme>-room`으로 생성한다.
+- `home` / `focus`: 실제 PNG 경로와 해시·크기·규격. 등록 시 두 파일의 공개 주소를 검증한다.
+- 효과 실행 코드는 앱에 두고 기존 warmSteam의 위치·폭·투명도만 설정한다. 새 효과 동작·캐릭터·미지원 스키마는 코드 작업이다.
 
-1. 공유 서버 반영 승인 후 현재 스키마·마이그레이션 이력을 확인하고 원격 이미지 마이그레이션만 적용한다. 기존 데이터 초기화나 앞선 마이그레이션 재실행은 하지 않는다.
-2. 버킷은 공개 가능한 꾸미기 PNG만 읽기 공개한다. 개인 정보·명단·비밀 키는 업로드하지 않는다. 앱 사용자의 업로드·수정·삭제 정책은 만들지 않으며 신뢰된 운영 자격만 쓴다.
-3. 실제 이미지 업로드·해시 확인과 자기 보유/같은 방 친구의 착용 스킨 조회·다른 방 거부를 검증한다. 새 등록은 비활성으로 먼저 확인한다.
-4. 지원 코드를 EAS 업데이트로 전달하고 사용자 적용을 확인한다. 새 네이티브 의존성·앱 버전 변경은 이번 구현에 없다. 실제 배포는 [릴리스 절차](RELEASES.md)를 따른다.
-5. 이후 같은 규격의 새 이미지와 기존 효과 설정은 서버 등록·게시·예약으로 운영한다. 최초 지원 업데이트 이전 앱은 로컬 이미지 또는 기본 이미지로 대체한다.
+이벤트 종료는 라이브러리를 삭제하지 않는다. 다음 행사에서 같은 배경·스킨을 다시 선택할 수 있다. 라이브러리의 경로나 표현 정의를 수정하면 이를 사용하는 이벤트·보유자에게도 반영되므로, 행사별 다른 이미지를 유지하려면 별도 에셋/파일명을 사용한다.
 
-## 이미지와 정의
+## 규격과 보안
 
-- PNG 한 파일 최대 5 MiB, 두 파일 합계 최대 10 MiB.
-- 홈: 1536×1024. 스킨 집중: 1254×1254. 배경 집중: 1024×1536.
-- 8비트 RGB/RGBA·비인터레이스 PNG를 사용한다. 스킨은 실제 투명 픽셀이 있는 RGBA여야 한다.
-- 운영 도구가 PNG 서명·청크 CRC·압축 데이터·규격·투명도를 검사한다. 업로드 후 공개 주소에서 읽은 바이트 크기·SHA-256도 대조한다.
-- 파일 경로는 `<skin|background>/<콘텐츠 ID>/<리비전 UUID>/<home|focus>.png`다. 같은 경로를 다른 파일로 덮어쓰지 않는다.
-- 두 파일을 확인하기 전에는 표현 정의를 초안으로도 등록하지 않는다. 초안 등록과 실제 게시를 구분한다.
+PNG 한 파일 최대 5 MiB, 두 파일 합계 최대 10 MiB. 홈 1536×1024, 스킨 집중 1254×1254, 배경 집중 1024×1536. 8비트 RGB/RGBA·비인터레이스 PNG이며 스킨에는 실제 투명 픽셀이 필요하다. 운영 도구가 서명·CRC·압축 데이터·규격·투명도와 실제 공개 다운로드 SHA-256을 검사한다.
 
-입력 정의 예시:
+버킷에는 공개 가능한 꾸미기 PNG만 올린다. 앱 역할에는 업로드·수정·삭제를 허용하지 않는다. 서비스 키는 신뢰된 운영 환경에서만 사용하며 인자·정의·문서에 넣지 않는다. 라이브러리는 private·RLS·직접 접근 차단을 적용하고 등록·전체 목록은 관리자 RPC로만 제공한다. 사용자용 조회는 자기 보유 또는 같은 방 친구의 착용 스킨, 자기 방 배경으로 제한한다.
+
+## 정의와 등록
 
 ```json
 {
-  "schemaVersion": 1,
-  "revision": "새 UUID로 교체",
+  "schemaVersion": 2,
+  "theme": "winter",
   "kind": "skin",
-  "id": "bunny-winter",
-  "name": "겨울 토끼",
+  "id": "bungeoppang-bunny",
+  "name": "붕어빵 토끼",
   "character": "bunny",
+  "home": "winter/skins/bungeoppang-bunny/home.png",
+  "focus": "winter/skins/bungeoppang-bunny/focus.png",
   "homePlacement": { "scale": 0.72, "x": 768, "y": 860 },
   "focusBottom": 1154,
-  "effects": [
-    {
-      "kind": "warmSteam",
-      "home": { "x": 0.5, "y": 0.2, "width": 0.1, "opacity": 0.5 },
-      "focus": { "x": 0.5, "y": 0.2, "width": 0.1, "opacity": 0.5 }
-    }
-  ]
+  "effects": []
 }
 ```
 
-배경은 `kind: "background"`로 하고 캐릭터·스킨 배치·효과 설정을 생략한다. 효과는 스킨당 최대 3개다. 현재 위치는 0~1, 폭은 0.01~0.5, 투명도는 0~1이다. 색·속도·입자 수 등 현재 렌더러에 없는 매개변수는 등록을 거부한다.
-
-## 운영 CLI
-
-`SUPABASE_URL`(또는 공개 URL 환경 변수)과 비공개 `SUPABASE_SERVICE_ROLE_KEY`를 신뢰된 운영 환경에서 사용한다. 키를 명령 인자·정의 JSON·문서에 넣지 않는다.
+경로를 생략하면 배경은 `<theme>/backgrounds/home.png`, 스킨은 `<theme>/skins/<id>/home.png`를 사용한다. 배경에는 캐릭터·스킨 배치·효과를 넣지 않는다. 표시 예시는 실제 이미지에 맞춰 확인한다.
 
 ```sh
-# 업로드 없이 파일 검사와 완성된 manifest 생성
-node --experimental-strip-types supabase/scripts/manage-artwork.mjs prepare --definition /private/tmp/skin-definition.json --home HOME.png --focus FOCUS.png --out /private/tmp/skin-manifest.json
-
-# 파일 업로드·실제 해시 확인·초안 등록 (게시하지 않음)
-node --experimental-strip-types supabase/scripts/manage-artwork.mjs upload --definition /private/tmp/skin-definition.json --home HOME.png --focus FOCUS.png
-
-# 비공개 자격 없이도 업로드된 두 파일의 해시 확인 가능
-node --experimental-strip-types supabase/scripts/manage-artwork.mjs verify --definition /private/tmp/skin-manifest.json
-
-# 정의 게시. --activate를 명시한 경우에만 새 콘텐츠의 지급/예약을 활성화
-node --experimental-strip-types supabase/scripts/manage-artwork.mjs publish --revision REVISION_UUID --activate
-
-node --experimental-strip-types supabase/scripts/manage-artwork.mjs list --revision REVISION_UUID
+# 로컬 검사와 경로·해시·규격이 포함된 manifest 생성
+node --experimental-strip-types supabase/scripts/manage-artwork.mjs prepare --definition CONFIG.json --home HOME.png --focus FOCUS.png --out MANIFEST.json
+# 업로드 → 두 공개 파일 검증 → 라이브러리 등록. --activate는 지급/배경 예약 가능 상태만 활성화한다.
+node --experimental-strip-types supabase/scripts/manage-artwork.mjs upload --definition CONFIG.json --home HOME.png --focus FOCUS.png --activate
+# 이미 업로드한 파일의 manifest를 검증하고 등록
+node --experimental-strip-types supabase/scripts/manage-artwork.mjs register --definition MANIFEST.json --activate
+node --experimental-strip-types supabase/scripts/manage-artwork.mjs list --theme winter
+node --experimental-strip-types supabase/scripts/manage-artwork.mjs verify --definition MANIFEST.json
 ```
 
-부분 실패나 응답 유실에는 같은 입력·리비전으로 재시도한다. 이미 파일이 존재하면 같은 해시인지 확인하고 다르면 중단한다. 업로드·등록이 실패한 상태를 게시 완료로 보고하지 않는다. 파일 준비·게시만으로 스킨을 지급하거나 이벤트를 예약하지 않는다.
+`prepare`는 자격 없이 실행한다. 나머지는 `SUPABASE_URL` 또는 공개 URL 환경 변수와 비공개 `SUPABASE_SERVICE_ROLE_KEY`를 사용한다. 연결된 Supabase 도구를 쓰면 같은 `admin_register_artwork(p_definition,p_activate)`와 `admin_artwork_library(p_theme)`를 호출한다. 등록만으로 스킨 지급이나 이벤트 예약을 하지 않는다.
 
-서비스 키가 없고 연결된 Supabase 도구와 인증된 CLI가 있으면, `prepare`로 검증한 파일을 Storage CLI로 **비어 있는 새 리비전 경로에만** 올리고 `verify` 후 아래 RPC를 호출할 수 있다. 기존 객체가 있으면 덮어쓰지 말고 먼저 원본 해시를 대조한다. CLI의 실제 `storage cp --help`를 확인한다. 프로젝트 ref와 저장 경로를 반드시 확인하고 자격 값을 출력하지 않는다.
+기본 업로드는 기존 파일을 덮어쓰지 않고 같은 바이트일 때만 재사용한다. 수정은 `home-2.png`처럼 새 파일명을 권장한다. 사용자가 같은 경로 덮어쓰기를 명시한 경우에만 `upload --replace`를 사용하고 두 파일을 다시 검증·등록한다. 앱은 파일 해시를 이미지 URL의 캐시 키에 포함해 이전 파일과 구분한다. Storage 화면에서 파일만 덮어쓰고 정의를 갱신하지 않으면 해시·크기·캐시가 불일치할 수 있다. 구버전 UUID 경로 파일에는 덮어쓰기를 허용하지 않는다.
 
-| RPC | 용도 |
-| --- | --- |
-| `admin_stage_artwork(p_definition jsonb)` | 업로드된 두 파일과 정의 확인 후 불변 초안 등록 |
-| `admin_publish_artwork(p_revision uuid, p_activate boolean)` | 검증된 리비전 게시·필요시 활성화 |
-| `admin_artwork_report(p_revision uuid 또는 NULL)` | 초안·게시 리비전과 현재 게시 포인터 확인 |
-| `get_skin_artwork(p_ids text[], p_room_id smallint)` | 사용자용. 최대 32개 ID, 자기 보유 또는 같은 방의 착용 스킨만 반환 |
+## 앱과 이전 구조
 
-게시 후 배경 예약과 스킨 지급은 [기존 이벤트 운영 도구](EVENT-OPERATIONS.md)를 사용한다. 방별 배경 예약은 당시 리비전을 고정한다. 날짜만 변경할 때도 유지하고, 표현을 바꾸려면 새 리비전을 명시한다. 스킨은 보유·착용 ID를 유지하면서 게시된 표현을 갱신한다. 지급 작업에는 당시 리비전 참조도 남는다.
-
-잘못 게시한 스킨은 과거 리비전을 다시 게시해 복구할 수 있다. 이미 예약된 배경은 고정 참조이므로 게시 포인터만 바꿔서는 변경되지 않는다. 해당 예약의 리비전 변경 또는 중단 요청을 별도로 처리한다. 과거 파일·리비전·행사 기록은 보존한다.
-
-## 앱 표시와 실패 처리
-
-화면에 필요한 스킨과 현재·다음 배경만 요청한다. 중복 다운로드를 공유하고 이미지 준비 동시 실행은 최대 4개로 제한한다. 메타데이터는 사용자·방별로 저장하며 이미지 캐시는 플랫폼 기능을 사용한다. 새 네이티브 캐시 모듈은 추가하지 않는다.
-
-두 이미지의 다운로드·크기 확인 전에는 새 원격 스킨을 적용 가능으로 표시하지 않는다. 실패 시 재시도와 기본 이미지 대체를 제공한다. 이전 정상 리비전이 있으면 새 리비전의 준비가 끝날 때까지 유지한다. 알 수 없는 효과는 생략하고 지원되는 이미지는 표시한다.
-
-오프라인 캐시는 OS·브라우저가 비울 수 있다. 캐시가 없으면 기본 이미지로 표시하고 서버의 보유·착용 상태는 유지한다. 배경 전환에 앱 타이머를 사용하지 않는다. 시작·종료는 Realtime 신호 후 재조회로 반영하며, 오프라인에서는 마지막 조회 결과를 유지하다 재연결·화면 재진입·앱 복귀 시 재조회가 성공하면 현재 배경을 반영한다. 다운로드가 공부 시작·중지나 저장을 막지 않는다.
+- 새 앱은 `get_skin_artwork(..., p_schema_version: 2)`, `get_event_backgrounds(..., p_schema_version: 2)`로 주제별 경로를 받는다.
+- 이전 인자의 RPC·기존 UUID 파일·리비전 테이블·이미 예약된 과거 기록은 유지한다. 새 경로만 지원하는 정의는 구버전 앱에서 기본 이미지로 대체될 수 있다. 테스트 채널에 이번 지원 코드를 적용한 뒤 기기에서 확인한다.
+- 라이브러리는 이벤트 이미지 리비전을 생성하지 않는다. 과거 `artwork_revision`·`skin_revisions`는 호환성과 이력 보존용으로만 남는다. 방별 `event_background_versions.revision`은 Realtime 변경 신호 번호이며 이미지 버전과 별개다.
+- 다운로드 공유·동시 준비 최대 4개·이미지 준비 실패 대체·사용자/방별 메타데이터 캐시는 유지한다. 배경 전환에는 타이머를 두지 않고 Realtime·재연결·화면 재진입·앱 복귀 시 조회한다.
 
 ## 검증
 
@@ -102,25 +79,12 @@ node --experimental-strip-types supabase/scripts/manage-artwork.mjs list --revis
 npm run lint
 npm run typecheck
 npm test
+node supabase/scripts/check-themed-artwork-db.mjs ABSOLUTE_PATH_TO_PGLITE/dist/index.js
 node supabase/scripts/check-artwork-db.mjs ABSOLUTE_PATH_TO_PGLITE/dist/index.js
-node supabase/scripts/check-events-db.mjs ABSOLUTE_PATH_TO_PGLITE/dist/index.js
-node supabase/scripts/check-skins-db.mjs ABSOLUTE_PATH_TO_PGLITE/dist/index.js
-npm run build-storybook
 ```
 
-격리 DB는 Storage와 Cron의 대체 구현이다. Storybook의 `Events/RemoteArtwork`는 로컬 HTTP 이미지로 원격 전용 ID와 실패 표시를 검증한다. 실제 Supabase 업로드·권한·네이티브 기기·iPhone 웹앱 검증 완료로 해석하지 않는다.
+주제별 경로·등록·재사용·경로 수정·보유/방 권한·구버전 API 호환성을 격리 DB에서 검사한다. 실제 Storage·서버 반영·앱 업데이트 검증은 [주제별 전환 기록](../events/2026-10-30-themed-artwork-transition.md)에 확인한 범위를 기록한다. 지난 버전 검증은 [기존 Storage 검증](../events/2026-10-29-artwork-verification.md)에 보존한다.
 
-## 2026-10-29 코드 검증 결과
+## 2026-10-30 전환 상태
 
-- 린트·타입 검사, 전체 단위 테스트 368개, 원격 이미지·기존 이벤트·스킨 격리 DB 검사와 스킬 형식 검사를 통과했다.
-- Storybook 빌드를 완료하고 로컬 HTTP 이미지로 홈·집중의 원격 전용 스킨 ID, 배경, warmSteam 설정과 보유 목록을 확인했다. 이미지 준비 중 선택 제한, 준비 후 적용 버튼 활성화, 실패 시 기본 이미지 대체도 확인했다.
-- 현재·다음 배경만 반환하는 제한과 예약 리비전 고정을 격리 DB에서 검증했다. 사용자 전환·늦은 캐시·오프라인 응답 경합도 검증했다.
-- 사용자 승인 후 실제 Supabase Storage 업로드·무인증 다운로드·해시 대조와 SQL 사용자 역할을 통한 원격 이미지 함수의 권한·응답을 검증했다. 실제 사용자 JWT를 이용한 기기 연동, Android 실기기·iPhone 웹앱 표시는 아직 미검증이다.
-
-## 2026-10-29 실제 서버 검증
-
-버킷은 공개 읽기·PNG 전용·5 MiB 제한이며 사용자 쓰기 정책은 없다. 업로드는 신뢰된 CLI 자격으로 수행했다. CLI 2.122.0의 Storage 명령은 `--experimental` 옵션이 필요했다.
-
-검증 스킨 `qa-remote-bunny`의 리비전은 `eae51bda-b4f3-4e64-8524-576b5035e69d`, 배경 `qa-remote-room`의 리비전은 `c9d39043-0e6d-408b-a9a3-97e77d9ac647`다. 두 콘텐츠는 비활성이다. 테스트용 보유·착용·예약은 롤백했고 기존 보유 5개와 이벤트 작업 2개를 유지했다. 실행 대기 이벤트 Cron은 없다.
-
-보안 점검의 private 이미지 테이블에 대한 RLS 정책 없음 정보는 직접 접근을 차단하고 제한된 함수만 쓰는 의도된 구성이다. [RLS 점검 설명](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)을 참고한다.
+공유 서버에 `20261029160457_themed_artwork_library`를 반영하고 핼러윈·겨울 주제 PNG 4개와 라이브러리 정의를 등록했다. 공개 다운로드 해시·규격, 기존/신규 RPC와 보유·이력 보존을 확인했다. 테스트 앱 게시 및 실제 기기 적용 결과는 전환 기록에 남긴다.

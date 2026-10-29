@@ -31,7 +31,7 @@ export function useEventBackgrounds(focused: boolean) {
       if (fetching) { again = true; return; }
       fetching = true;
       try {
-        const snapshot = decodeEventBackgrounds(await callRpc('get_event_backgrounds', { p_room_id: room }));
+        const snapshot = decodeEventBackgrounds(await callRpc('get_event_backgrounds', { p_room_id: room, p_schema_version: 2 }));
         if (disposed || snapshot.roomId !== room) return;
         const result = { snapshot };
         for (const window of snapshot.windows) if(window.artwork) void artworkStore?.ingest(window.artwork);
