@@ -83,7 +83,7 @@ export function PostitBoard({ createId, scene, notes, add, remove, error, noteBo
     </Dialog>
     <Dialog visible={writing} label="포스트잇 쓰기" embedded={embedded} busy={busy} onClose={() => setWriting(false)}>
       <PostitSheet artwork={design} color={color} imageUrl={imageUrl} onImageError={() => failImage(design)}>
-        <View style={s.noteHeader}><Text style={[s.title, !!design && s.artworkHeading]}>포스트잇 쓰기</Text><DialogCloseButton label="×" accessibilityLabel="포스트잇 쓰기 창 닫기" size="icon" variant="ghost" /></View>
+        <View style={s.noteHeader}><Text style={s.title}>포스트잇 쓰기</Text><DialogCloseButton label="×" accessibilityLabel="포스트잇 쓰기 창 닫기" size="icon" variant="ghost" /></View>
         <TextInput accessibilityLabel="포스트잇 내용" placeholder="짧은 한마디를 남겨주세요" placeholderTextColor={colors.secondary} multiline maxLength={50} value={draft} onChangeText={setDraft} style={[s.input, { color: textColor(design) }]} />
         <View style={s.between}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ gap: 8 }}>
