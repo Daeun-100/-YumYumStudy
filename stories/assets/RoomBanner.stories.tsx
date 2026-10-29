@@ -5,10 +5,11 @@ import { StudyLayout } from '../screens/StudyLayouts';
 import { RoomBanner } from './RoomBanner';
 import { colors, typography } from '../../src/design/theme';
 import focusSample from './banner-samples/focus.png';
+import geumDebut from './banner-samples/geum-debut-v2.png';
 
-type Props = { description: string; width: number; height: number; visible: boolean };
+type Props = { description: string; width: number; height: number; visible: boolean; artwork: 'sample' | 'geum-debut' };
 /** Files stay in this browser; choosing them never uploads or publishes them. */
-function Preview({ description, width, height, visible }: Props) {
+function Preview({ description, width, height, visible, artwork }: Props) {
  const viewport = useWindowDimensions();
  const padding = viewport.width < 600 ? 12 : 24;
  const phoneWidth = Math.min(width, viewport.width - padding * 2);
@@ -50,7 +51,7 @@ function Preview({ description, width, height, visible }: Props) {
    <View style={{ gap: 12 }}>
     <Text style={{ ...typography.label, color: colors.text }}>집중 · 함께 공부하는 저녁</Text>
     <StudyLayout key={`${phoneWidth}-${height}`} screen="focus" width={phoneWidth} height={height} sceneMinHeight={height < 740 ? 320 : undefined} homeEntryPreview running={false} character="blackcat" activeFriendCount={3}
-     renderFocusDecoration={scene => visible ? <RoomBanner scene={scene} source={imageUrl ? { uri: imageUrl } : focusSample} description={description} /> : null} />
+     renderFocusDecoration={scene => visible ? <RoomBanner scene={scene} source={imageUrl ? { uri: imageUrl } : artwork === 'geum-debut' ? geumDebut : focusSample} imageAspectRatio={!imageUrl && artwork === 'geum-debut' ? 1920 / 819 : 1000 / 300} description={description} /> : null} />
    </View>
   </View>
  </View>;
@@ -58,11 +59,12 @@ function Preview({ description, width, height, visible }: Props) {
 const meta = {
  title: '화면 시안/공부방 현수막', component: Preview,
  parameters: { layout: 'fullscreen' },
- args: { description: '이번 주도 우리 같이 달려요!', width: 390, height: 844, visible: true },
- argTypes: { description: { description: '스크린리더 설명. 이미지 위에 글씨를 추가하지 않아요.' } },
+ args: { description: '이번 주도 우리 같이 달려요!', width: 390, height: 844, visible: true, artwork: 'sample' },
+ argTypes: { description: { description: '스크린리더 설명. 이미지 위에 글씨를 추가하지 않아요.' }, artwork: { control: 'select', options: ['sample', 'geum-debut'] } },
 } satisfies Meta<typeof Preview>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Comparison: Story = { name: '집중 현수막 이미지' };
+export const GeumDebut: Story = { name: '금작가 데뷔 축하', args: { artwork: 'geum-debut', description: '금작가의 데뷔를 축하합니다' } };
 export const Small: Story = { name: '작은 화면 · 320', args: { width: 320, height: 640 } };
 export const Hidden: Story = { name: '게시하지 않은 상태', args: { visible: false } };
