@@ -1,3 +1,4 @@
+import { useUpdateDestination } from '../admin-toasts/UpdateDestination';
 import { OtaUpdateRow } from '../ota/OtaUpdateRow';
 import { useStudyResources } from '../study/study-resources';
 import { recordQueryVersion } from '../../lib/record-query-version';
@@ -5,9 +6,9 @@ import { CallNotificationSettings } from '../call-friend/CallNotifications';
 import { Smartphone } from 'lucide-react-native';
 import { useMemoryQuery } from '../../data/useMemoryQuery';
 import { SkeletonRegion } from '../../design/Skeleton';
-import { useCallback } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { useCallback, useEffect, useRef, type ComponentRef } from 'react';
+import { AccessibilityInfo, findNodeHandle, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, usePathname } from 'expo-router';
 import { useIdentity } from '../../components/IdentityProvider';
 import { Button, InfoIcon } from '../../design/components';
 import { colors, spacing, typography } from '../../design/theme';
@@ -25,6 +26,28 @@ import { SettingsRow, WeeklyAchievement } from './ProfileComponents';
 import config from '../../../app.json';
 
 export function ProfileScreen() {
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null), updateRef = useRef<ComponentRef<typeof View>>(null);
+  const destination = useUpdateDestination(), pathname = usePathname();
+  const attempt = destination.attempt, destinationReady = destination.ready;
+  useEffect(() => {
+    if (!attempt || pathname !== '/profile') return;
+    let alive = true;
+    const check = () => {
+      scrollRef.current?.scrollToEnd({ animated: false });
+      scrollRef.current?.measureInWindow((_x, y, _w, height) => {
+        updateRef.current?.measureInWindow((_rx, rowY, _rw, rowHeight) => {
+          if (!alive || height <= 0 || rowHeight <= 0 || rowY < y || rowY + rowHeight > y + height + 1) return;
+          destinationReady(attempt.id);
+          if (Platform.OS !== 'web') {
+            const handle = findNodeHandle(updateRef.current);
+            if (handle) AccessibilityInfo.setAccessibilityFocus(handle);
+          }
+        });
+      });
+    };
+    const timer = setInterval(check, 100); check();
+    return () => { alive = false; clearInterval(timer); };
+  }, [attempt, pathname, destinationReady]);
   useStudyResources(['today']);
   const { profile } = useIdentity();
   const study = useStudy();
@@ -48,7 +71,7 @@ export function ProfileScreen() {
   }) : [];
   const goals = summary?.goals.current;
   const total = goals?.reduce<number>((sum, value) => sum + (value ?? 0), 0) ?? 0;
-  return <Page current="profile"><View style={s.content}>
+  return <Page current="profile" scrollRef={scrollRef}><View style={s.content}>
     <Text accessibilityRole="header" style={ui.heading}>{profile?.displayName ?? '나'}님</Text>
     <Status showLoading={false} />
     <ProfileIdentity profile={profile} count={collection?.skins.length} onEdit={() => router.push('/profile-edit')} onSkins={() => router.push('/skins')} />
@@ -62,7 +85,7 @@ export function ProfileScreen() {
     </View>
     <CallNotificationSettings />
     <View style={s.rule} />
-    <View style={s.section}><Text style={s.eyebrow}>이용 안내</Text><SettingsRow icon={<InfoIcon tone="primary" />} label="공부와 연차 이용 안내" onPress={() => router.push('/profile-guide')} /><OtaUpdateRow /><SettingsRow icon="↗" label="앱 정보" value={config.expo.version} onPress={() => router.push('/profile-info')} /></View>
+    <View style={s.section}><Text style={s.eyebrow}>이용 안내</Text><SettingsRow icon={<InfoIcon tone="primary" />} label="공부와 연차 이용 안내" onPress={() => router.push('/profile-guide')} /><OtaUpdateRow targetRef={updateRef} /><SettingsRow icon="↗" label="앱 정보" value={config.expo.version} onPress={() => router.push('/profile-info')} /></View>
   </View></Page>;
 }
 const s = StyleSheet.create({

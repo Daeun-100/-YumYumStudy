@@ -426,3 +426,7 @@ verify_jwt = false
 # Server-only administrator endpoint checks ADMIN_NOTIFICATION_TOKEN before any work.
 [functions.admin-notifications]
 verify_jwt = false
+
+# Administrator-only in-app notices. Does not send OS push notifications.
+[functions.admin-toasts]
+verify_jwt = false

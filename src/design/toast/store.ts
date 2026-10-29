@@ -5,6 +5,8 @@ export type ToastRenderContext = { dismiss(): void; reducedMotion: boolean; scre
 export type ToastOptions = {
   id?: string;
   dedupeKey?: string;
+  /** Feature owns durable completion; temporary removal must allow another presentation. */
+  rememberCompleted?: boolean;
   title?: string;
   message?: string;
   showIcon?: boolean;
@@ -31,7 +33,7 @@ export function createToastStore(clock: Clock = { setTimer: (run, ms) => setTime
   const stop = () => { if (timer !== undefined) clock.clearTimer(timer); timer = undefined; };
   const notify = (run: (() => void) | undefined) => { try { run?.(); } catch { /* A consumer callback cannot break the shared host. */ } };
   const remember = (entry: ToastEntry) => {
-    if (!entry.presented || !entry.dedupeKey) return;
+    if (entry.rememberCompleted === false || !entry.presented || !entry.dedupeKey) return;
     completed.add(entry.dedupeKey);
     if (completed.size > 100) completed.delete(completed.values().next().value!);
   };
