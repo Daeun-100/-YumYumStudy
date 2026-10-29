@@ -66,12 +66,14 @@ node --experimental-strip-types supabase/scripts/manage-artwork.mjs verify --def
 
 기본 업로드는 기존 파일을 덮어쓰지 않고 같은 바이트일 때만 재사용한다. 수정은 `home-2.png`처럼 새 파일명을 권장한다. 사용자가 같은 경로 덮어쓰기를 명시한 경우에만 `upload --replace`를 사용하고 두 파일을 다시 검증·등록한다. 앱은 파일 해시를 이미지 URL의 캐시 키에 포함해 이전 파일과 구분한다. Storage 화면에서 파일만 덮어쓰고 정의를 갱신하지 않으면 해시·크기·캐시가 불일치할 수 있다. 구버전 UUID 경로 파일에는 덮어쓰기를 허용하지 않는다.
 
-## 앱과 이전 구조
+## 앱 조회와 보존 기록
 
-- 새 앱은 `get_skin_artwork(..., p_schema_version: 2)`, `get_event_backgrounds(..., p_schema_version: 2)`로 주제별 경로를 받는다.
-- 이전 인자의 RPC·기존 UUID 파일·리비전 테이블·이미 예약된 과거 기록은 유지한다. 새 경로만 지원하는 정의는 구버전 앱에서 기본 이미지로 대체될 수 있다. 테스트 채널에 이번 지원 코드를 적용한 뒤 기기에서 확인한다.
-- 라이브러리는 이벤트 이미지 리비전을 생성하지 않는다. 과거 `artwork_revision`·`skin_revisions`는 호환성과 이력 보존용으로만 남는다. 방별 `event_background_versions.revision`은 Realtime 변경 신호 번호이며 이미지 버전과 별개다.
-- 다운로드 공유·동시 준비 최대 4개·이미지 준비 실패 대체·사용자/방별 메타데이터 캐시는 유지한다. 배경 전환에는 타이머를 두지 않고 Realtime·재연결·화면 재진입·앱 복귀 시 조회한다.
+- 앱과 운영 도구는 schemaVersion 2·주제별 경로만 사용한다. UUID 정의·파일 경로를 읽는 분기와 운영 도구의 publish/--revision 명령은 제거했다.
+- 앱 조회는 `get_skin_artwork(p_ids,p_room_id)`, `get_event_backgrounds(p_room_id)`로 통일한다. `p_schema_version` 인자와 중복 RPC를 사용하지 않는다.
+- 기존 보유·착용 ID, 과거 이벤트의 이미지 참조 필드·리비전 테이블, 기존 Storage 파일은 기록 보존용으로 남긴다. 현재 등록·조회에서는 사용하지 않는다. 기존 지급 내역을 삭제하거나 재지급하지 않는다.
+- UUID 읽기 호환을 유지하지 않으므로 새 테스트 앱 업데이트를 적용해야 한다. 이전 이미지가 캐시에 있어도 UUID 정의는 복원하지 않으며 지원하지 않는 이미지는 기본 모습으로 대체한다.
+- 방별 `event_background_versions.revision`은 Realtime 변경 신호 번호이며 이미지 버전과 별개다.
+- 다운로드 공유·동시 준비 최대 4개·이미지 실패 대체·사용자/방별 메타데이터 캐시는 유지한다. 배경 전환에는 타이머를 두지 않고 Realtime·재연결·화면 재진입·앱 복귀 시 조회한다.
 
 ## 검증
 
@@ -80,10 +82,9 @@ npm run lint
 npm run typecheck
 npm test
 node supabase/scripts/check-themed-artwork-db.mjs ABSOLUTE_PATH_TO_PGLITE/dist/index.js
-node supabase/scripts/check-artwork-db.mjs ABSOLUTE_PATH_TO_PGLITE/dist/index.js
 ```
 
-주제별 경로·등록·재사용·경로 수정·보유/방 권한·구버전 API 호환성을 격리 DB에서 검사한다. 실제 Storage·서버 반영·앱 업데이트 검증은 [주제별 전환 기록](../events/2026-10-30-themed-artwork-transition.md)에 확인한 범위를 기록한다. 지난 버전 검증은 [기존 Storage 검증](../events/2026-10-29-artwork-verification.md)에 보존한다.
+주제별 경로·등록·재사용·경로 수정·보유/방 권한·단일 형식 조회 API을 격리 DB에서 검사한다. 실제 Storage·서버 반영·앱 업데이트 검증은 [주제별 전환 기록](../events/2026-10-30-themed-artwork-transition.md)에 확인한 범위를 기록한다. 지난 버전 검증은 [기존 Storage 검증](../events/2026-10-29-artwork-verification.md)에 보존한다.
 
 ## 2026-10-30 전환 상태
 

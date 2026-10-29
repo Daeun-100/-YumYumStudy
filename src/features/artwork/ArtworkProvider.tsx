@@ -40,7 +40,7 @@ export function ArtworkProvider({children}:PropsWithChildren) {
  const resources=useMemo(()=>createArtworkResources({
   now:Date.now,
   url:asset=>artworkUrl(process.env.EXPO_PUBLIC_SUPABASE_URL??'',asset),
-  fetchSkins:async ids=>{const result=await callRpc('get_skin_artwork',{p_ids:ids,p_room_id:room,p_schema_version:2});if(!Array.isArray(result))throw Error('Invalid artwork response');return result;},
+  fetchSkins:async ids=>{const result=await callRpc('get_skin_artwork',{p_ids:ids,p_room_id:room});if(!Array.isArray(result))throw Error('Invalid artwork response');return result;},
   prepare:async m=>{await Promise.all([prepareImage(m.home),prepareImage(m.focus)]);},
   save:manifests=>{if(owner)void AsyncStorage.setItem(`artwork-v1:${owner}:${room}`,JSON.stringify(manifests.slice(-200))).catch(()=>{});},
  }),[owner,room]);

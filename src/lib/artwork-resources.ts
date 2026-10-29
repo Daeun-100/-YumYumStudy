@@ -21,7 +21,7 @@ export function createArtworkResources(deps: Deps) {
   wanted.set(key,artworkSignature(manifest));
   const preparingKey = `${key}:${artworkSignature(manifest)}`;
   const existing = pending.get(preparingKey); if (existing) return existing;
-  // Keep a verified older revision on screen until the replacement is decoded.
+  // Keep a verified previous image on screen until the replacement is decoded.
   if (!old || old.state !== 'ready') emit(key,{manifest,state:'loading',checkedAt:deps.now()});
   const task = (async()=>{
    try {await deps.prepare(manifest);if (!disposed && wanted.get(key)===artworkSignature(manifest)) {emit(key,{manifest,state:'ready',checkedAt:deps.now()});save();}}

@@ -13,9 +13,9 @@ try {
  assert.equal((await db.query('select count(*)::int n from private.artwork_revisions')).rows[0].n,0);
  await db.exec(`insert into public.user_skins(user_id,skin_id) values('${u}','winter-bunny');update public.profiles set active_skin_id='winter-bunny' where id='${u}';`);
  const asUser=async id=>db.exec(`set role authenticated;select set_config('request.jwt.claim.sub','${id}',false)`);
- await asUser(u);assert.equal((await call('get_skin_artwork',[[skin.id],0,2]))[0].theme,'winter');assert.equal((await call('get_skin_artwork',[[skin.id],0])).length,0);await db.exec('reset role');
- await asUser(v);assert.equal((await call('get_skin_artwork',[[skin.id],0,2])).length,1);await assert.rejects(()=>call('get_skin_artwork',[[skin.id],1,2]),/Room identity/);await assert.rejects(()=>call('admin_artwork_library',[]),/permission denied/);await db.exec('reset role');
- await asUser(w);assert.equal((await call('get_skin_artwork',[[skin.id],1,2])).length,0);await db.exec('reset role');
+ await asUser(u);assert.equal((await call('get_skin_artwork',[[skin.id],0]))[0].theme,'winter');await db.exec('reset role');
+ await asUser(v);assert.equal((await call('get_skin_artwork',[[skin.id],0])).length,1);await assert.rejects(()=>call('get_skin_artwork',[[skin.id],1]),/Room identity/);await assert.rejects(()=>call('admin_artwork_library',[]),/permission denied/);await db.exec('reset role');
+ await asUser(w);assert.equal((await call('get_skin_artwork',[[skin.id],1])).length,0);await db.exec('reset role');
  await assert.rejects(()=>call('admin_register_artwork',[JSON.stringify({...skin,character:'cat'}),false]),/character cannot change/);
  for(const changed of [{theme:'winter/..'},{revision:randomUUID()},{home:{...skin.home,path:'winter/backgrounds/home.png'}},{home:{...skin.home,path:'winter/skins/../home.png'}}])await assert.rejects(()=>call('admin_register_artwork',[JSON.stringify({...skin,...changed}),false]));
  const bg=manifest('background','halloween-room','halloween');await upload(bg);await call('admin_register_artwork',[JSON.stringify(bg),true]);
@@ -24,11 +24,12 @@ try {
  const first=await call('admin_schedule_event',[JSON.stringify(event)]);assert.equal(first.artwork_revision,null);
  await call('admin_schedule_event',[JSON.stringify({...event,request_id:randomUUID(),run_at:future(20),ends_at:future(22)})]);
  assert.equal((await db.query('select count(*)::int n from private.artwork_library')).rows[0].n,2);
- await asUser(u);let window=(await call('get_event_backgrounds',[0,2])).windows[0];assert.equal(window.artwork.home.path,'halloween/backgrounds/home.png');assert.equal((await call('get_event_backgrounds',[0])).windows[0].artwork,null);await db.exec('reset role');
+ await asUser(u);let window=(await call('get_event_backgrounds',[0])).windows[0];assert.equal(window.artwork.home.path,'halloween/backgrounds/home.png');await db.exec('reset role');
  // Updating a library asset changes its consumers; no per-event image revision is created.
  const updated={...bg,name:'업데이트',home:{...bg.home,path:'halloween/backgrounds/home-2.png'}};await upload(updated);await call('admin_register_artwork',[JSON.stringify(updated),false]);
- await asUser(u);window=(await call('get_event_backgrounds',[0,2])).windows[0];assert.equal(window.artwork.home.path,'halloween/backgrounds/home-2.png');await db.exec('reset role');
- await assert.rejects(()=>call('admin_schedule_event',[JSON.stringify({...event,request_id:randomUUID(),artwork_revision:randomUUID()})]),/file paths/);
+ await asUser(u);window=(await call('get_event_backgrounds',[0])).windows[0];assert.equal(window.artwork.home.path,'halloween/backgrounds/home-2.png');await db.exec('reset role');
+ await assert.rejects(()=>call('admin_schedule_event',[JSON.stringify({...event,request_id:randomUUID(),artwork_revision:randomUUID()})]),/Image revisions/);
  await asUser(u);await assert.rejects(()=>db.query('select * from private.artwork_library'),/permission denied/);await assert.rejects(()=>call('admin_register_artwork',[JSON.stringify(bg),false]),/permission denied/);await db.exec('reset role');
- console.log('PASS: theme folder validation, direct registration, no revision rows, reusable assets, live path updates, legacy API compatibility, ownership and room isolation.');
+ assert.equal((await db.query("select count(*)::int n from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('admin_stage_artwork','admin_publish_artwork','admin_artwork_report')")).rows[0].n,0);
+ console.log('PASS: theme folder validation, direct registration, no revision rows, reusable assets, live path updates, single-format API, ownership and room isolation.');
 } finally {await db.close();}
