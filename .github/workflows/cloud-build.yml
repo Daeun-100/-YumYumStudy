@@ -132,6 +132,8 @@ jobs:
       - run: npm ci
       - run: node --experimental-strip-types scripts/cloud-preflight.mjs
       - run: npm run export:web
+        env:
+          EXPO_PUBLIC_BUILD_SHA: ${{ needs.prepare.outputs.sha }}
       - name: Publish preview only (never production)
         id: deploy
         run: |

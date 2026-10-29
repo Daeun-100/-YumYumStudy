@@ -1,3 +1,4 @@
+import { AppVersionReporter } from '../features/app-version/AppVersionReporter';
 import { StartupBoundary } from '../components/StartupBoundary';
 import { CallNotificationLifecycle } from '../features/call-friend/CallNotifications';
 import { RoomBuildBoundary, TestRoomSelector } from '../components/RoomBuildBoundary';
@@ -14,6 +15,7 @@ import { StudyProvider } from '../features/study/StudyProvider';
 export default function RootLayout() {
   return <SafeAreaProvider><RoomBuildBoundary><UpdateProvider><IdentityProvider><AdmissionGate><StudyProvider><LeaveProvider>
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <AppVersionReporter />
       <CallNotificationLifecycle />
       <UpdateNotice variant="global" />
       <StartupBoundary><TestRoomSelector /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
