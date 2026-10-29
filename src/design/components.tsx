@@ -61,17 +61,17 @@ const styles = StyleSheet.create({
   panel: { backgroundColor: colors.background, borderWidth: 0, borderRadius: 0, borderTopLeftRadius: radius.panel, borderTopRightRadius: radius.panel, padding: spacing.xxxl, gap: spacing.lg },
 });
 
-export function AchievementIcon({ size = achievementTheme.iconSize }: { size?: number }) {
-  return <Image source={designAssets.watermelon} resizeMode="contain" accessibilityLabel={achievementTheme.label}
+export function AchievementIcon({ size = achievementTheme.iconSize, superWatermelon = false }: { size?: number; superWatermelon?: boolean }) {
+  return <Image source={superWatermelon ? designAssets.goldWatermelon : designAssets.watermelon} resizeMode="contain" accessibilityLabel={superWatermelon ? '슈퍼 수박 · 한 주 완주' : achievementTheme.label}
     style={{ width: size, height: size, flexShrink: 0 }} />;
 }
 
-export function AchievementBadge({ compact = false, label = achievementTheme.label }: { compact?: boolean; label?: string }) {
+export function AchievementBadge({ compact = false, superWatermelon = false, label = achievementTheme.label }: { compact?: boolean; label?: string; superWatermelon?: boolean }) {
   return <View accessible accessibilityLabel={label} style={{
     flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: spacing.xs,
     backgroundColor: achievementTheme.background, padding: compact ? 0 : spacing.sm, borderRadius: radius.pill,
   }}>
-    <AchievementIcon size={compact ? achievementTheme.compactIconSize : achievementTheme.iconSize} />
+    <AchievementIcon superWatermelon={superWatermelon} size={compact ? achievementTheme.compactIconSize : achievementTheme.iconSize} />
     {!compact && <Text style={[typography.label, { color: achievementTheme.text }]}>{label}</Text>}
   </View>;
 }

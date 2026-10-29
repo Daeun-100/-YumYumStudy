@@ -5,5 +5,5 @@ export function recordQueryVersion(data: Pick<TodayData, 'day' | 'activeSession'
   if (!data || data.day.studyDate < from || data.day.studyDate > to) return '';
   const { day, activeSession } = data;
   return JSON.stringify([day.studyDate, day.closedSeconds, day.goalMinutes, day.attendance, day.isRestDay,
-    activeSession?.id, activeSession?.startedAt, activeSession?.endedAt]);
+    day.superWatermelon, activeSession?.id, activeSession?.startedAt, activeSession?.endedAt]);
 }

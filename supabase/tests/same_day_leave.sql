@@ -52,7 +52,7 @@ begin
  values(u,'2020-04-06','2020-04-11 06:01+09','2020-04-27 06:00+09','2020-04-13');
  if not public._leave_today_protected(u,'2020-04-11','2020-04-11 12:00+09') then raise exception 'Used reward not protected'; end if;
  insert into public.study_sessions(user_id,started_at,ended_at) values(u,'2020-04-12 06:00+09','2020-04-12 06:01+09');
- if public._leave_today_protected(u,'2020-04-12','2020-04-12 12:00+09') then raise exception 'Seventh day incorrectly blocked'; end if;
+ if not public._leave_today_protected(u,'2020-04-12','2020-04-12 12:00+09') then raise exception 'Seventh-day gold not protected'; end if;
  if public._leave_today_protected(u,'2020-04-10','2020-04-10 12:00+09') is not true then raise exception 'Existing reward marker ignored'; end if;
  delete from public.leave_grants where user_id=u;
  if public._leave_today_protected(u,'2020-04-10','2020-04-10 12:00+09') then raise exception 'Five days incorrectly blocked'; end if;

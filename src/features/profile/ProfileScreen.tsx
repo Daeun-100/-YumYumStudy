@@ -53,7 +53,7 @@ export function ProfileScreen() {
     <ProfileIdentity profile={profile} count={collection?.skins.length} onEdit={() => router.push('/profile-edit')} onSkins={() => router.push('/skins')} />
     <View style={s.rule} />
     {!!error && <><Text accessibilityRole="alert" style={ui.error}>{error}</Text><Button label="다시 불러오기" variant="secondary" onPress={() => retry()} /></>}
-    <SkeletonRegion loading={!summary} label="이번 주 기록 불러오는 중"><WeeklyAchievement weekdayProgress={weekdayProgress} /></SkeletonRegion>
+    <SkeletonRegion loading={!summary} label="이번 주 기록 불러오는 중"><WeeklyAchievement weekdayProgress={weekdayProgress} superWatermelon={!!(study.today?.data.day.superWatermelon || summary?.days.some(day => day.superWatermelon))} /></SkeletonRegion>
     <View style={s.rule} />
     <View style={s.section}><Text style={s.eyebrow}>나의 공부</Text><SettingsRow icon="◎" label="공부 목표 설정" value={goals ? total ? `주 ${goalText(total)}` : goals.every(value => value === 0) ? '모두 쉬는 날' : '목표 미설정' : undefined} onPress={() => router.push('/goals')} />
       {summary?.goals.effectiveDate && <Text style={[ui.muted, { paddingHorizontal: spacing.lg }]}>{summary.goals.effectiveDate} 오전 6시부터 변경 예정인 목표가 있어요.</Text>}
