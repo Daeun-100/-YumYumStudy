@@ -54,8 +54,8 @@ try {
  const other='00000000-0000-4000-8000-000000000002';
  const unadmitted='00000000-0000-4000-8000-000000000003';
  const folder='00000000-0000-4000-8000-000000000010';
- const home=`rooms/0/${folder}/home.png`,focus=`rooms/0/${folder}/focus.png`;
- const home1=`rooms/1/${folder}/home.png`,focus1=`rooms/1/${folder}/focus.png`;
+ const focus=`rooms/0/${folder}/focus.png`;
+ const focus1=`rooms/1/${folder}/focus.png`;
  async function role(name,uid,sql) {
   await db.exec(`set role ${name}; select set_config('request.jwt.claim.sub','${uid ?? ''}',false);`);
   try { return await db.query(sql); } finally { await db.exec('reset role;'); }
@@ -63,17 +63,15 @@ try {
  const admin=sql=>role('service_role',null,sql);
  const asUser=sql=>role('authenticated',user,sql);
  const today=async(uid=user)=>(await role('authenticated',uid,'select public.get_today() as t')).rows[0].t;
- const publish=(room=0,alt='같이 달려요!',start="'2026-11-01T06:00:00+09:00'",end="'2026-11-08T06:00:00+09:00'",h=room===0?home:home1,f=room===0?focus:focus1)=>`select public.admin_publish_room_banner(${room}::smallint,'${h}','${f}','${alt}',${start},${end}) as b`;
+ const publish=(room=0,alt='같이 달려요!',start="'2026-11-01T06:00:00+09:00'",end="'2026-11-08T06:00:00+09:00'",f=room===0?focus:focus1)=>`select public.admin_publish_room_banner(${room}::smallint,'${f}','${alt}',${start},${end}) as b`;
  assert.equal((await today()).data.roomBanner,null);
  assert.equal((await admin('select public.admin_hide_room_banner(0::smallint) as b')).rows[0].b,null);
- await assert.rejects(()=>admin(publish()),/Both banner images/);
- await admin(`insert into storage.objects(bucket_id,name) values('room-banners','${home}')`);
- await assert.rejects(()=>admin(publish()),/Both banner images/);
- await admin(`insert into storage.objects(bucket_id,name) values('room-banners','${focus}'),('room-banners','${home1}'),('room-banners','${focus1}')`);
+ await assert.rejects(()=>admin(publish()),/Focus banner image/);
+ await admin(`insert into storage.objects(bucket_id,name) values('room-banners','${focus}'),('room-banners','${focus1}')`);
  let saved=(await admin(publish(0,'  같이 달려요!  '))).rows[0].b;
  assert.equal(saved.alt_text,'같이 달려요!');assert.equal(saved.enabled,true);
  let snapshot=await today();
- assert.equal(snapshot.data.roomBanner.homeImagePath,home);
+ assert.equal('homeImagePath' in snapshot.data.roomBanner,false);
  assert.equal(snapshot.data.roomBanner.focusImagePath,focus);
  assert.equal(snapshot.data.roomBanner.altText,'같이 달려요!');
  assert.equal(Date.parse(snapshot.data.roomBanner.startsAt),Date.parse('2026-11-01T06:00:00+09:00'));
@@ -84,7 +82,7 @@ try {
  await assert.rejects(()=>today(unadmitted),/Onboarding required/);
  for(const name of ['anon','authenticated']) {
   for(const sql of [
-   `insert into public.room_banners(room_id,home_image_path,focus_image_path,alt_text) values(1,'${home1}','${focus1}','hack')`,
+   `insert into public.room_banners(room_id,focus_image_path,alt_text) values(1,'${focus1}','hack')`,
    'update public.room_banners set enabled=false where room_id=0',
    'delete from public.room_banners where room_id=0',publish(),'select public.admin_hide_room_banner(0::smallint)',
   ]) await assert.rejects(()=>role(name,user,sql),/permission denied/);
@@ -97,10 +95,10 @@ try {
  await assert.rejects(()=>role('anon',null,'select public.get_today()'),/permission denied/);
  for(const sql of [publish(0,''),publish(0,'a'.repeat(161)),publish(0,'a','now()','now()'),
   publish(0,'a',"'infinity'",'null'),publish(0,'a','now()',"'infinity'"),publish(0,'a','null','null'),
-  publish(0,'a','now()','null',home1,focus1),publish(0,'a','now()','null',home,home),
+  publish(0,'a','now()','null',focus1),
  ]) await assert.rejects(()=>admin(sql));
- // Failed validation cannot replace the currently published pair.
- assert.equal((await today()).data.roomBanner.homeImagePath,home);
+ // Failed validation cannot replace the currently published image.
+ assert.equal((await today()).data.roomBanner.focusImagePath,focus);
  await admin(publish(1,'다른 방','now()','null'));
  assert.equal((await today(other)).data.roomBanner.altText,'다른 방');
  await admin(publish(0,'새 세트','now()','null'));
@@ -113,7 +111,7 @@ try {
  saved=(await admin('select public.admin_hide_room_banner(0::smallint) as b')).rows[0].b;
  assert.equal(saved.enabled,false);assert.equal((await today()).data.roomBanner,null);
  assert.equal((await asUser('select * from public.room_banners')).rows.length,0);
- assert.equal((await admin('select * from public.room_banners where room_id=0')).rows[0].home_image_path,home);
+ assert.equal((await admin('select * from public.room_banners where room_id=0')).rows[0].focus_image_path,focus);
  await assert.rejects(()=>admin('select public.admin_hide_room_banner(null::smallint)'),/Invalid room/);
  await admin(`update public.room_banners set updated_at='2000-01-01' where room_id=0`);
  assert.ok(Date.parse((await admin('select updated_at from public.room_banners where room_id=0')).rows[0].updated_at)>Date.parse('2026-01-01'));
@@ -122,5 +120,5 @@ try {
  assert.equal(functions.length,3);assert.ok(functions.every(f=>!f.prosecdef));
  const bucket=(await db.query("select * from storage.buckets where id='room-banners'")).rows[0];
  assert.equal(bucket.public,true);assert.equal(Number(bucket.file_size_limit),2097152);assert.deepEqual(bucket.allowed_mime_types,['image/png']);
- console.log('PASS: atomic image pair publication, missing/wrong-room images, bucket restrictions, snapshots, schedules, hide, timestamps, anonymous/user/admin permissions and admission isolation.');
+ console.log('PASS: focus-only image publication, missing/wrong-room image, bucket restrictions, snapshots, schedules, hide, timestamps, anonymous/user/admin permissions and admission isolation.');
 } finally { await db.close(); }

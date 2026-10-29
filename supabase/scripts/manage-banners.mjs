@@ -7,8 +7,8 @@ import { randomUUID } from 'node:crypto';
 
 export function publishInput(room, input) {
  if (![0,1].includes(room)) throw new Error('Explicit room 0 or 1 is required.');
- if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(key => !['homeFile','focusFile','description','startsAt','endsAt'].includes(key))) throw new Error('Expected homeFile, focusFile, description, optional startsAt and endsAt.');
- if (![input.homeFile,input.focusFile].every(path => typeof path === 'string' && isAbsolute(path)) || input.homeFile === input.focusFile) throw new Error('Two distinct absolute PNG paths are required: homeFile and focusFile.');
+ if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(key => !['focusFile','description','startsAt','endsAt'].includes(key))) throw new Error('Expected focusFile, description, optional startsAt and endsAt.');
+ if (typeof input.focusFile !== 'string' || !isAbsolute(input.focusFile)) throw new Error('An absolute focusFile PNG path is required.');
  const description = typeof input.description === 'string' ? input.description.trim() : '';
  if (!description || [...description].length > 160 || /\p{Cc}/u.test(description)) throw new Error('Description must be 1–160 characters on one line.');
  const instant = value => {
@@ -20,13 +20,13 @@ export function publishInput(room, input) {
  const startsAt = input.startsAt === undefined ? new Date().toISOString() : instant(input.startsAt);
  const endsAt = input.endsAt == null ? null : instant(input.endsAt);
  if (endsAt !== null && Date.parse(endsAt) <= Date.parse(startsAt)) throw new Error('End must be after start.');
- return { homeFile:input.homeFile,focusFile:input.focusFile,p_room_id:room,p_alt_text:description,p_starts_at:startsAt,p_ends_at:endsAt };
+ return { focusFile:input.focusFile,p_room_id:room,p_alt_text:description,p_starts_at:startsAt,p_ends_at:endsAt };
 }
 
-export function validatePng(bytes, screen) {
- const width = screen === 'home' ? 1200 : 1000;
+export function validatePng(bytes) {
+ const width = 1000;
  if (!Buffer.isBuffer(bytes) || bytes.length < 45 || bytes.length > 2097152 || !bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])) || bytes.readUInt32BE(8) !== 13 || bytes.toString('ascii',12,16) !== 'IHDR') throw new Error('Expected a PNG file up to 2MB.');
- if (bytes.readUInt32BE(16) !== width || bytes.readUInt32BE(20) !== 300) throw new Error(`${screen} PNG must be ${width} × 300.`);
+ if (bytes.readUInt32BE(16) !== width || bytes.readUInt32BE(20) !== 300) throw new Error(`Focus PNG must be ${width} × 300.`);
  // Check chunk framing through IEND; a signature/IHDR alone is not an image.
  let position=8, hasData=false;
  while (position + 12 <= bytes.length) {
@@ -58,23 +58,21 @@ export async function manageBanner(command, room, input, { url, key, fetcher = f
  }
  let written;
  if (command === 'publish') {
-  const {homeFile,focusFile,...args}=publishInput(room,input);
-  // Validate both local files before uploading either. Use immutable versioned
-  // paths so a failed second upload cannot alter the currently published pair.
-  const [home,focus]=await Promise.all([readImage(homeFile),readImage(focusFile)]);
-  validatePng(home,'home'); validatePng(focus,'focus');
-  const folder=`rooms/${room}/${randomUUID()}`;
-  args.p_home_image_path=`${folder}/home.png`; args.p_focus_image_path=`${folder}/focus.png`;
-  await request(`/storage/v1/object/room-banners/${args.p_home_image_path}`,home,true);
+  const {focusFile,...args}=publishInput(room,input);
+  // Validate before uploading; new immutable paths preserve the current banner
+  // if upload or publishing fails.
+  const focus=await readImage(focusFile);
+  validatePng(focus);
+  args.p_focus_image_path=`rooms/${room}/${randomUUID()}/focus.png`;
   await request(`/storage/v1/object/room-banners/${args.p_focus_image_path}`,focus,true);
   written=await request('/rest/v1/rpc/admin_publish_room_banner',args);
  }
  if (command === 'hide') written = await request('/rest/v1/rpc/admin_hide_room_banner',{p_room_id:room});
- const rows = await request(`/rest/v1/room_banners?room_id=eq.${room}&select=room_id,home_image_path,focus_image_path,alt_text,enabled,starts_at,ends_at,updated_at`);
+ const rows = await request(`/rest/v1/room_banners?room_id=eq.${room}&select=room_id,focus_image_path,alt_text,enabled,starts_at,ends_at,updated_at`);
  if (!Array.isArray(rows) || rows.length > 1 || rows.some(row => row.room_id !== room)) throw new Error('Unexpected banner response.');
  const saved = rows[0] ?? null;
  if (command !== 'show') {
-  const fields=['room_id','home_image_path','focus_image_path','alt_text','enabled','starts_at','ends_at','updated_at'];
+  const fields=['room_id','focus_image_path','alt_text','enabled','starts_at','ends_at','updated_at'];
   if ((saved === null) !== (written === null) || fields.some(field => saved?.[field] !== written?.[field])) throw new Error('Readback differs; inspect current state before retrying.');
  }
  return saved;
