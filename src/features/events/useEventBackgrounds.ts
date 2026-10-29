@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { ArtworkContext } from '../artwork/ArtworkContext';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { useIdentity } from '../../components/IdentityProvider';
 import { useAppActive } from '../../hooks/useAppActive';
 import { callRpc } from '../../data/rpc';
@@ -11,6 +12,7 @@ const cache = new Map<string, Cached>();
 let subscription = 0;
 export function useEventBackgrounds(focused: boolean) {
   const identity = useIdentity();
+  const artworkStore = useContext(ArtworkContext);
   const active = useAppActive();
   const room = studyRoomId;
   const owner = identity.profile?.id;
@@ -35,6 +37,7 @@ export function useEventBackgrounds(focused: boolean) {
         const snapshot = decodeEventBackgrounds(await callRpc('get_event_backgrounds', { p_room_id: room }));
         if (disposed || snapshot.roomId !== room) return;
         const result = { snapshot, offset: Date.parse(snapshot.serverNow) - (sent + Date.now()) / 2 };
+        for (const window of snapshot.windows) if(window.artwork) void artworkStore?.ingest(window.artwork);
         cache.set(key, result);
         // Only retain the current user's room snapshots in memory.
         for (const storedKey of cache.keys()) if (!storedKey.startsWith(`${owner}:`)) cache.delete(storedKey);
@@ -52,7 +55,7 @@ export function useEventBackgrounds(focused: boolean) {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'event_background_versions', filter: `room_id=eq.${room}` }, () => { void refresh(); })
       .subscribe(status => { if (status === 'SUBSCRIBED') void refresh(); });
     return () => { disposed = true; refreshRef.current = null; void client.removeChannel(channel).catch(() => {}); };
-  }, [key, room, active, focused, owner]);
+  }, [key, room, active, focused, owner, artworkStore]);
 
   useEffect(() => {
     if (!active || !focused) return;

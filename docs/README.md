@@ -29,6 +29,7 @@
 ## 배포와 운영
 
 - [이벤트 기록과 예약 운영](operations/EVENT-OPERATIONS.md)
+- [서버 배경·스킨 이미지와 효과 설정 운영](operations/ARTWORK-OPERATIONS.md)
 
 - [버전 및 배포 운영](operations/RELEASES.md): 배포 절차와 현재 버전관리 규칙
 - [클라우드 빌드](operations/CLOUD-BUILDS.md)

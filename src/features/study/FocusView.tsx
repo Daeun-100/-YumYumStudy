@@ -1,10 +1,12 @@
+import { useSkinArtwork } from '../artwork/useSkinArtwork';
+import { ArtworkImage } from '../artwork/ArtworkImage';
+import { resolveCharacterArtwork as defaultArtwork } from '../../design/skin-artwork';
 import { SkinEffects } from './SkinEffects';
-import { resolveCharacterArtwork } from '../../design/skin-artwork';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
 import { resolveBackgroundArtwork } from '../../design/background-artwork';
+import { useBackgroundArtwork } from '../artwork/useBackgroundArtwork';
 import { useMeasuredLayout } from '../../hooks/useMeasuredLayout';
-import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { AchievementBadge, Button, Card } from '../../design/components';
 import { colors, radius, typography } from '../../design/theme';
 import type { CharacterId } from '../../lib/characters';
@@ -28,8 +30,8 @@ export type FocusViewProps = {
 
 /** Shared Storybook and app layout. All session state comes from the caller. */
 export function FocusView({ backgroundId, effectsEnabled = true, effectStrength = 1, onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl, initialSceneSize }: FocusViewProps) {
-  const [failed, setFailed] = useState<string | undefined>();
-  const background = resolveBackgroundArtwork('focus', failed === backgroundId ? undefined : backgroundId);
+  const { resolveCharacterArtwork } = useSkinArtwork(members.map(member=>member.activeSkinId));
+  const background = useBackgroundArtwork('focus', backgroundId);
   const { height } = useWindowDimensions();
   const compact = height < 740;
   const artwork = useMeasuredLayout('focus-art', String(compact));
@@ -46,7 +48,7 @@ export function FocusView({ backgroundId, effectsEnabled = true, effectStrength 
     <View style={s.header}><Button label="←" size="icon" variant="ghost" accessibilityLabel="홈으로 돌아가기" onPress={onBack} /><Text accessibilityRole="header" style={s.title}>우리 공부방</Text><Button label={onAllowedApps ? '허용앱' : `${memberCount ?? '—'}명`} size="compact" variant="raised" accessibilityLabel={onAllowedApps ? '내 허용앱 목록 열기' : `친구 ${memberCount ?? ''}명 현황 보기`} onPress={onAllowedApps ?? onFriends} /></View>
     <View onLayout={artwork.onLayout} style={s.art}>
       {sceneSize && <>
-      <Image fadeDuration={0} source={background.source} onError={() => setFailed(backgroundId)} resizeMode="contain" style={{ position: 'absolute', width: 1024 * scale, height: 1536 * scale, left: (sceneWidth - 1024 * scale) / 2, top: tableTop - 912 * scale }} accessibilityLabel={background.label} />
+      <ArtworkImage fallbackSource={resolveBackgroundArtwork('focus').source} fadeDuration={0} source={background.source} resizeMode="contain" style={{ position: 'absolute', width: 1024 * scale, height: 1536 * scale, left: (sceneWidth - 1024 * scale) / 2, top: tableTop - 912 * scale }} accessibilityLabel={background.label} />
       <View style={[s.seats, { bottom: sceneHeight - tableTop - 72 * scale }]}>{Array.from({ length: 4 }, (_, index) => {
         const member = members[index];
         const size = characterSize * (member?.character === 'bunny' ? 1.20 : 1);
@@ -54,7 +56,7 @@ export function FocusView({ backgroundId, effectsEnabled = true, effectStrength 
         const bottom = member ? -size * (1 - (skin?.focusBottom ?? characterBottom[member.character]) / 1254) + (['bunny', 'maltese', 'pomeranian', 'blackcat'].includes(member.character) ? 32 * scale : 0) : 0;
         return <View key={member?.id ?? `empty-${index}`} style={s.seat}>{member && <>
           <Pressable accessibilityRole={onWake && !member.self && !member.active ? "button" : undefined} accessibilityLabel={onWake && !member.self && !member.active ? `${member.name} 부르기${wakeSentIds.includes(member.id) ? ", 부르기 알림 보냄" : ""}` : undefined} disabled={!onWake || member.self || member.active || wakeSentIds.includes(member.id)} onPress={() => onWake?.(member)} style={s.nameTag}><View style={s.tagRow}><View style={[s.dot, { backgroundColor: member.active ? colors.primary : colors.resting }]} /><Text numberOfLines={1} style={s.name}>{member.name}</Text></View><Text numberOfLines={1} style={s.caption}>{member.time}</Text></Pressable>
-          <View style={{ width: characterSize, height: characterSize, alignItems: 'center' }}>{(member.achieved ?? (member.self && achieved)) && <View style={{ position: 'absolute', width: size, height: size, bottom }}><AchievementAura character={member.character} size={size} /></View>}<View pointerEvents="none" style={{ position: 'absolute', width: size, height: size, bottom }}><Image fadeDuration={0} source={skin!.focus} resizeMode="contain" style={{ width: size, height: size }} accessibilityLabel={`${member.name}${member.self ? ' (나)' : ''}, ${member.active ? '공부 중' : '쉬는 중'}`} /><SkinEffects effects={skin?.effects} screen="focus" width={size} height={size} enabled={effectsEnabled} strength={effectStrength} phase={index * 650} /></View></View>
+          <View style={{ width: characterSize, height: characterSize, alignItems: 'center' }}>{(member.achieved ?? (member.self && achieved)) && <View style={{ position: 'absolute', width: size, height: size, bottom }}><AchievementAura character={member.character} size={size} /></View>}<View pointerEvents="none" style={{ position: 'absolute', width: size, height: size, bottom }}><ArtworkImage fallbackSource={defaultArtwork(member.character).focus} fadeDuration={0} source={skin!.focus} resizeMode="contain" style={{ width: size, height: size }} accessibilityLabel={`${member.name}${member.self ? ' (나)' : ''}, ${member.active ? '공부 중' : '쉬는 중'}`} /><SkinEffects effects={skin?.effects} screen="focus" width={size} height={size} enabled={effectsEnabled} strength={effectStrength} phase={index * 650} /></View></View>
         </>}</View>;
       })}</View>
       </>}

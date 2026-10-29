@@ -12,7 +12,7 @@ function setup() {
  let now=Date.parse('2026-10-31T00:00:00Z'),nextTimer=0,focused=true,active=true,online=true,reads=0,signal,hold;
  let windows=[{id:'test',startsAt:new Date(now+1000).toISOString(),endsAt:new Date(now+3000).toISOString(),screens:['home','focus'],homeAsset:'halloween-home',focusAsset:'halloween-focus'}];
  class Clock extends Date {static now(){return now;}}
- const modules={react:hooks.react,'../../components/IdentityProvider':{useIdentity:()=>({profile:{id:'owner'}})},'../../hooks/useAppActive':{useAppActive:()=>active},'../../lib/room':room,
+ const modules={react:hooks.react,'../artwork/ArtworkContext':{ArtworkContext:{value:null}},'../../components/IdentityProvider':{useIdentity:()=>({profile:{id:'owner'}})},'../../hooks/useAppActive':{useAppActive:()=>active},'../../lib/room':room,
   '../../lib/event-backgrounds':backgrounds,'../../data/rpc':{callRpc:async(_name,args)=>{reads++;if(hold)return hold;if(!online)throw Error('offline');return{serverNow:new Date(now).toISOString(),roomId:args.p_room_id,windows:room.studyRoomId===0?windows:[]};}},
   '../../lib/supabase':{getSupabase:()=>({channel:()=>({on(_type,_filter,callback){signal=callback;return this;},subscribe(){return this;}}),removeChannel:async()=>{}})}};
  const context={exports:{},require:name=>{assert.ok(name in modules,name);return modules[name];},Date:Clock,setTimeout:(callback,delay)=>{const id=++nextTimer;timers.set(id,{callback,at:now+delay});return id;},clearTimeout:id=>timers.delete(id)};

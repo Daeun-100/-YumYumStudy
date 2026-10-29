@@ -1,11 +1,13 @@
+import { useSkinArtwork } from '../artwork/useSkinArtwork';
+import { ArtworkImage } from '../artwork/ArtworkImage';
+import { resolveCharacterArtwork as defaultArtwork } from '../../design/skin-artwork';
 import { useEventBackgrounds } from '../events/useEventBackgrounds';
 import { useStudyResources } from './study-resources';
 import { useScreenNow } from './useScreenNow';
 import { useState } from 'react';
 import { AllowedAppsLauncher } from '../allowed-apps/AllowedAppsLauncher';
-import { resolveCharacterArtwork } from '../../design/skin-artwork';
 import { useMeasuredLayout } from '../../hooks/useMeasuredLayout';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useIsFocused } from 'expo-router';
 import { useIdentity } from '../../components/IdentityProvider';
 import { AchievementBadge, Button } from '../../design/components';
@@ -34,6 +36,7 @@ export function HomeScreen() {
   const todayLeave = data?.day.attendance === 'leave';
   const percent = progress(seconds, data?.day.goalMinutes ?? null);
   const activeFriends = study.room?.data.filter(member => member.profile.id !== identity.profile?.id && member.activeSession) ?? [];
+  const { resolveCharacterArtwork } = useSkinArtwork(activeFriends.map(member=>member.profile.activeSkinId));
   const friendMessage = `지금 ${activeFriends.length}명이 공부 중이에요`;
 
   return <View style={s.outer}><View style={s.page}>
@@ -49,7 +52,7 @@ export function HomeScreen() {
       <View onLayout={artwork.onLayout} style={s.scene}>
         {height !== null && scene && <HomeArtwork backgroundId={eventBackgrounds.home} effectsEnabled={focused} activeSkinId={identity.profile?.activeSkinId} character={identity.profile?.character ?? 'bunny'} width={scene.width} height={scene.height} />}
         {!!activeFriends.length && !study.roomError && <View accessibilityLabel={friendMessage} style={s.friends}>
-          {!!activeFriends.length && <View style={s.avatars}>{activeFriends.slice(0, 3).map(member => <View key={member.profile.id} style={s.avatar}><Image fadeDuration={0} source={resolveCharacterArtwork(member.profile.character, member.profile.activeSkinId).focus} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${member.profile.displayName} 캐릭터`} /></View>)}</View>}
+          {!!activeFriends.length && <View style={s.avatars}>{activeFriends.slice(0, 3).map(member => <View key={member.profile.id} style={s.avatar}><ArtworkImage fallbackSource={defaultArtwork(member.profile.character).focus} fadeDuration={0} source={resolveCharacterArtwork(member.profile.character, member.profile.activeSkinId).focus} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${member.profile.displayName} 캐릭터`} /></View>)}</View>}
           <Text style={[s.secondary, { flex: 1, color: colors.text }]}>{friendMessage}</Text>
         </View>}
       </View>

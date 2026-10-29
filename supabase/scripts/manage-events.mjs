@@ -10,6 +10,7 @@ export function validateRequest(p) {
   || !/^docs\/events\/[a-zA-Z0-9_-]+\.md$/.test(p.document_path??'') || ![0,1].includes(p.room_id)) throw new Error('Explicit event ID, name, document path, room and request UUID required.');
  const timestamp=(value)=>typeof value==='string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:00(?:\.000)?(?:Z|[+-]\d\d:\d\d)$/.test(value) && Number.isFinite(Date.parse(value));
  if(!timestamp(p.run_at)) throw new Error('Start time needs a year, minute precision and explicit timezone.');
+ if(p.artwork_revision && !uuid.test(p.artwork_revision)) throw new Error('Artwork revision UUID required.');
  if(p.replaces && !uuid.test(p.replaces)) throw new Error('Replacement UUID required.');
  if(p.kind==='grant_skins') {
   if(!Array.isArray(p.skin_ids)||!p.skin_ids.length||!p.skin_ids.every(id=>/^[a-z0-9][a-z0-9_-]{0,79}$/.test(id))) throw new Error('Skin IDs required.');
@@ -22,7 +23,7 @@ export function validateRequest(p) {
 export function summarizeReport(report) {
  return {events:report.events,backgrounds:report.backgrounds,jobs:report.jobs.map(j=>({
   id:j.id,eventId:j.event_id,kind:j.kind,room:j.room_id,runAt:j.run_at,endsAt:j.ends_at,state:j.state,overdue:j.overdue,
-  recipients:j.recipients.length,skinIds:j.skin_ids,backgroundId:j.background_id,screens:j.screens,cron:j.cron,
+  recipients:j.recipients.length,skinIds:j.skin_ids,backgroundId:j.background_id,screens:j.screens,artworkRevision:j.artwork_revision,skinRevisions:j.skin_revisions,cron:j.cron,
   cronHistory:j.cronHistory,runs:j.runs.map(r=>({id:r.id,phase:r.phase,recovery:r.recovery,result:r.result,startedAt:r.started_at,finishedAt:r.finished_at,
     counts:r.deliveries.reduce((counts,d)=>({...counts,[d.result]:(counts[d.result]??0)+1}),{}),
     users:new Set(r.deliveries.map(d=>d.user_id)).size,

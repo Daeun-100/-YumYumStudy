@@ -1,10 +1,12 @@
+import { useSkinArtwork } from '../artwork/useSkinArtwork';
+import { ArtworkImage } from '../artwork/ArtworkImage';
+import { resolveCharacterArtwork as defaultArtwork } from '../../design/skin-artwork';
 import { SkinEffects } from './SkinEffects';
-import { Image, View } from 'react-native';
-import { resolveCharacterArtwork } from '../../design/skin-artwork';
+import { View } from 'react-native';
 import type { CharacterId } from '../../lib/characters';
 
-import { useState } from 'react';
 import { resolveBackgroundArtwork } from '../../design/background-artwork';
+import { useBackgroundArtwork } from '../artwork/useBackgroundArtwork';
 
 // Source-canvas anchor is the prop base, excluding transparent margins and glow.
 const placements: Record<CharacterId, { scale: number; x: number; y: number }> = {
@@ -19,17 +21,17 @@ const placements: Record<CharacterId, { scale: number; x: number; y: number }> =
 
 /** Shared by the app and the asset placement preview. */
 export function HomeArtwork({ backgroundId, character, activeSkinId, width, height, placementOverride, effectsEnabled = true, effectStrength = 1 }: { backgroundId?: string; character: CharacterId; activeSkinId?: string | null; width: number; height: number; placementOverride?: Partial<{ scale: number; x: number; y: number }>; effectsEnabled?: boolean; effectStrength?: number }) {
-  const [failed, setFailed] = useState<string | undefined>();
-  const background = resolveBackgroundArtwork('home', failed === backgroundId ? undefined : backgroundId);
+  const { resolveCharacterArtwork } = useSkinArtwork([activeSkinId]);
+  const background = useBackgroundArtwork('home', backgroundId);
   const scale = Math.max(width / 1536, height / 1024);
   const left = (width - 1536 * scale) / 2;
   const top = (height - 1024 * scale) / 2;
   const artwork = resolveCharacterArtwork(character, activeSkinId);
   const placement = { ...(artwork.homePlacement ?? placements[character]), ...placementOverride };
   return <>
-    <Image fadeDuration={0} source={background.source} onError={() => setFailed(backgroundId)} resizeMode="contain" style={{ position: 'absolute', left, top, width: 1536 * scale, height: 1024 * scale }} accessibilityLabel={background.label} />
+    <ArtworkImage fallbackSource={resolveBackgroundArtwork('home').source} fadeDuration={0} source={background.source} resizeMode="contain" style={{ position: 'absolute', left, top, width: 1536 * scale, height: 1024 * scale }} accessibilityLabel={background.label} />
     <View pointerEvents="none" style={{ position: 'absolute', left: left + (800 - placement.x * placement.scale) * scale, top: top + (785 - placement.y * placement.scale) * scale - 2, width: 1536 * placement.scale * scale, height: 1024 * placement.scale * scale }}>
-      <Image fadeDuration={0} source={artwork.home} resizeMode="contain" style={{ width: '100%', height: '100%' }} accessibilityLabel={`${artwork.label} 홈 캐릭터`} />
+      <ArtworkImage fallbackSource={defaultArtwork(character).home} fadeDuration={0} source={artwork.home} resizeMode="contain" style={{ width: '100%', height: '100%' }} accessibilityLabel={`${artwork.label} 홈 캐릭터`} />
       <SkinEffects effects={artwork.effects} screen="home" width={1536 * placement.scale * scale} height={1024 * placement.scale * scale} enabled={effectsEnabled} strength={effectStrength} />
     </View>
   </>;
