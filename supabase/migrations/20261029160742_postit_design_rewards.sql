@@ -47,16 +47,16 @@ create function private.validate_artwork_definition(m jsonb) returns void langua
 declare a jsonb; rev uuid;
 begin
  if m->>'kind' is distinct from 'postit' then perform private.validate_scene_artwork_definition(m);return;end if;
- if jsonb_typeof(m) is distinct from 'object' or m->'schemaVersion' is distinct from '1'::jsonb
+ if jsonb_typeof(m) is distinct from 'object' or (m->'schemaVersion' is null or m->'schemaVersion' not in ('1'::jsonb,'2'::jsonb))
   or jsonb_typeof(m->'id') is distinct from 'string' or coalesce(m->>'id','') !~ '^[a-z0-9][a-z0-9_-]{0,79}$'
   or jsonb_typeof(m->'name') is distinct from 'string' or coalesce(length(btrim(m->>'name')),0) not between 1 and 60
   or coalesce(m->>'fallbackColor','') not in ('#F9E8A0','#F7CED4','#DAE8BE')
   or coalesce(m->>'textColor','') !~ '^#[0-9A-Fa-f]{6}$'
-  or exists(select 1 from jsonb_object_keys(m) k where k not in ('schemaVersion','kind','id','name','revision','paper','fallbackColor','textColor'))
+  or exists(select 1 from jsonb_object_keys(m) k where k not in ('schemaVersion','kind','id','name','revision','paper','fallbackColor','textColor','theme'))
  then raise exception 'Invalid postit definition' using errcode='22023';end if;
  rev:=(m->>'revision')::uuid;if rev is null then raise exception 'Revision required' using errcode='22023';end if;
  a:=m->'paper';
- if jsonb_typeof(a) is distinct from 'object' or a->>'path' is distinct from 'postit/'||(m->>'id')||'/'||rev::text||'/paper.png'
+ if jsonb_typeof(a) is distinct from 'object' or (case when m->'schemaVersion'='1'::jsonb then a->>'path' is distinct from 'postit/'||(m->>'id')||'/'||rev::text||'/paper.png' else jsonb_typeof(m->'theme') is distinct from 'string' or coalesce(m->>'theme','') !~ '^[a-z0-9][a-z0-9_-]{0,79}$' or coalesce(a->>'path','') !~ ('^'||(m->>'theme')||'/postits/([a-z0-9][a-z0-9_-]{0,79}/)*[a-z0-9][a-z0-9_-]{0,79}[.]png$') or length(a->>'path')>240 end)
   or jsonb_typeof(a->'sha256') is distinct from 'string' or coalesce(a->>'sha256','') !~ '^[a-f0-9]{64}$'
   or a->'width' is distinct from '1024'::jsonb or a->'height' is distinct from '1024'::jsonb
   or jsonb_typeof(a->'bytes') is distinct from 'number' or coalesce((a->>'bytes')::numeric,0) not between 1 and 2097152
@@ -187,4 +187,30 @@ end $$;
 create function public.admin_set_postit_design_enabled(p_id text,p_enabled boolean) returns void language sql security invoker set search_path='' as $$ select private.set_postit_design_enabled(p_id,p_enabled) $$;
 revoke all on function private.set_postit_design_enabled(text,boolean),public.admin_set_postit_design_enabled(text,boolean) from public,anon,authenticated,service_role;
 grant execute on function private.set_postit_design_enabled(text,boolean),public.admin_set_postit_design_enabled(text,boolean) to service_role;
+-- The current shared library is theme/path based. Snapshot UUIDs stay internal.
+alter table private.artwork_library drop constraint artwork_library_kind_check;
+alter table private.artwork_library add constraint artwork_library_kind_check check(kind in ('skin','background','postit'));
+alter function private.register_library_artwork(jsonb,boolean) rename to register_scene_library_artwork;
+revoke all on function private.register_scene_library_artwork(jsonb,boolean) from public,anon,authenticated,service_role;
+create function private.register_library_artwork(m jsonb,p_activate boolean default false) returns jsonb language plpgsql security definer set search_path='' as $$
+declare previous jsonb; snapshot jsonb; snapshot_id uuid;
+begin
+ if m->>'kind' is distinct from 'postit' then return private.register_scene_library_artwork(m,p_activate);end if;
+ if m ? 'revision' or m->'schemaVersion' is distinct from '2'::jsonb then raise exception 'Use a theme and file path, not an image revision' using errcode='22023';end if;
+ perform pg_advisory_xact_lock(hashtextextended('artwork:postit:'||(m->>'id'),0));
+ select definition into previous from private.artwork_library where kind='postit' and content_id=m->>'id';
+ if previous=m then
+  if p_activate then update private.postit_designs set grant_enabled=true where id=m->>'id';end if;
+  return jsonb_build_object('id',m->>'id','theme',m->>'theme','registered',true,'activated',p_activate);
+ end if;
+ snapshot_id:=gen_random_uuid();snapshot:=m||jsonb_build_object('revision',snapshot_id);
+ perform private.stage_artwork(snapshot);
+ perform private.publish_artwork(snapshot_id,p_activate);
+ insert into private.artwork_library(kind,content_id,theme,definition) values('postit',m->>'id',m->>'theme',m)
+ on conflict(kind,content_id) do update set theme=excluded.theme,definition=excluded.definition,updated_at=clock_timestamp();
+ return jsonb_build_object('id',m->>'id','theme',m->>'theme','registered',true,'activated',p_activate);
+end $$;
+create or replace function public.admin_register_artwork(p_definition jsonb,p_activate boolean default false) returns jsonb language sql security invoker set search_path='' as $$ select private.register_library_artwork(p_definition,p_activate) $$;
+revoke all on function private.register_library_artwork(jsonb,boolean) from public,anon,authenticated,service_role;
+grant execute on function private.register_library_artwork(jsonb,boolean) to service_role;
 commit;

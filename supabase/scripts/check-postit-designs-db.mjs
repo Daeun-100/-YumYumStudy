@@ -71,6 +71,25 @@ try{
  await asUser(u);assert.equal((await call('sync_postit_designs',[0])).owned.length,1);
  assert.equal((await call('put_designed_postit',[randomUUID(),'still owned','#F9E8A0',.3,.3,m.id])).design_id,m.id);
  await db.exec('reset role');
+ // Latest theme library registration: operator supplies theme/path, no snapshot UUID.
+ const themed={schemaVersion:2,kind:'postit',id:'themed-paper',theme:'halloween',name:'주제 종이',fallbackColor:'#F9E8A0',textColor:'#453F30',paper:{path:'halloween/postits/themed-paper/paper.png',width:1024,height:1024,bytes:100,sha256:'b'.repeat(64)}};
+ await db.query("insert into storage.objects(bucket_id,name,metadata) values('event-artwork',$1,$2)",[themed.paper.path,JSON.stringify({size:100,mimetype:'image/png'})]);
+ await call('admin_register_artwork',[JSON.stringify(themed),true]);
+ const beforeCount=(await db.query("select count(*) n from private.artwork_revisions where kind='postit' and content_id='themed-paper'")).rows[0].n;
+ await call('admin_register_artwork',[JSON.stringify(themed),true]);
+ assert.equal((await db.query("select count(*) n from private.artwork_revisions where kind='postit' and content_id='themed-paper'")).rows[0].n,beforeCount);
+ assert.equal((await call('admin_artwork_library',['halloween'])).find(x=>x.content_id==='themed-paper').definition.revision,undefined);
+ await assert.rejects(()=>call('admin_register_artwork',[JSON.stringify({...themed,revision:randomUUID()}),true]),/not an image revision/);
+ await assert.rejects(()=>call('admin_register_artwork',[JSON.stringify({...themed,theme:'wrong'}),true]),/Invalid postit PNG/);
+ await rule(themed,{required_seconds:1});
+ await asUser(u);const themeOwned=(await call('sync_postit_designs',[0])).owned.find(x=>x.artwork.id==='themed-paper');
+ assert.equal(themeOwned.artwork.schemaVersion,2);assert.ok(themeOwned.artwork.revision);
+ const themedNote=await call('put_designed_postit',[randomUUID(),'theme','#F9E8A0',.3,.3,'themed-paper']);
+ await db.exec('reset role');await call('admin_register_artwork',[JSON.stringify({...themed,textColor:'#252D28'}),false]);
+ await asUser(u);const themeUpdate=await call('sync_postit_designs',[0]);
+ assert.notEqual(themeUpdate.owned.find(x=>x.artwork.id==='themed-paper').artwork.revision,themedNote.design_revision);
+ assert.equal(themeUpdate.visible.find(x=>x.revision===themedNote.design_revision).textColor,'#453F30');
+ await db.exec('reset role');
  const permissions=(await db.query("select p.proname,has_function_privilege('anon',p.oid,'execute') anon,has_function_privilege('authenticated',p.oid,'execute') app from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('private','public') and p.proname like '%postit%'")).rows;
  assert.ok(permissions.every(p=>!p.anon));assert.ok(permissions.filter(p=>p.proname.startsWith('admin_')).every(p=>!p.app));
  console.log('PASS: immutable PNG publish, enabled rules, 1859/1860-second split sessions, running time, duplicate grants, retry preservation, room/ownership rights, legacy colors, pinned revisions, ended-event recovery, cancellation and function permissions. Storage is an isolated substitute.');

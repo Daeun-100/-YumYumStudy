@@ -6,7 +6,7 @@ import type { Postit } from '../src/features/postits/model';
 import type { PostitArtwork } from '../src/features/postits/designs';
 import previewPaper from './assets/postit-paper-preview.png';
 const revision='00000000-0000-4000-8000-000000000001';
-const paper:PostitArtwork={schemaVersion:1,kind:'postit',id:'server-only-paper-preview',revision,name:'할로윈 포스트잇',fallbackColor:'#F9E8A0',textColor:'#453F30',paper:{path:`postit/server-only-paper-preview/${revision}/paper.png`,sha256:'a'.repeat(64),width:1024,height:1024,bytes:100}};
+const paper:PostitArtwork={schemaVersion:2,theme:'halloween',kind:'postit',id:'server-only-paper-preview',revision,name:'할로윈 포스트잇',fallbackColor:'#F9E8A0',textColor:'#453F30',paper:{path:'halloween/postits/server-only-paper-preview/paper.png',sha256:'a'.repeat(64),width:1024,height:1024,bytes:100}};
 function Preview({width=390,height=844,reading=false,fail=false,owned=true}:{width?:number;height?:number;reading?:boolean;fail?:boolean;owned?:boolean}){
  const [notes,setNotes]=useState<Postit[]>([{id:'preview-note',author:'친구',room_id:0,study_date:'2026-10-31',deleted_at:null,color:'#F9E8A0',x:.3,y:.25,text:'오늘도 함께 공부해요!\n할로윈 한정 종이로 응원해요 🎃',design_id:paper.id,design_revision:paper.revision}]);
  const imageUrl=()=>fail?'http://127.0.0.1:6009/missing-paper.png':typeof previewPaper==='string'?previewPaper:Image.resolveAssetSource(previewPaper)?.uri ?? '';

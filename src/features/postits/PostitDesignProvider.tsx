@@ -69,7 +69,7 @@ export function PostitDesignProvider({ children }: PropsWithChildren) {
     }).catch(() => {});
     return () => { disposed = true; };
   }, [owner, scope]);
-  useEffect(() => { if (active && owner) void refresh(); }, [active, owner, refresh, study.today, study.busy]);
+  useEffect(() => { if (active && owner && !study.busy) void refresh(); }, [active, owner, refresh, study.today, study.busy]);
   useEffect(() => {
     if (!active || !schedule || schedule.scope !== scope) return;
     const timer = setTimeout(() => { void refresh(); }, Math.min(2_000_000_000, Math.max(0, schedule.at - Date.now())));

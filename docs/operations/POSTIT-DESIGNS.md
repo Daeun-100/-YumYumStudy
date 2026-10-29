@@ -4,7 +4,7 @@
 
 ## 준비와 배포
 
-- 의존성: [PR #49](https://github.com/Daeun-100/-YumYumStudy/pull/49)의 이벤트 운영·원격 이미지 서버와 앱 코드. 기존 Storage `event-artwork`, 표현 리비전·게시 기능과 PNG 검사·다운로드 제한을 재사용한다.
+- 의존성: [PR #49](https://github.com/Daeun-100/-YumYumStudy/pull/49)의 이벤트 운영·원격 이미지 서버와 앱 코드. 기존 Storage `event-artwork`, 주제별 이미지 라이브러리와 PNG 검사·다운로드 제한을 재사용한다.
 - 이 브랜치는 최신 develop에서 시작해 #49를 병합한 작업본이다. #49가 먼저 develop에 병합되면 이 PR의 변경 범위가 포스트잇 기능으로 줄어든다. #49의 이후 스키마 변경과 충돌 여부도 병합 전 확인한다.
 - `20261029160742_postit_design_rewards` 마이그레이션과 지원 앱을 기존 릴리스 절차로 반영한 뒤 실제 디자인과 보상 규칙을 활성화한다. 이 문서가 production 배포·업로드·행사 등록을 승인하거나 완료했음을 뜻하지 않는다.
 - 최초 지원 코드 배포 후에는 같은 규격의 새 PNG와 보상 규칙 등록에 앱 재배포가 필요 없다.
@@ -20,7 +20,7 @@
 ```json
 {
   "id": "halloween-paper",
-  "revision": "새 UUID로 교체",
+  "theme": "halloween",
   "name": "할로윈 포스트잇",
   "fallbackColor": "#F9E8A0",
   "textColor": "#453F30"
@@ -30,22 +30,24 @@
 `fallbackColor`는 구형 앱 호환을 위해 기본 3색 중 하나다. `textColor`는 6자리 HEX 색상이다. PNG가 실패하면 기본 종이와 어두운 본문으로 표시한다. 임의 URL이나 사용자 업로드는 받지 않는다.
 
 ```sh
-# 검사·manifest 생성만 수행한다. revision 생략 시 UUID를 생성하여 --out에 기록한다.
+# 검사·manifest 생성만 수행한다. 이미지 버전 UUID는 입력하지 않는다.
 node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs prepare --definition /private/tmp/postit-definition.json --paper /absolute/path/paper.png --out /private/tmp/postit-manifest.json
 
-# 출력한 manifest의 동일한 UUID로 업로드·공개 다운로드 해시 확인·초안 등록
-node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs upload --definition /private/tmp/postit-manifest.json --paper /absolute/path/paper.png
+# 업로드·공개 다운로드 해시 확인·독립 라이브러리 등록. 사용자 지급은 하지 않는다.
+node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs upload --definition /private/tmp/postit-definition.json --paper /absolute/path/paper.png
 
-# 별도 게시·신규 지급 활성화. 게시만으로 사용자에게 지급하지 않는다.
-node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs publish --revision REVISION_UUID --activate
-node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs list --revision REVISION_UUID
+# 업로드된 PNG를 확인한 뒤 지급 가능 상태로 등록한다.
+node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs register --definition /private/tmp/postit-manifest.json --activate
+node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs list --theme halloween
 
 # 신규 지급만 중지. 기존 보유와 이미 붙인 종이는 유지한다.
 node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs disable --design halloween-paper
 node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs enable --design halloween-paper
 ```
 
-파일은 `postit/<id>/<revision>/paper.png` 경로에 저장한다. 기존 파일을 덮어쓰지 않는다. 응답 유실·부분 실패에는 같은 파일·리비전으로 재시도한다. 다른 해시이면 중단한다. 게시 변경은 새 리비전을 만들며, 이미 붙인 종이는 이전 리비전을 유지한다. 과거 파일과 지급 근거는 보존한다.
+기본 파일 경로는 `halloween/postits/halloween-paper/paper.png`다. 입력 JSON의 `paper.path`로 같은 주제의 다른 PNG 경로를 명시할 수도 있다. 경로와 SHA-256으로 이미지 캐시를 구분한다. 기존 파일을 다른 이미지로 덮어쓰지 않는다. 응답 유실·부분 실패에는 같은 파일·경로·정의로 재시도한다. 다른 해시이면 중단하고 새 파일 경로를 등록한다.
+
+이미 붙인 종이를 보존하기 위한 스냅샷 ID는 서버가 자동 생성한다. 운영자는 UUID를 생성·선택하거나 별도 이미지 버전을 게시하지 않는다. 같은 정의 재등록은 스냅샷을 늘리지 않는다. 새 정의는 이후 작성에 적용하고 과거 종이·파일·지급 근거는 보존한다.
 
 ## 공부 조건 자동 지급
 
@@ -97,10 +99,10 @@ Storybook `화면/포스트잇 디자인 보상`에서 원형 견본 선택·작
 
 ## 이번 로컬 검증 기록
 
-- 전체 앱 테스트 385개 통과. 린트·타입 검사와 Storybook 정적 빌드, 테스트용 공개 설정의 웹 export·CSP 처리 통과.
+- 전체 앱 테스트 392개 통과. 린트·타입 검사와 Storybook 정적 빌드, 테스트용 공개 설정의 웹 export·CSP 처리 통과.
 - 격리 PostgreSQL의 새 포스트잇 디자인 검사 및 기존 원격 이미지 회귀 검사 통과. 실제 운영 DB에 마이그레이션을 적용하지 않았다.
 - 웹 Storybook의 320px에서 원형 디자인 선택·입력·배치·열람을 조작하고 이미지 실패의 기본 종이 대체를 확인했다. 원형 버튼은 모두 44×44이며 실제 `aria-checked`도 확인했다.
-- Android와 iPhone 실기기, 실제 PNG 업로드·행사 등록·자동 지급·푸시 수신은 미검증이다. 푸시는 이번 기능에 포함하지 않는다.
+- Android와 iPhone 실기기, 실제 PNG 업로드·행사 등록·자동 지급은 미검증이다. 푸시는 이번 기능에 포함하지 않는다.
 
 ![PNG 일부를 원형으로 자른 디자인 선택 · 320px](../development/assets/postit-design-circle-320.png)
 

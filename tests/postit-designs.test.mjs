@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {decodePostitArtwork,decodeOwnedDesigns} from '../src/features/postits/designs.ts';
+import {decodePostitArtwork,decodeOwnedDesigns,decodePostitDefinition} from '../src/features/postits/designs.ts';
 import {decodePostit} from '../src/features/postits/model.ts';
 import {artworkUrl} from '../src/lib/artwork-content.ts';
 import {preparePostit} from '../supabase/scripts/manage-postit-designs.mjs';
@@ -27,4 +27,13 @@ test('unsupported definitions do not hide supported owned designs',()=>{
  const note={id:'old',author:'친구',text:'메시지',room_id:0,color:'#F9E8A0',x:.2,y:.4,study_date:'2026-10-31',deleted_at:null,design_id:manifest.id,design_revision:revision};
  assert.equal(decodePostit(note).color,'#F9E8A0');
  assert.equal(decodePostit({...note,design_id:undefined,design_revision:undefined}).text,'메시지');
+});
+
+test('theme/path registration needs no revision UUID and uses a hash cache key',()=>{
+ const themed=preparePostit({id:'halloween-paper',theme:'halloween',name:'종이',fallbackColor:'#F9E8A0',textColor:'#453F30'},bytes);
+ assert.equal(themed.schemaVersion,2);assert.equal(themed.revision,undefined);
+ assert.equal(themed.paper.path,'halloween/postits/halloween-paper/paper.png');
+ assert.ok(artworkUrl('https://x.supabase.co',themed.paper).endsWith(`?hash=${themed.paper.sha256}`));
+ assert.throws(()=>decodePostitDefinition({...themed,revision}),/not an image revision/);
+ assert.throws(()=>decodePostitDefinition({...themed,paper:{...themed.paper,path:'winter/postits/paper.png'}}));
 });
