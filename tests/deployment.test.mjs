@@ -14,7 +14,7 @@ test('only a published matching APK runtime and version permits OTA', () => {
   assert.equal(deploymentMode({ ...input, changed: false }), 'skip');
 });
 test('docs, server and tests do not publish; mobile and native inputs do', () => {
-  assert.equal(changesApp(['docs/SPEC.md', 'supabase/migrations/change.sql', 'tests/check.mjs', '.github/workflows/check.yml']), false);
+  assert.equal(changesApp(['docs/product/SPEC.md', 'supabase/migrations/change.sql', 'tests/check.mjs', '.github/workflows/check.yml']), false);
   for (const file of ['src/data/leave.ts', 'assets/icon.png', 'app.config.js', 'plugins/widget.js', 'modules/timer/android/a.kt', 'package-lock.json']) {
     assert.equal(changesApp([file]), true);
   }

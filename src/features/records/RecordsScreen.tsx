@@ -1,3 +1,4 @@
+import { useStudyResources } from '../study/study-resources';
 import { recordQueryVersion } from '../../lib/record-query-version';
 import { useScreenNow } from '../study/useScreenNow';
 import { useMemoryQuery } from '../../data/useMemoryQuery';
@@ -14,6 +15,7 @@ import { RecordsPreview } from './RecordsPreview';
 import { weekStart, type StudyRecord } from './model';
 
 export function RecordsScreen() {
+  useStudyResources(['today']);
   const study = useStudy();
   const [initialNow] = useState(() => Date.now());
   const today = study.today?.data.day.studyDate ?? getStudyDate(initialNow);
@@ -32,7 +34,7 @@ export function RecordsScreen() {
     const snapshotTime = useCurrent ? current.serverNow : history!.serverNow;
     const now = (cached && !useCurrent) || study.error ? Date.parse(snapshotTime) : Math.max(studyNow, Date.parse(snapshotTime));
     const seconds = displayedSeconds(source, current?.data.activeSession ?? null, snapshotTime, now);
-    return { date: day.studyDate, asOf: now, minutes: seconds / 60, goal: source.goalMinutes,
+    return { date: day.studyDate, superWatermelon: source.superWatermelon, asOf: now, minutes: seconds / 60, goal: source.goalMinutes,
       status: source.attendance === 'leave' ? 'leave' : source.isRestDay ? 'rest' : seconds > 0 ? 'study' : 'empty', sessions: [] };
   });
   const notice = error || cached ? <View style={{ gap: 8 }}>

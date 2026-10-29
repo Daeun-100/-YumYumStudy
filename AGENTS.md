@@ -27,7 +27,7 @@ Run lint and typecheck before declaring any task done.
 
 - Create feature branches from the latest `develop` branch. Use the `codex/` prefix for branches created by Codex.
 - Implement features on the feature branch and open a pull request targeting `develop`.
-- Run lint and typecheck before opening the pull request. Production releases follow the existing `develop` → `master` release PR workflow in `docs/RELEASES.md`.
+- Run lint and typecheck before opening the pull request. Production releases follow the existing `develop` → `master` release PR workflow in `docs/operations/RELEASES.md`.
 
 ## Deployment versions
 
@@ -35,7 +35,7 @@ Run lint and typecheck before declaring any task done.
 - For a new production APK, increase Major for breaking changes, Minor for compatible features, or Patch for fixes, resetting lower positions. Increase Android `versionCode` too. APK releases use `vX.Y.Z`.
 - For an update compatible with the published APK, keep the app version and `versionCode` unchanged. After a successful production update, automation creates a GitHub Release/tag `vX.Y.Z-rN` on the deployed commit, starting at `r1` for each APK version.
 - Revision tags are deployment identifiers, not SemVer precedence. Never use them as an APK baseline or trigger APK download notices from them. Keep GitHub Latest pointing to the APK release.
-- Use the existing master deployment workflow and compatibility review. Do not manually move tags, reuse revision numbers, or publish production updates directly from a local checkout. See `docs/RELEASES.md`.
+- Use the existing master deployment workflow and compatibility review. Do not manually move tags, reuse revision numbers, or publish production updates directly from a local checkout. See `docs/operations/RELEASES.md`.
 
 ## Navigation & Routing
 

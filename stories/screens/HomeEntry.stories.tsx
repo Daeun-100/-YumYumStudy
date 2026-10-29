@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { StudyLayout } from './StudyLayouts';
 
 const meta = {
-  title: '화면 시안/홈 공부방 입장',
+  title: '화면/홈 공부방 입장',
   component: StudyLayout,
   parameters: { layout: 'fullscreen', screenLayout: true },
   args: { screen: 'home', homeEntryPreview: true, running: true, activeFriendCount: 3, width: 390, height: 844 },

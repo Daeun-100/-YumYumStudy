@@ -22,16 +22,21 @@ test('room subscription listens to both member and session changes, and stops af
   const context = { exports: {}, require: name => modules[name] ?? {} };
   vm.runInNewContext(source, context);
   let changes = 0;
-  const unsubscribe = context.exports.subscribeStudyChanges(() => { changes++; }, () => {});
+  const owners = [];
+  const unsubscribe = context.exports.subscribeStudyChanges(owner => { changes++; owners.push(owner); }, () => {});
   const events = handlers.filter(handler => handler.kind === 'postgres_changes');
   assert.deepEqual(events.map(event => event.filter.table), ['study_sessions', 'profiles']);
   for (const event of events) {
     assert.equal(event.filter.filter, 'room_id=eq.1');
-    event.callback();
+    event.callback({ new: {} });
   }
   assert.equal(changes, 2);
+  events[0].callback({ new: { user_id: 'session-owner' } });
+  events[1].callback({ old: { id: 'profile-owner' } });
+  events[0].callback({ new: { user_id: 123 } });
+  assert.deepEqual(owners, [undefined, undefined, 'session-owner', 'profile-owner', undefined]);
   unsubscribe();
-  events.forEach(event => event.callback());
-  assert.equal(changes, 2);
+  events.forEach(event => event.callback({ new: {} }));
+  assert.equal(changes, 5);
   assert.equal(removed, 1);
 });

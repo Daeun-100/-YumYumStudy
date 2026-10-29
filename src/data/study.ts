@@ -64,14 +64,23 @@ export async function getMemberHistory(memberId: string, from: StudyDate, to: St
   if (start > end || end - start > 365 * 86400000) throw new StudyError('VALIDATION', '기록은 시작일부터 최대 366일 범위로 조회해 주세요.');
   return decodeSnapshot(await callRpc('get_member_history', { p_member_id: memberId, p_from: from, p_to: to }), decodeHistory);
 }
+function changedOwner(payload: { new?: unknown; old?: unknown } | undefined, key: string): string | undefined {
+  for (const row of [payload?.new, payload?.old]) {
+    if (row && typeof row === 'object' && key in row) {
+      const value = (row as Record<string, unknown>)[key];
+      if (typeof value === 'string' && value) return value;
+    }
+  }
+  return undefined;
+}
 let subscriptionId = 0;
-export function subscribeStudyChanges(onChange: () => void, onState: (state: ConnectionState) => void): () => void {
+export function subscribeStudyChanges(onChange: (ownerId?: string) => void, onState: (state: ConnectionState) => void): () => void {
   const client = getSupabase();
   let disposed = false;
   onState('connecting');
   const channel = client.channel(`study-changes-${++subscriptionId}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'study_sessions', filter: `room_id=eq.${studyRoomId}` }, () => { if (!disposed) onChange(); })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `room_id=eq.${studyRoomId}` }, () => { if (!disposed) onChange(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'study_sessions', filter: `room_id=eq.${studyRoomId}` }, payload => { if (!disposed) onChange(changedOwner(payload, 'user_id')); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `room_id=eq.${studyRoomId}` }, payload => { if (!disposed) onChange(changedOwner(payload, 'id')); })
     .on('system', {}, (payload) => {
       if (!disposed && payload.extension === 'postgres_changes') {
         onState(payload.status === 'ok' ? 'connected' : 'disconnected');

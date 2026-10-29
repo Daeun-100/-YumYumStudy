@@ -3,7 +3,15 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { readReview, releaseSummary } from './deployment-review.mjs';
+import { readReview, releaseSummary, sourceSnapshot, validateReview } from './deployment-review.mjs';
+
+// The app renders plain text. Only publish the summary reviewed for this APK's
+// exact source tree; the editable GitHub Release body also contains operator data.
+export function releaseNoticeNotes(review, sourceTreeDigest) {
+  validateReview(review, sourceTreeDigest);
+  assert.equal(review.blockers.length, 0, 'Release notice requires a completed deployment review');
+  return review.releaseNotes.map(note => `• ${note.trim()}`).join('\n');
+}
 
 export function apkReleaseNotes(review, release) {
   return [releaseSummary(review), '',
@@ -117,7 +125,9 @@ async function main() {
     assert.equal(asset.browser_download_url, expectedUrl);
     gh(['release', 'download', tag, '--repo', repository, '--pattern', candidate.apkName, '--dir', 'publication']);
     assert.equal(createHash('sha256').update(readFileSync(`publication/${candidate.apkName}`)).digest('hex'), candidate.apkSha256, 'Release APK differs from the verified build');
-    writeFileSync('publication/verified.json', JSON.stringify({ ...candidate, downloadUrl: expectedUrl, notes: String(release.body ?? '').slice(0, 6000) }));
+    const review = JSON.parse(execFileSync('git', ['show', `${sha}:.github/deployment-review.json`], { encoding: 'utf8' }));
+    const notes = releaseNoticeNotes(review, sourceSnapshot(process.cwd(), sha).sourceTreeDigest);
+    writeFileSync('publication/verified.json', JSON.stringify({ ...candidate, downloadUrl: expectedUrl, notes }));
     const { appendFileSync } = await import('node:fs');
     appendFileSync(process.env.GITHUB_OUTPUT, `deployment_id=${candidate.deploymentId}\n`);
   } else throw new Error('Expected create, notes or verify');

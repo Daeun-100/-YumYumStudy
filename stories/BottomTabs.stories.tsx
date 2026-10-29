@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { useState } from 'react';
 import { View } from 'react-native';
-import { BottomTabs } from './screens/StudyLayouts';
+import { BottomTabs } from '../src/features/navigation/BottomTabs';
 
 function BottomTabsExample({ width = 390 }: { width?: number }) {
   const [selected, setSelected] = useState('홈');

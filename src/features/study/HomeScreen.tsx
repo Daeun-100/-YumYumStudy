@@ -1,3 +1,4 @@
+import { useStudyResources } from './study-resources';
 import { useScreenNow } from './useScreenNow';
 import { useState } from 'react';
 import { AllowedAppsLauncher } from '../allowed-apps/AllowedAppsLauncher';
@@ -15,6 +16,7 @@ import { displayedSeconds, goalLabel, progress, timer } from './presentation';
 import { HomeArtwork } from './HomeArtwork';
 
 export function HomeScreen() {
+  useStudyResources(['today', 'room']);
   const focused = useIsFocused();
   const [allowedAppsOpen, setAllowedAppsOpen] = useState(false);
   const identity = useIdentity();
@@ -45,7 +47,7 @@ export function HomeScreen() {
       <View onLayout={artwork.onLayout} style={s.scene}>
         {height !== null && scene && <HomeArtwork effectsEnabled={focused} activeSkinId={identity.profile?.activeSkinId} character={identity.profile?.character ?? 'bunny'} width={scene.width} height={scene.height} />}
         {!!activeFriends.length && !study.roomError && <View accessibilityLabel={friendMessage} style={s.friends}>
-          {!!activeFriends.length && <View style={s.avatars}>{activeFriends.slice(0, 3).map(member => <View key={member.profile.id} style={s.avatar}><Image fadeDuration={0} source={resolveCharacterArtwork(member.profile.character, member.profile.activeSkinId).home} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${member.profile.displayName} 캐릭터`} /></View>)}</View>}
+          {!!activeFriends.length && <View style={s.avatars}>{activeFriends.slice(0, 3).map(member => <View key={member.profile.id} style={s.avatar}><Image fadeDuration={0} source={resolveCharacterArtwork(member.profile.character, member.profile.activeSkinId).focus} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${member.profile.displayName} 캐릭터`} /></View>)}</View>}
           <Text style={[s.secondary, { flex: 1, color: colors.text }]}>{friendMessage}</Text>
         </View>}
       </View>

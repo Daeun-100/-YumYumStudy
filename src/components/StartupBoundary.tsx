@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { View } from 'react-native';
 import { useIdentity } from './IdentityProvider';
 import { useStudy } from '../features/study/StudyProvider';
 import { StartupScreen } from './StartupScreen';
 import { finishTiming } from '../lib/performance';
+const StartupVisibility = createContext(false);
+export const useStartupVisible = () => useContext(StartupVisibility);
 
 /** Keep navigation mounted, revealing it once the live owner state is ready. */
 export function StartupBoundary({ children }: PropsWithChildren) {
@@ -39,7 +41,7 @@ export function StartupBoundary({ children }: PropsWithChildren) {
   }
   const failed = expired || (!identity.loading && !study.loading && (!!identity.error || !!study.startupError || (!study.today && !!study.error)));
   return <View style={{ flex: 1 }}>
-    <View style={{ flex: 1, opacity: opened ? 1 : 0 }} aria-hidden={!opened} pointerEvents={opened ? 'auto' : 'none'} accessibilityElementsHidden={!opened} importantForAccessibility={opened ? 'auto' : 'no-hide-descendants'}>{children}</View>
+    <View style={{ flex: 1, opacity: opened ? 1 : 0 }} aria-hidden={!opened} pointerEvents={opened ? 'auto' : 'none'} accessibilityElementsHidden={!opened} importantForAccessibility={opened ? 'auto' : 'no-hide-descendants'}><StartupVisibility.Provider value={opened}>{children}</StartupVisibility.Provider></View>
     {!opened && <>
       <StartupScreen failed={failed} onRetry={retry} />
     </>}
