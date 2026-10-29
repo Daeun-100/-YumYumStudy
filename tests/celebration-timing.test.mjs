@@ -26,8 +26,8 @@ test('fast reward waits for the stamp and original hold, without replaying it', 
   app.advance(1); assert.deepEqual(app.events, [['collect', 5800]]);
   app.gate.update(true, false); app.gate.stamped(); app.advance(1000);
   assert.equal(app.events.length, 1);
-  app.gate.rewardFinished(); app.advance(2999); assert.equal(app.events.length, 1);
-  app.advance(1); assert.deepEqual(app.events.at(-1), ['expire', 9800]);
+  app.gate.rewardFinished(); app.advance(1999); assert.equal(app.events.length, 1);
+  app.advance(1); assert.deepEqual(app.events.at(-1), ['expire', 8800]);
 });
 test('a delayed reward promotes the same notice as soon as confirmed', () => {
   const app = mount(); app.gate.update(false, true); app.gate.stamped(); app.advance(3000);
