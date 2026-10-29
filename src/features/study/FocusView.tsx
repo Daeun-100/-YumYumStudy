@@ -1,6 +1,7 @@
 import { SkinEffects } from './SkinEffects';
 import { resolveCharacterArtwork } from '../../design/skin-artwork';
 import type { ReactNode } from 'react';
+import type { ImageSourcePropType } from 'react-native';
 import roomBackground from '../../../assets/backgrounds/focus-background.png';
 import { useMeasuredLayout } from '../../hooks/useMeasuredLayout';
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -14,12 +15,15 @@ const imageSource = (asset: number | string) => typeof asset === 'string' ? { ur
 
 export type FocusMember = { id: string; name: string; time: string; active: boolean; character: CharacterId; activeSkinId?: string | null; self?: boolean; achieved?: boolean };
 export type FocusViewProps = {
+  backgroundSource?: ImageSourcePropType;
   effectsEnabled?: boolean;
   effectStrength?: number;
   onWake?(member: FocusMember): void;
   wakeSentIds?: string[];
   timerControl?: ReactNode;
   initialSceneSize?: { width: number; height: number };
+  /** Explicit artwork bounds for previews; live screens measure the available space. */
+  fixedSceneSize?: { width: number; height: number };
   renderRoomOverlay?(size: { width: number; height: number }): ReactNode;
   members: FocusMember[]; memberCount: number | null; seconds: number | null; sessionSeconds?: number | null; goalMinutes: number | null;
   running: boolean; busy?: boolean; disabled?: boolean; retry?: boolean;
@@ -27,11 +31,11 @@ export type FocusViewProps = {
 };
 
 /** Shared Storybook and app layout. All session state comes from the caller. */
-export function FocusView({ effectsEnabled = true, effectStrength = 1, onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl, initialSceneSize }: FocusViewProps) {
+export function FocusView({ backgroundSource, effectsEnabled = true, effectStrength = 1, onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl, initialSceneSize, fixedSceneSize }: FocusViewProps) {
   const { height } = useWindowDimensions();
   const compact = height < 740;
   const artwork = useMeasuredLayout('focus-art', String(compact));
-  const sceneSize = artwork.size ?? initialSceneSize;
+  const sceneSize = fixedSceneSize ?? artwork.size ?? initialSceneSize;
   const sceneWidth = sceneSize?.width ?? 0;
   const sceneHeight = sceneSize?.height ?? 0;
   const scale = Math.max(sceneWidth / 1024, sceneHeight / 1100);
@@ -42,9 +46,9 @@ export function FocusView({ effectsEnabled = true, effectStrength = 1, onWake, w
   const achieved = percent !== null && percent >= 100;
   return <>
     <View style={s.header}><Button label="←" size="icon" variant="ghost" accessibilityLabel="홈으로 돌아가기" onPress={onBack} /><Text accessibilityRole="header" style={s.title}>우리 공부방</Text><Button label={onAllowedApps ? '허용앱' : `${memberCount ?? '—'}명`} size="compact" variant="raised" accessibilityLabel={onAllowedApps ? '내 허용앱 목록 열기' : `친구 ${memberCount ?? ''}명 현황 보기`} onPress={onAllowedApps ?? onFriends} /></View>
-    <View onLayout={artwork.onLayout} style={s.art}>
+    <View onLayout={fixedSceneSize ? undefined : artwork.onLayout} style={[s.art, fixedSceneSize && { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: fixedSceneSize.width, height: fixedSceneSize.height }]}>
       {sceneSize && <>
-      <Image fadeDuration={0} source={imageSource(roomBackground)} resizeMode="contain" style={{ position: 'absolute', width: 1024 * scale, height: 1536 * scale, left: (sceneWidth - 1024 * scale) / 2, top: tableTop - 912 * scale }} accessibilityLabel="함께 공부하는 공부방" />
+      <Image fadeDuration={0} source={backgroundSource ?? imageSource(roomBackground)} resizeMode="contain" style={{ position: 'absolute', width: 1024 * scale, height: 1536 * scale, left: (sceneWidth - 1024 * scale) / 2, top: tableTop - 912 * scale }} accessibilityLabel="함께 공부하는 공부방" />
       <View style={[s.seats, { bottom: sceneHeight - tableTop - 72 * scale }]}>{Array.from({ length: 4 }, (_, index) => {
         const member = members[index];
         const size = characterSize * (member?.character === 'bunny' ? 1.20 : 1);

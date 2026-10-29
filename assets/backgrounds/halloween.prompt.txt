@@ -1,0 +1,11 @@
+Generated with the built-in image_gen tool, using each corresponding original background as the edit target.
+
+Create a cozy cute Halloween night variant of this exact YumYumStudy room illustration. Match the soft painted 2D style. Preserve camera, framing, room geometry and furniture placement. Highest priority: preserve every desk edge, tabletop boundary, corner and leg at its original pixel coordinates. Do not shift, scale, crop, zoom, recenter, reshape or change perspective.
+
+Use a muted purple night outside, tiny stars, distant bats, warm amber indoor light, small pumpkin lanterns and cute ghost decorations on peripheral shelves and windows. Preserve plants and the cozy room identity. Keep the central tabletop clear for character overlays. No characters, text, UI or watermark. Opaque PNG.
+
+Home reference: home-background.png, 1536x1024. Preserve diagonal desk edges, chair, mug, notebook and stacked books in their original locations. No added objects on the desk.
+
+Focus reference: focus-background.png, 1024x1536. Keep tabletop back edge at y=912 and front edge at y=1070, with apron down to about y=1122, matching the original horizontal boundaries. Preserve window and pendant lamp placement. Keep tabletop empty.
+
+Focus correction used both original and Halloween result as image references: preserve Halloween appearance; align only desk back boundary to original strongest transition y=913 in central x450..650, preserve front edge y=1071 and apron y=1122. No other redesign. Measured final strongest transitions: y=913,1070,1122; original: y=913,1071,1122. A 1px front-edge difference remains; full pixel-identical desk geometry is not certified.
