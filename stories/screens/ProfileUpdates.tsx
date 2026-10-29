@@ -14,7 +14,9 @@ export type ProfileUpdatesProps = { initialState?: UpdatePreviewState; sectionOn
 export function ProfileUpdates(props: ProfileUpdatesProps) {
   const { sectionOnly = false, width = 390, height = 844 } = props;
   return <View style={[sectionOnly ? s.sectionPreview : s.phone, { width }, !sectionOnly && { height }]}>
-    <ToastProvider scope="storybook-profile-updates"><ProfileUpdatesContent {...props} /></ToastProvider>
+    <ToastProvider scope="storybook-profile-updates">{sectionOnly
+      ? <View style={s.sectionContent}><ProfileUpdatesContent {...props} /></View>
+      : <ProfileUpdatesContent {...props} />}</ToastProvider>
   </View>;
 }
 
@@ -84,7 +86,8 @@ const s = StyleSheet.create({
   statusBar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 28, paddingTop: 12, paddingBottom: 8 },
   time: { ...typography.label, color: colors.text }, heading: { ...typography.heading, color: colors.text },
   content: { paddingHorizontal: spacing.xxl, paddingTop: spacing.xl, paddingBottom: 32, gap: spacing.lg },
-  sectionPreview: { maxWidth: '100%', backgroundColor: colors.background, padding: spacing.xxl, borderRadius: 20 },
+  sectionPreview: { maxWidth: '100%', backgroundColor: colors.background, borderRadius: 20 },
+  sectionContent: { padding: spacing.xxl },
   section: { gap: spacing.sm }, eyebrow: { ...typography.label, color: colors.secondary, paddingTop: spacing.sm },
   rule: { height: 1, backgroundColor: colors.track },
   label: { ...typography.body, fontWeight: '600', color: colors.text }, state: { ...typography.caption, color: colors.secondary },
