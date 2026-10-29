@@ -54,8 +54,8 @@ function Preview({ description, screen, width, height, visible }: Props) {
    {screens.map(current => <View key={current} style={{ gap: 12 }}>
     <Text style={{ ...typography.label, color: colors.text }}>{current === 'home' ? '홈 · 햇살 드는 공부방' : '집중 · 함께 공부하는 저녁'}</Text>
     <StudyLayout key={`${current}-${phoneWidth}-${height}`} screen={current} width={phoneWidth} height={height} sceneMinHeight={height < 740 ? 320 : undefined} homeEntryPreview running={false} character="blackcat" activeFriendCount={3}
-     renderHomeOverlay={scene => visible ? <RoomBanner screen="home" scene={scene} source={images.home ? { uri: images.home } : homeSample} description={description} /> : null}
-     renderFocusOverlay={scene => visible ? <RoomBanner screen="focus" scene={scene} source={images.focus ? { uri: images.focus } : focusSample} description={description} /> : null} />
+     renderHomeDecoration={scene => visible ? <RoomBanner screen="home" scene={scene} source={images.home ? { uri: images.home } : homeSample} description={description} /> : null}
+     renderFocusDecoration={scene => visible ? <RoomBanner screen="focus" scene={scene} source={images.focus ? { uri: images.focus } : focusSample} description={description} /> : null} />
    </View>)}
   </View>
  </View>;

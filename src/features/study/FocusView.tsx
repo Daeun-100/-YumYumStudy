@@ -21,13 +21,14 @@ export type FocusViewProps = {
   timerControl?: ReactNode;
   initialSceneSize?: { width: number; height: number };
   renderRoomOverlay?(size: { width: number; height: number }): ReactNode;
+  renderBackgroundDecoration?(size: { width: number; height: number }): ReactNode;
   members: FocusMember[]; memberCount: number | null; seconds: number | null; sessionSeconds?: number | null; goalMinutes: number | null;
   running: boolean; busy?: boolean; disabled?: boolean; retry?: boolean;
   onBack(): void; onFriends(): void; onToggle(): void; onAllowedApps?(): void;
 };
 
 /** Shared Storybook and app layout. All session state comes from the caller. */
-export function FocusView({ effectsEnabled = true, effectStrength = 1, onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl, initialSceneSize }: FocusViewProps) {
+export function FocusView({ effectsEnabled = true, effectStrength = 1, onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, renderBackgroundDecoration, timerControl, initialSceneSize }: FocusViewProps) {
   const { height } = useWindowDimensions();
   const compact = height < 740;
   const artwork = useMeasuredLayout('focus-art', String(compact));
@@ -45,6 +46,7 @@ export function FocusView({ effectsEnabled = true, effectStrength = 1, onWake, w
     <View onLayout={artwork.onLayout} style={s.art}>
       {sceneSize && <>
       <Image fadeDuration={0} source={imageSource(roomBackground)} resizeMode="contain" style={{ position: 'absolute', width: 1024 * scale, height: 1536 * scale, left: (sceneWidth - 1024 * scale) / 2, top: tableTop - 912 * scale }} accessibilityLabel="함께 공부하는 공부방" />
+      {renderBackgroundDecoration?.(sceneSize)}
       <View style={[s.seats, { bottom: sceneHeight - tableTop - 72 * scale }]}>{Array.from({ length: 4 }, (_, index) => {
         const member = members[index];
         const size = characterSize * (member?.character === 'bunny' ? 1.20 : 1);
