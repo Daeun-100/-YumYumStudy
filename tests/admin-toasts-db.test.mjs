@@ -23,7 +23,7 @@ test('admin toast SQL authorization, transactions, idempotency and terminal dele
       grant usage on schema auth,realtime to authenticated,service_role;
       grant select on public.profiles to service_role;
       insert into public.profiles values('${user}',1,true,now()),('${other}',1,true,now()),('${outsider}',0,true,now());`);
-    await db.exec(readFileSync(new URL('../supabase/migrations/20261029125804_admin_toasts.sql', import.meta.url), 'utf8'));
+    await db.exec(readFileSync(new URL('../supabase/migrations/20261029154511_admin_toasts.sql', import.meta.url), 'utf8'));
     const call = async input => (await db.query('select public.manage_admin_toasts($1::jsonb) as result', [JSON.stringify(input)])).rows[0].result;
     await db.exec('set role service_role');
     const base = { action: 'create', requestId, campaignId: id, kind: 'info_notice', roomId: 1, userIds: [user],

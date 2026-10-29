@@ -112,3 +112,13 @@ PGLITE_MODULE=/private/tmp/toast-db-tests/node_modules/@electric-sql/pglite/dist
 이 테스트는 실제 PostgreSQL grants·RLS·트랜잭션을 검사하며 Supabase Realtime과 Cron 전송은 stub이다. 출시 전 테스트 방에서 실제 Broadcast, 연결 복구, Android OTA 다운로드·적용 조건, native 접근성을 추가 검증한다. Storybook의 `공통 컴포넌트/토스트 · EAS 업데이트`는 앱과 같은 표시 컴포넌트를 사용한다.
 
 [320px 웹 토스트 확인 화면](../development/assets/admin-toast-small.png)
+
+## 2026년 10월 30일 테스트 반영 기록
+
+- 서버 migration `20261029154511_admin_toasts` 적용, `admin-toasts` Edge Function 배포와 전용 관리자 토큰 설정 완료.
+- 테스트 채널 `test` / EAS 환경 `preview` / Android OTA 그룹 `5cd0c273-040e-4f1c-8b92-ec4b0e5f6dde` 게시 완료. 앱 소스는 PR #52의 `9d19dd7`이다.
+- 런타임 `16a730161794c57f595e156bedaaf353630dde66`이며 기존 테스트 APK와 일치한다. production 채널에는 게시하지 않았다.
+- 같은 앱 소스로 로컬 테스트 APK 1.1.0 / versionCode 4 생성. 앱 ID는 `com.yumyumstudy.app.test`다.
+- 관리자 API의 테스트 방 목록 조회 HTTP 200, 앱 역할의 관리자 RPC 실행 거부, anon 조회 거부, 정리 작업 활성 상태 확인.
+- 안내 데이터는 0건이며 실제 사용자 토스트는 발송하지 않았다. 실제 휴대폰에서 수신·표시·삭제 및 OTA 조건 확인은 사용자 테스트 단계다.
+- 보안 advisor의 익명 인증 관련 안내는 프로젝트의 익명 로그인·방 입장 구조에 해당한다. 읽기 정책은 현재 입장한 방·본인 대상 조건을 유지하며 관리자 쓰기는 앱에서 허용하지 않는다. 비공개 요청·감사 테이블은 의도적으로 일반 사용자 정책 없이 차단한다. [Supabase 익명 인증 정책 진단 설명](https://supabase.com/docs/guides/database/database-advisors?queryGroups=lint&lint=0012_auth_allow_anonymous_sign_ins)을 기준으로 입장 검증과 역할 권한을 확인했다.
