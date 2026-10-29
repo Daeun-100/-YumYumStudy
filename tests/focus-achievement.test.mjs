@@ -28,9 +28,8 @@ function focusProps(study, ownerId, focused = true) {
     './StudyProvider': { useStudy: () => study },
     './study-resources': { useStudyResources: () => {} },
     './useScreenNow': { useScreenNow: () => study.now },
-    './FocusView': { FocusView: 'FocusView' },
+    './FocusScreenView': { FocusScreenView: 'FocusScreenView' },
     './presentation': presentation,
-    './StudyUI': { ui: {} },
     '../navigation/useAndroidBack': { useAndroidBack: () => {} },
     './StudyControl': {}, '../call-friend/CallFriendDialog': {}, '../postits/PostitOverlay': {}, '../allowed-apps/AllowedAppsLauncher': {},
   };
@@ -39,7 +38,7 @@ function focusProps(study, ownerId, focused = true) {
     return modules[name];
   } };
   vm.runInNewContext(source, context);
-  return context.exports.FocusScreen().props.children.props.children[0].props;
+  return context.exports.FocusScreen().props;
 }
 
 test('every viewer receives achievement flags for all friends using each friend’s own goal', () => {
