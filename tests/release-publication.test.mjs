@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { apkReleaseNotes, candidateFromBuilds, validateCandidate } from '../scripts/release-candidate.mjs';
+import { apkReleaseNotes, candidateFromBuilds, releaseNoticeNotes, validateCandidate } from '../scripts/release-candidate.mjs';
 import { preventRollback, releaseRows } from '../scripts/publish-release-info.mjs';
 const sha = 'a'.repeat(40);
 const app = { version: '1.0.1', android: { versionCode: 2, package: 'com.yumyumstudy.app' } };
@@ -52,4 +52,21 @@ test('APK release leads with the reviewed user summary and rejects missing notes
   assert.ok(body.startsWith(`## 변경사항\n\n- ${notes[0]}`));
   assert.ok(body.indexOf(notes[0]) < body.indexOf(sha));
   assert.throws(() => apkReleaseNotes({}, release), /releaseNotes/);
+});
+
+test('Android and web notices contain only the APK source reviewed user summary', () => {
+  const digest = 'd'.repeat(64);
+  const review = { schema: 1, sourceCommit: sha, sourceTreeDigest: digest, baseline: null,
+    reviewer: { kind: 'interactive-codex' }, recommendation: 'apk', rationale: 'APK version increased',
+    evidence: ['Operator evidence must stay out of the notice'], exemptions: [], blockers: [],
+    releaseNotes: [' 목표 달성 알림을 볼 수 있어요. ', '연차일에도 공부 시간을 확인할 수 있어요.'] };
+  const notes = releaseNoticeNotes(review, digest);
+  const rows = releaseRows({ revision: 4, version: '1.1.0', notes, downloadUrl: 'https://example.com/app.apk' }, 'yumyumstudy');
+  for (const row of rows) {
+    assert.equal(row.notes, '• 목표 달성 알림을 볼 수 있어요.\n• 연차일에도 공부 시간을 확인할 수 있어요.');
+    assert.doesNotMatch(row.notes, /##|<details>|<summary>|Commit:|빌드 번호|배포 후보|Operator|[a-f0-9]{40}/);
+  }
+  assert.throws(() => releaseNoticeNotes(review, 'e'.repeat(64)), /stale/);
+  assert.throws(() => releaseNoticeNotes({ ...review, releaseNotes: [] }, digest), /releaseNotes/);
+  assert.throws(() => releaseNoticeNotes({ ...review, blockers: ['Server missing'] }, digest), /completed deployment review/);
 });
