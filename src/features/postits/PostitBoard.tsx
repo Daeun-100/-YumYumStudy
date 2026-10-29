@@ -75,7 +75,7 @@ export function PostitBoard({ createId, scene, notes, add, remove, error, noteBo
     </View>
     <Dialog visible={selected !== null} label="공유 포스트잇" embedded={embedded} busy={busy} onClose={() => setSelected(null)}>
       <PostitSheet artwork={selectedArtwork} color={selected?.color ?? postitColors[0]} imageUrl={imageUrl} onImageError={() => failImage(selectedArtwork)}>
-        <View style={s.noteHeader}><Text numberOfLines={1} style={[s.author, !!selectedArtwork && s.artworkHeading]}>{selected?.author}</Text><DialogCloseButton label="×" accessibilityLabel="포스트잇 닫기" size="icon" variant="ghost" /></View>
+        <View style={s.noteHeader}><Text numberOfLines={1} style={s.author}>{selected?.author}</Text><DialogCloseButton label="×" accessibilityLabel="포스트잇 닫기" size="icon" variant="ghost" /></View>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={s.readingContent}><Text style={[s.message, { color: textColor(selectedArtwork) }]}>{selected?.text}</Text></ScrollView>
         {!!actionError && <Text accessibilityRole="alert" style={s.error}>{actionError}</Text>}
         <View style={s.noteFooter}><Pressable accessibilityRole="button" accessibilityLabel="포스트잇 지우기" disabled={busy} onPress={() => void deleteSelected()} style={({ pressed }) => [s.delete, pressed && { opacity: .6 }]}><Trash2 size={16} color="#BE6573" strokeWidth={1.5} /><Text style={[s.smallCaption, { color: '#BE6573' }]}>지우기</Text></Pressable></View>
@@ -112,8 +112,7 @@ const s = StyleSheet.create({
   noteHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
   noteFooter: { alignItems: 'flex-end' },
   author: { ...typography.link, color: colors.text, flex: 1 },
-  artworkHeading: { textAlign: 'center' },
-  readingContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 12 },
+  readingContent: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 8 },
   designSwatch: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
   // Remove the supplied circular PNG's transparent outer padding inside the round clip.
   previewCrop: { position: 'absolute', width: 48, height: 48, left: -4, top: -4 },

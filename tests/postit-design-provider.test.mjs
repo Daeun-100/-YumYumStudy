@@ -42,3 +42,36 @@ test('offline failure keeps owned designs and successful refresh clears the erro
  const h=setup();h.render();await flush();h.online(false);await h.render().refresh();assert.equal(h.render().owned.length,1);assert.ok(h.render().error);
  h.online(true);await h.render().refresh();assert.equal(h.render().error,null);h.dispose();
 });
+
+test('cached ownership is shown while the startup server read is still pending',async()=>{
+ const h=setup();let resolve;
+ h.storage.set('postit-designs-v1:owner:0',JSON.stringify(response()));
+ h.hold(new Promise(done=>resolve=done));
+ assert.equal(h.render().owned.length,0);await flush();
+ assert.equal(h.render().owned[0].artwork.id,'remote-paper');
+ assert.equal(h.reads(),1);
+ for(let i=0;i<5;i++)h.render();assert.equal(h.reads(),1);
+ resolve(response([]));await flush();assert.equal(h.render().owned.length,0);h.dispose();
+});
+test('cold offline startup restores cached ownership and keeps the refresh error',async()=>{
+ const h=setup();let resolveCache;
+ h.online(false);h.cacheHold(new Promise(done=>resolveCache=done));
+ h.render();await flush();assert.ok(h.render().error);
+ resolveCache(JSON.stringify(response()));await flush();
+ assert.equal(h.render().owned.length,1);assert.ok(h.render().error);
+ h.cacheHold(null);h.online(true);h.reply(response());await h.render().refresh();
+ assert.equal(h.render().error,null);h.dispose();
+});
+test('switching accounts never exposes the previous account ownership while offline',async()=>{
+ const h=setup();h.render();await flush();assert.equal(h.render().owned.length,1);
+ h.online(false);h.owner('another-owner');assert.equal(h.render().owned.length,0);
+ await flush();assert.equal(h.render().owned.length,0);assert.ok(h.render().error);h.dispose();
+});
+test('a reward threshold refresh immediately updates ownership and the disk cache',async()=>{
+ const h=setup();h.reply(response([],10));h.render();await flush();h.render();
+ assert.equal(h.render().owned.length,0);assert.equal(h.timers.size,1);
+ h.reply(response());[...h.timers.values()][0].run();await flush();
+ assert.equal(h.render().owned.length,1);
+ assert.equal(JSON.parse(h.storage.get('postit-designs-v1:owner:0')).owned.length,1);
+ assert.equal(h.timers.size,0);h.dispose();
+});

@@ -66,7 +66,7 @@ export function PostitDesignProvider({ children }: PropsWithChildren) {
       if (!text || disposed || current.current.scope !== scope || version !== epoch.current || syncedEpoch.current === version) return;
       try {
         const cache = JSON.parse(text), owned = decodeOwnedDesigns(cache.owned), visible = decodeVisibleDesigns(cache.visible);
-        setData(old => old.scope === scope && old.owned.length ? old : { scope, owned, visible, error: null });
+        setData(old => old.scope === scope && old.owned.length ? old : { scope, owned, visible, error: old.scope === scope ? old.error : null });
       } catch { /* Replace malformed caches on the next successful read. */ }
     }).catch(() => {});
     return () => { disposed = true; };
