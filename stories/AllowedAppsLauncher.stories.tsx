@@ -29,7 +29,7 @@ const fixtures = [
   { packageName: 'gallery', label: '갤러리', iconUri: icon('G', '#66716F') },
 ];
 type Props = { screen: 'modal' | 'settings'; width: number; height: number; empty: boolean; missingIcons: boolean; running: boolean };
-function AllowedAppsProposal({ screen, width, height, empty, missingIcons, running }: Props) {
+function AllowedAppsLauncher({ screen, width, height, empty, missingIcons, running }: Props) {
   const [allowed, setAllowed] = useState<string[]>(empty ? [] : ['dictionary', 'calculator', 'notes', 'clock', 'browser', 'translate', 'pdf', 'flashcards', 'lecture']);
   const [selected, setSelected] = useState<string | null>(null);
   const [visible, setVisible] = useState(true);
@@ -54,7 +54,7 @@ function AllowedAppsProposal({ screen, width, height, empty, missingIcons, runni
   }));
   const select = (pkg: string, on: boolean) => { void selectionQueue.select(pkg, on); };
   return <View style={{ maxWidth: '100%', gap: spacing.md }}>
-    <Text style={[typography.caption, { color: colors.secondary, maxWidth: width }]}>#9 · 실제 앱과 동일한 화면 · 아이콘 이미지만 예시 데이터예요.</Text>
+    <Text style={[typography.caption, { color: colors.secondary, maxWidth: width }]}>실제 앱과 동일한 화면 · 아이콘 이미지만 예시 데이터예요.</Text>
     <View style={{ width, height, maxWidth: '100%', backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 28, overflow: 'hidden' }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 8 }}><Text style={typography.caption}>9:41</Text><Text style={typography.caption}>Android</Text></View>
       {current === 'modal' ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 24 }}>
@@ -72,12 +72,12 @@ function AllowedAppsProposal({ screen, width, height, empty, missingIcons, runni
   </View>;
 }
 const meta = {
-  title: '화면 시안/허용앱 가시성', component: AllowedAppsProposal,
-  parameters: { screenLayout: true, docs: { description: { component: '이슈 #9. 실제 앱과 같은 AllowedAppsLauncherView / AllowedAppsView를 사용합니다. 모달은 40px 아이콘과 두 줄 이름을 3열로 표시해 9개 앱을 한눈에 보여주고, 마이페이지는 허용한 앱 우선·그룹 내 이름순입니다. 브라우저는 설치 앱에 접근할 수 없어 아이콘만 오프라인 예시 이미지입니다. 실제 저장이나 앱 실행은 하지 않습니다.' } } },
+  title: '화면/허용앱 실행', component: AllowedAppsLauncher,
+  parameters: { screenLayout: true, docs: { description: { component: '실제 앱과 같은 AllowedAppsLauncherView / AllowedAppsView를 사용합니다. 모달은 40px 아이콘과 두 줄 이름을 3열로 표시해 9개 앱을 한눈에 보여주고, 마이페이지는 허용한 앱 우선·그룹 내 이름순입니다. 브라우저는 설치 앱에 접근할 수 없어 아이콘만 오프라인 예시 이미지입니다. 실제 저장이나 앱 실행은 하지 않습니다.' } } },
   args: { screen: 'modal', width: 390, height: 844, empty: false, missingIcons: false, running: false },
   argTypes: { screen: { control: 'select', options: ['modal', 'settings'] } },
-  render: args => <AllowedAppsProposal key={JSON.stringify(args)} {...args} />,
-} satisfies Meta<typeof AllowedAppsProposal>;
+  render: args => <AllowedAppsLauncher key={JSON.stringify(args)} {...args} />,
+} satisfies Meta<typeof AllowedAppsLauncher>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Modal: Story = { name: '모달 · 허용앱 9개 격자' };

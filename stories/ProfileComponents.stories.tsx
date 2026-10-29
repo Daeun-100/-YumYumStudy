@@ -19,3 +19,5 @@ function WheelDemo() {
   return <TimeWheelPicker value={value} onChange={setValue} />;
 }
 export const TimeWheel: Story = { name: '시간 · 스크롤 휠', render: () => <WheelDemo /> };
+
+export const SuperWatermelon: Story = { name: '7일 완주 · 금색 수박', render: () => <WeeklyAchievement weekdayProgress={[100, 100, 100, 100, 100, 100, 100]} superWatermelon /> };

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { SharedPostits } from './SharedPostits';
 const meta = {
-  title: '화면 시안/공유 포스트잇', component: SharedPostits,
+  title: '화면/공유 포스트잇', component: SharedPostits,
   parameters: { screenLayout: true, layout: 'fullscreen', docs: { description: { component: '실제 앱의 FocusView를 재사용한 공부방 위에 작은 포스트잇만 보이고, 누르면 내용을 읽어요. 반투명 붙이기 버튼과 간결한 종이형 내용 창을 사용합니다. ＋ 포스트잇 → 한마디 작성 → 원하는 위치를 눌러 붙이기. 오늘 작성한 포스트잇만 표시하며 작성자와 관계없이 누구나 내용 창에서 삭제할 수 있습니다. 어제 작성한 샘플은 숨깁니다. 스토리북 전용 시안이며 서버와 연결하지 않습니다.' } } },
   args: { width: 390, height: 844, empty: false, initialOpen: false, initialPlacement: false },
   render: args => <SharedPostits key={JSON.stringify(args)} {...args} />,
