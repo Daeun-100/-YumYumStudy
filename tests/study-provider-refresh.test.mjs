@@ -42,6 +42,7 @@ function mount({ resources = ['today', 'room'] } = {}) {
     subscribeStudyChanges: (callback, state) => { onChange = callback; onConnection = state; state('connecting'); return () => { onChange = null; onConnection = null; }; },
   };
   const react = runtime.react;
+  const guard = { reconcileAndroidGuard: async value => ({ snapshot: value }) };
   const modules = {
     react, 'react/jsx-runtime': { jsx: (_type, props) => ['ClockProvider', 'ResourceProvider'].includes(_type) ? props.children : props.value },
     'react-native': { Platform: { OS: 'ios' }, AppState: { currentState: 'active' } },
@@ -59,7 +60,7 @@ function mount({ resources = ['today', 'room'] } = {}) {
     './study-resources': { StudyResourceContext: { Provider: 'ResourceProvider' } },
     '../../data/study': data,
     '../../components/IdentityProvider': { useIdentity: () => identity },
-    './android-guard': { reconcileAndroidGuard: async value => ({ snapshot: value }) },
+    './android-guard': guard,
     './presentation': { displayedSeconds: () => 0 },
     '../../lib/clock': { createServerClock: () => () => 0 },
     '../../lib/study-day': { getStudyDate: () => '2026-10-27' },
@@ -83,7 +84,7 @@ function mount({ resources = ['today', 'room'] } = {}) {
   vm.runInNewContext(source, context);
   const render = () => runtime.render(() => context.exports.StudyProvider({ children: null }));
   const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
-  return { render, calls, data, identity, change: (owner = 'friend') => onChange?.(owner),
+  return { render, calls, data, identity, guard, change: (owner = 'friend') => onChange?.(owner),
     connection: value => onConnection?.(value),
     setResources(resources) { releaseDemand(); releaseDemand = demand.acquire(resources); },
     setActive(value) { active = value; },
@@ -296,4 +297,22 @@ test('mandatory startup and explicit reads still run without screen subscribers'
   assert.equal(app.calls.recover, 1); assert.equal(app.calls.today, 1); assert.equal(app.calls.room, 0);
   await app.advance(120000); assert.equal(app.calls.today, 1);
   await app.render().refresh(); assert.equal(app.calls.today, 2); assert.equal(app.calls.room, 0);
+});
+
+test('celebrations receive a newly reconciled owner snapshot and never query friends', async () => {
+  const app = mount({ resources: [] });
+  await app.render().retryStartup(); app.render();
+  app.guard.reconcileAndroidGuard = async value => ({ snapshot: { ...value, marker: 'guard-confirmed' } });
+  const confirmed = await app.render().confirmToday();
+  assert.equal(confirmed.marker, 'guard-confirmed');
+  assert.equal(app.calls.room, 0);
+});
+
+test('failed guard reconciliation or server read cannot turn a cached timer into a celebration', async () => {
+  const app = mount();
+  await app.render().retryStartup(); app.render();
+  app.guard.reconcileAndroidGuard = async () => { throw Error('native stop is unresolved'); };
+  assert.equal(await app.render().confirmToday(), null);
+  app.data.getToday = async () => { throw Error('offline'); };
+  assert.equal(await app.render().confirmToday(), null);
 });

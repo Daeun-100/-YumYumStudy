@@ -8,6 +8,7 @@ import config from '../../app.json';
 import { fetchRelease, needsUpdate } from '../lib/releases';
 import { isTestBuild } from '../lib/room';
 import type { AppRelease, ReleasePlatform } from '../lib/releases';
+import { useBlockingOverlay } from '../hooks/useBlockingOverlay';
 
 const currentRevision = config.expo.android.versionCode;
 
@@ -90,6 +91,7 @@ export function UpdateNotice({ variant = 'inline' }: { variant?: 'inline' | 'glo
   const pathname = usePathname();
   if (!context) throw new Error('UpdateProvider required');
   const { release, error, dismissed, retry, dismiss, update } = context;
+  useBlockingOverlay(!!release && release.revision !== dismissed && !(variant === 'global' && pathname === '/profile-info'));
   if (variant === 'global' && (pathname === '/profile-info' || !release || release.revision === dismissed)) return null;
   if (!release || release.revision === dismissed) {
     return <View style={styles.version}>

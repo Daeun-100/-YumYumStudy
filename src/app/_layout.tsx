@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { IdentityProvider } from '../components/IdentityProvider';
 import { StudyProvider } from '../features/study/StudyProvider';
+import { AchievementCelebrations } from '../features/celebrations/AchievementCelebrations';
 
 export default function RootLayout() {
   return <SafeAreaProvider><RoomBuildBoundary><UpdateProvider><IdentityProvider><AdmissionGate><StudyProvider><LeaveProvider>
@@ -20,7 +21,7 @@ export default function RootLayout() {
       <UpdateNotice variant="global" />
       <StartupBoundary><TestRoomSelector /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
-      </Stack></StartupBoundary>
+      </Stack><AchievementCelebrations /></StartupBoundary>
       <StatusBar style="dark" />
     </SafeAreaView>
   </LeaveProvider></StudyProvider></AdmissionGate></IdentityProvider></UpdateProvider></RoomBuildBoundary></SafeAreaProvider>;
