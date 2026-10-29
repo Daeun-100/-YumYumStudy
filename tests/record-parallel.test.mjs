@@ -49,6 +49,7 @@ function harness(friend = false) {
     './RecordComponents': { DayDetail: 'DayDetail', MonthlyCalendar: 'MonthlyCalendar', PeriodHeader: 'PeriodHeader', RecordLegend: 'RecordLegend', WeeklyChart: 'WeeklyChart' },
     './model': model, '../records/model': model,
     './session-model': sessionModel,
+    '../study/study-resources': { useStudyResources: () => {} },
     '../study/StudyProvider': { useStudy: () => study },
     '../study/useScreenNow': { useScreenNow: () => Date.parse(serverNow) },
     '../study/StudyUI': { Nav: 'Nav', ui: {} },

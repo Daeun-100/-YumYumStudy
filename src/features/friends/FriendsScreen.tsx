@@ -1,3 +1,4 @@
+import { useStudyResources } from '../study/study-resources';
 import { resolveCharacterArtwork } from '../../design/skin-artwork';
 import { useScreenNow } from '../study/useScreenNow';
 import { useState } from 'react';
@@ -12,6 +13,7 @@ import { FriendRecords } from './FriendRecords';
 
 
 export function FriendsScreen() {
+  useStudyResources(['room']);
   const study = useStudy();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const members = study.room?.data ?? [];

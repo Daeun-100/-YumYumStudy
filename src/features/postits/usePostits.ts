@@ -1,56 +1,77 @@
 import { useIsFocused } from 'expo-router';
 import { measure } from '../../lib/performance';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { getSupabase } from '../../lib/supabase';
 import { studyRoomId, withRoomOperation } from '../../lib/room';
+import { createSharedRequest } from '../../lib/shared-request';
+import { withTimeout } from '../../lib/with-timeout';
 import { useIdentity } from '../../components/IdentityProvider';
-import { useRefreshOnResume } from '../../hooks/useRefreshOnResume';
+import { useResourceRefresh } from '../../hooks/useResourceRefresh';
+import { useAppActive } from '../../hooks/useAppActive';
 import { getStudyDate } from '../../lib/study-day';
 import { useScreenNow } from '../study/useScreenNow';
 import { decodePostit, mergePostit, type Postit } from './model';
 
 export function usePostits() {
   const focused = useIsFocused();
+  const active = useAppActive();
   const { uid, profile } = useIdentity();
   const now = useScreenNow(true, 60000);
   const [notes, setNotes] = useState<Postit[]>([]);
   const [date, setDate] = useState('');
+  const [loadedScope, setLoadedScope] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
   const generation = useRef(0);
   const changes = useRef(0);
   const latestRequest = useRef(0);
+  const shared = useRef(createSharedRequest());
   const events = useRef<{ sequence: number; note: Postit }[]>([]);
   const room = studyRoomId;
-  const refresh = useCallback(async () => {
-    if (!profile || !focused) return;
+  const scope = `${room}:${uid ?? ''}`;
+  const enabled = !!uid && !!profile && focused && active;
+  const current = useRef({ scope, enabled });
+  useLayoutEffect(() => { current.current = { scope, enabled }; }, [scope, enabled]);
+  const [previousScope, setPreviousScope] = useState(scope);
+  if (previousScope !== scope) { setPreviousScope(scope); setNotes([]); setDate(''); setLoadedScope(''); setError(null); }
+  const connectionKey = `${scope}:${enabled}`;
+  const [previousConnectionKey, setPreviousConnectionKey] = useState(connectionKey);
+  if (previousConnectionKey !== connectionKey) { setPreviousConnectionKey(connectionKey); setConnected(false); }
+  const load = useCallback((changed = false): Promise<void> => {
+    if (!current.current.enabled || current.current.scope !== scope) return Promise.resolve();
     const version = generation.current;
-    const seen = changes.current;
-    const request = ++latestRequest.current;
-    try {
-      const { data, error: failure } = await measure('postit.load', async () => {
-        const result = await getSupabase().rpc('get_room_postits');
-        if (result.error) throw result.error;
-        return result;
-      });
-      if (failure) throw failure;
-      if (version !== generation.current || request !== latestRequest.current) return;
-      if (!data || typeof data.date !== 'string' || !Array.isArray(data.notes)) throw new Error();
-      const result: Postit[] = data.notes.map(decodePostit);
-      if (result.some(n => n.room_id !== room)) throw new Error();
-      setDate(data.date);
-      // Replay events received during the request over the server snapshot.
-      const duringRequest = events.current.filter(event => event.sequence > seen).map(event => event.note);
-      setNotes(previous => [...previous.filter(n => n.deleted_at && n.study_date === data.date), ...duringRequest].reduce(mergePostit, result));
-      events.current = events.current.filter(event => event.sequence > seen);
-      setError(null);
-    } catch {
-      if (version === generation.current && request === latestRequest.current) setError('포스트잇을 불러오지 못했어요. 잠시 후 다시 연결할게요.');
-    }
-  }, [profile, room, focused]);
-  const resume = useRefreshOnResume(refresh, !!profile && focused);
+    return shared.current(version, async () => {
+      if (!current.current.enabled || current.current.scope !== scope || version !== generation.current) return;
+      const seen = changes.current;
+      const request = ++latestRequest.current;
+      try {
+        const data = await withTimeout(measure('postit.load', async () => {
+          const result = await getSupabase().rpc('get_room_postits');
+          if (result.error) throw result.error;
+          return result.data;
+        }), 15000, '포스트잇 조회가 지연되고 있어요.');
+        if (!current.current.enabled || current.current.scope !== scope || version !== generation.current || request !== latestRequest.current) return;
+        if (!data || typeof data.date !== 'string' || !Array.isArray(data.notes)) throw new Error();
+        const result: Postit[] = data.notes.map(decodePostit);
+        if (result.some(n => n.room_id !== room)) throw new Error();
+        setDate(data.date); setLoadedScope(scope);
+        const duringRequest = events.current.filter(event => event.sequence > seen).map(event => event.note);
+        setNotes(previous => [...previous.filter(n => n.deleted_at && n.study_date === data.date), ...duringRequest].reduce(mergePostit, result));
+        events.current = events.current.filter(event => event.sequence > seen);
+        setError(null);
+      } catch (failure) {
+        if (current.current.scope === scope && version === generation.current && request === latestRequest.current) setError('포스트잇을 불러오지 못했어요. 잠시 후 다시 연결할게요.');
+        throw failure;
+      }
+    }, changed);
+  }, [scope, room]);
+  const observation = useResourceRefresh({ scope: `${scope}:postits`, enabled, connected, refresh: load });
+  const request = observation.request, markFresh = observation.markFresh;
+  const refresh = useCallback(async () => { try { await load(); markFresh(); } catch { /* State exposes the error. */ } }, [load, markFresh]);
+  useLayoutEffect(() => { events.current = []; }, [scope]);
   useEffect(() => {
     const version = ++generation.current;
-    if (!uid || !profile || !focused) return;
+    if (!enabled) return;
     const client = getSupabase();
     let disposed = false;
     let channel: ReturnType<typeof client.channel> | undefined;
@@ -66,29 +87,28 @@ export function usePostits() {
               if (note.room_id !== room) return;
               events.current.push({ sequence: ++changes.current, note });
               setNotes(previous => mergePostit(previous, note));
-            } catch { void refresh(); }
+            } catch { void request(true); }
           }).subscribe(status => {
             if (disposed) return;
-            if (status === 'SUBSCRIBED') void refresh();
-            else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setError('실시간 연결을 다시 시도하고 있어요.');
+            setConnected(status === 'SUBSCRIBED');
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setError('실시간 연결을 다시 시도하고 있어요.');
           });
-      } catch { if (!disposed) setError('실시간 연결을 다시 시도하고 있어요.'); }
+      } catch { if (!disposed) { setConnected(false); setError('실시간 연결을 다시 시도하고 있어요.'); } }
     })();
-    const initial = setTimeout(() => { void refresh(); }, 0);
-    // Recover missed events and cross the 6am day boundary without reopening.
-    const timer = setInterval(resume, 15000);
-    return () => { disposed = true; generation.current = version + 1; clearTimeout(initial); clearInterval(timer); if (channel) void client.removeChannel(channel); };
-  }, [uid, profile, room, refresh, resume, focused]);
+    return () => { disposed = true; generation.current = version + 1; if (channel) void client.removeChannel(channel); };
+  }, [scope, enabled, room, request]);
+  const studyDate = now ? getStudyDate(now) : date;
+  useEffect(() => { if (enabled && date && studyDate !== date) void request(true); }, [enabled, date, studyDate, request]);
   const mutate = async (name: string, args: Record<string, unknown>) => {
     const version = generation.current;
     return measure(`postit.${name}`, () => withRoomOperation(async () => {
       const { data, error: failure } = await getSupabase().rpc(name, args);
       if (failure) throw new Error(failure.code === '22023' ? failure.message : '저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.');
       const note = decodePostit(data);
-      if (version === generation.current) { events.current.push({ sequence: ++changes.current, note }); setNotes(previous => mergePostit(previous, note)); }
+      if (current.current.scope === scope && version === generation.current) { events.current.push({ sequence: ++changes.current, note }); setNotes(previous => mergePostit(previous, note)); }
     }));
   };
-  return { notes: notes.filter(n => n.study_date === (now ? getStudyDate(now) : date) && !n.deleted_at), error, refresh,
+  return { notes: loadedScope === scope ? notes.filter(n => n.study_date === studyDate && !n.deleted_at) : [], error, refresh,
     add: (id: string, text: string, color: string, x: number, y: number) => mutate('put_room_postit', { p_id: id, p_text: text, p_color: color, p_x: x, p_y: y }),
     remove: (id: string) => mutate('delete_room_postit', { p_id: id }),
   };

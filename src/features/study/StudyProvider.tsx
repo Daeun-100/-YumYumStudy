@@ -1,3 +1,7 @@
+import { createStudyResourceDemand } from '../../lib/study-resource-demand';
+import { StudyResourceContext } from './study-resources';
+import { useResourceRefresh } from '../../hooks/useResourceRefresh';
+import { useAppActive } from '../../hooks/useAppActive';
 import { invalidateRecordQueries } from '../../data/query-cache';
 import { StudyClockContext } from './study-clock';
 import { createStudyClock } from '../../lib/study-clock';
@@ -11,8 +15,8 @@ import { studyGuard } from '../allowed-apps/native';
 import { applyDeparture } from './guard-core';
 import { basicStudyMode, guardTransport, reconcileAndroidGuard } from './android-guard';
 import { studyRoomId, withRoomOperation } from '../../lib/room';
-import { createContext, useCallback, useContext, useEffect, useRef, useState, useMemo, type PropsWithChildren } from 'react';
-import { useRefreshOnResume } from '../../hooks/useRefreshOnResume';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useMemo, useSyncExternalStore, useLayoutEffect, type PropsWithChildren } from 'react';
+import { isAppActive } from '../../hooks/useRefreshOnResume';
 import { getRoom, getToday, resumePendingStudyStart, startStudy, stopStudy, subscribeStudyChanges } from '../../data/study';
 import { useIdentity } from '../../components/IdentityProvider';
 import { displayedSeconds } from './presentation';
@@ -28,10 +32,24 @@ export function StudyProvider({ children }: PropsWithChildren) {
   const [room, setRoom] = useState<State['room']>(null);
   const updateProfile = identity.updateProfile;
   const ownerId = identity.profile?.id;
+  const scope = !identity.loading && ownerId ? `${studyRoomId}:${ownerId}` : '';
+  const currentScope = useRef(scope);
+  useLayoutEffect(() => { currentScope.current = scope; }, [scope]);
+  const [demand] = useState(createStudyResourceDemand);
+  const consumers = useSyncExternalStore(demand.subscribe, demand.read, demand.read);
+  const observesToday = consumers.today > 0, observesRoom = consumers.room > 0;
+  const active = useAppActive();
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const connectionKey = `${scope}:${active}:${observesToday}:${observesRoom}`;
+  const [previousConnectionKey, setPreviousConnectionKey] = useState(connectionKey);
+  if (previousConnectionKey !== connectionKey) { setPreviousConnectionKey(connectionKey); setRealtimeConnected(false); }
   useEffect(() => {
     const mine = room?.data.find(member => member.profile.id === ownerId)?.profile;
     if (mine) updateProfile(mine);
   }, [room, ownerId, updateProfile]);
+  useEffect(() => {
+    if (today && today.data.profile.id === ownerId) updateProfile(today.data.profile);
+  }, [today, ownerId, updateProfile]);
   const [time] = useState(createStudyClock);
   const setNow = time.set;
   const [loading, setLoading] = useState(false);
@@ -59,35 +77,46 @@ export function StudyProvider({ children }: PropsWithChildren) {
   const sharedRoomRefresh = useRef(createSharedRequest());
   const roomSequence = useRef(0);
   const startupFlight = useRef<Promise<void> | null>(null);
+  const startupAttempt = useRef(0);
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const [previousScope, setPreviousScope] = useState(scope);
+  if (previousScope !== scope) {
+    setPreviousScope(scope); setToday(null); setRoom(null); setError(null); setRoomError(null);
+    setStartupReady(false); setStartupError(null);
+  }
+  useLayoutEffect(() => {
+    generation.current++; sequence.current++; roomSequence.current++;
+    startupFlight.current = null;
+    clock.current = null; latestSnapshot.current = null;
+  }, [scope]);
   // Friend requests have their own lifetime: neither slow friends nor a timer
   // mutation may hold up applying the authenticated owner's snapshot.
-  const refreshRoom = useCallback((changed = false): Promise<void> => {
-    if (!identity.profile || identity.loading) return Promise.resolve();
+  const loadRoom = useCallback((changed = false): Promise<void> => {
+    if (!scope) return Promise.resolve();
     const requestedGeneration = generation.current;
     return sharedRoomRefresh.current(requestedGeneration, async () => {
-      if (requestedGeneration !== generation.current) return;
+      if (requestedGeneration !== generation.current || currentScope.current !== scope) return;
       const request = ++roomSequence.current;
       setRoomLoading(true);
       try {
         const snapshot = await withTimeout(getRoom(), 15000, '친구 현황을 불러오지 못했어요. 다시 시도해 주세요.');
-        if (!alive.current || request !== roomSequence.current || requestedGeneration !== generation.current) return;
+        if (!alive.current || request !== roomSequence.current || requestedGeneration !== generation.current || currentScope.current !== scope) return;
         setRoom(snapshot); setRoomError(null);
       } catch (failure) {
-        if (alive.current && request === roomSequence.current && requestedGeneration === generation.current) setRoomError(toStudyError(failure).message);
+        if (alive.current && request === roomSequence.current && requestedGeneration === generation.current && currentScope.current === scope) setRoomError(toStudyError(failure).message);
+        throw failure;
       } finally {
-        if (alive.current && request === roomSequence.current) setRoomLoading(false);
+        if (alive.current && request === roomSequence.current && currentScope.current === scope) setRoomLoading(false);
       }
     }, changed);
-  }, [identity.profile, identity.loading]);
-  const refresh = useCallback((changed = false): Promise<void> => {
-    if (!identity.profile || identity.loading || lock.current) return Promise.resolve();
-    void refreshRoom(changed);
-    const owner = identity.profile.id;
+  }, [scope]);
+  const loadToday = useCallback((changed = false): Promise<void> => {
+    if (!scope || lock.current) return Promise.resolve();
+    const owner = ownerId!;
     const requestedGeneration = generation.current;
     return sharedRefresh.current(requestedGeneration, () => measure('study.refresh', async () => {
-      if (lock.current || requestedGeneration !== generation.current) return;
+      if (lock.current || requestedGeneration !== generation.current || currentScope.current !== scope) return;
       const request = ++sequence.current;
       setLoading(true);
       if (Platform.OS === 'android' && studyGuard && latestSnapshot.current) {
@@ -102,12 +131,12 @@ export function StudyProvider({ children }: PropsWithChildren) {
       }
       try {
         let snapshot = await withTimeout(getToday(), 15000, '공부 기록을 불러오지 못했어요. 다시 시도해 주세요.');
-        if (!alive.current || request !== sequence.current) return;
+        if (!alive.current || request !== sequence.current || requestedGeneration !== generation.current || currentScope.current !== scope) return;
         try {
           const guarded = await measure('study.reconcile', () => withTimeout(withRoomOperation(() => reconcileAndroidGuard(snapshot)), 10000, '휴대폰 공부 기록 동기화가 지연되고 있어요. 다시 시도해 주세요.'));
           snapshot = guarded.snapshot;
         } catch { /* Native status is not a server error and stays out of the home banner. */ }
-        if (!alive.current || request !== sequence.current) return;
+        if (!alive.current || request !== sequence.current || requestedGeneration !== generation.current || currentScope.current !== scope) return;
         clock.current = createServerClock(snapshot.serverNow);
         latestSnapshot.current = snapshot;
         setNow(clock.current()); setToday(snapshot);
@@ -116,27 +145,33 @@ export function StudyProvider({ children }: PropsWithChildren) {
         }
         if (!pending.current) setError(null);
       } catch (failure) {
-        if (alive.current && request === sequence.current && !pending.current) setError(toStudyError(failure).message);
+        if (alive.current && request === sequence.current && currentScope.current === scope && !pending.current) setError(toStudyError(failure).message);
+        throw failure;
       } finally {
-        if (alive.current && request === sequence.current) setLoading(false);
+        if (alive.current && request === sequence.current && currentScope.current === scope) setLoading(false);
       }
     }), changed);
-  }, [identity.profile, identity.loading, refreshRoom, setNow]);
-  const refreshChanged = useCallback(() => refresh(true), [refresh]);
-  const refreshRoomChanged = useCallback(() => refreshRoom(true), [refreshRoom]);
-  const onRoomResume = useRefreshOnResume(refreshRoomChanged, !!identity.profile && !identity.loading && startupReady);
-  const onResume = useRefreshOnResume(refreshChanged, !!identity.profile && !identity.loading && startupReady);
+  }, [scope, ownerId, setNow]);
+  const todayObservation = useResourceRefresh({ scope: `${scope}:today`, enabled: !!scope && startupReady && observesToday, connected: true, refresh: loadToday });
+  const roomObservation = useResourceRefresh({ scope: `${scope}:room`, enabled: !!scope && startupReady && observesRoom, connected: realtimeConnected, refresh: loadRoom });
+  const markTodayFresh = todayObservation.markFresh, markRoomFresh = roomObservation.markFresh;
+  const requestToday = todayObservation.request, requestRoom = roomObservation.request;
+  // Explicit reads and mutation recovery do not depend on screen demand.
+  const refresh = useCallback(async () => { try { await loadToday(); markTodayFresh(); } catch { /* State exposes the error. */ } }, [loadToday, markTodayFresh]);
+  const refreshRoom = useCallback(async () => { try { await loadRoom(); markRoomFresh(); } catch { /* State exposes the error. */ } }, [loadRoom, markRoomFresh]);
   const retryStartup = useCallback((): Promise<void> => {
-    if (!identity.profile || identity.loading) return Promise.resolve();
+    if (!scope) return Promise.resolve();
     if (startupFlight.current) return startupFlight.current;
+    startupAttempt.current++;
     setStartupReady(false); setStartupError(null);
     const promise = measure('startup.study', async () => {
       try {
         await measure('startup.recover', () => withTimeout(resumePendingStudyStart(), 20000, '이전 공부 기록을 확인하지 못했어요. 다시 시도해 주세요.'));
+        if (demand.read().room && isAppActive()) void refreshRoom();
         await refresh();
-        if (alive.current) setStartupReady(true);
+        if (alive.current && currentScope.current === scope) setStartupReady(true);
       } catch (failure) {
-        if (alive.current) setStartupError(toStudyError(failure).message);
+        if (alive.current && currentScope.current === scope) setStartupError(toStudyError(failure).message);
         throw failure;
       }
     }).catch(() => { /* StartupBoundary exposes the retry action. */ }).finally(() => {
@@ -144,30 +179,39 @@ export function StudyProvider({ children }: PropsWithChildren) {
     });
     startupFlight.current = promise;
     return promise;
-  }, [identity.profile, identity.loading, refresh]);
-  useEffect(() => { const initial = setTimeout(() => { void retryStartup(); }, 0); return () => clearTimeout(initial); }, [retryStartup]);
+  }, [refresh, refreshRoom, demand, scope]);
   useEffect(() => {
-    if (!identity.profile || identity.loading || !startupReady) return;
-    // Web visibility only refreshes. Android departures are handled by the native guard.
-    // Snapshot refreshes also pick up goal edits and recover a missed realtime event.
-    const interval = setInterval(onResume, 60000);
+    const attempt = startupAttempt.current;
+    const initial = setTimeout(() => { if (startupAttempt.current === attempt) void retryStartup(); }, 0);
+    return () => clearTimeout(initial);
+  }, [retryStartup]);
+  useEffect(() => {
+    if (!scope || !startupReady || !active || (!observesToday && !observesRoom)) return;
+    let disposed = false;
     let unsubscribe = () => {};
-    // Friend events never wait for the owner's native guard or timer mutation.
-    // Poll only friends as a fallback for missed socket events while visible.
-    const roomInterval = setInterval(onRoomResume, 10000);
-    try { unsubscribe = subscribeStudyChanges(onRoomResume, state => { if (state === 'connected') onRoomResume(); }); } catch { /* Foreground polling remains available. */ }
-    return () => { unsubscribe(); clearInterval(interval); clearInterval(roomInterval); };
-  }, [identity.profile, identity.loading, startupReady, onResume, onRoomResume]);
+    try {
+      unsubscribe = subscribeStudyChanges(changedOwner => {
+        if (disposed || currentScope.current !== scope) return;
+        if (observesRoom) void requestRoom(true);
+        if (observesToday && (!changedOwner || changedOwner === ownerId)) void requestToday(true);
+      }, state => { if (!disposed) setRealtimeConnected(state === 'connected'); });
+    } catch { /* Resource-local fallback polling remains available. */ }
+    return () => { disposed = true; unsubscribe(); };
+  }, [scope, ownerId, startupReady, active, observesToday, observesRoom, requestToday, requestRoom]);
   useEffect(() => {
     let requestedDate = '';
     const tick = setInterval(() => {
       if (!clock.current) return;
       const value = clock.current(); setNow(value);
       const date = getStudyDate(value);
-      if (today && today.data.day.studyDate !== date && requestedDate !== date) { requestedDate = date; void refresh(); }
+      if (today && today.data.day.studyDate !== date && requestedDate !== date && isAppActive()) {
+        requestedDate = date;
+        if (demand.read().today) void requestToday(true);
+        if (demand.read().room) void requestRoom(true);
+      }
     }, 1000);
     return () => clearInterval(tick);
-  }, [today, refresh, setNow]);
+  }, [today, demand, requestToday, requestRoom, setNow]);
   useEffect(() => {
     const guard = studyGuard;
     if (Platform.OS !== 'android' || !guard || !startupReady) return;
@@ -224,6 +268,7 @@ export function StudyProvider({ children }: PropsWithChildren) {
           await withTimeout(studyGuard.acknowledgeStop(result.data.id), 5000, '휴대폰의 중지 확인이 지연되고 있어요.');
         } else await basicStudyMode.set(identity.profile!.id, result.data.id);
       }
+      if (!alive.current || currentScope.current !== scope) return false;
       // Apply the acknowledged session before reloading, even if the next read fails.
       sequence.current++;
       clock.current = createServerClock(result.serverNow);
@@ -243,13 +288,14 @@ export function StudyProvider({ children }: PropsWithChildren) {
       if (Platform.OS === 'android' && studyGuard && action.type === 'start' && prepared) {
         try { await withTimeout(studyGuard.pause(), 3000, '공부 준비 정리가 지연되고 있어요.'); } catch { /* Persisted start requests are reconciled on return. */ }
       }
+      if (!alive.current || currentScope.current !== scope) return false;
       setError(requestingServer ? toStudyError(failure).message : null);
       setActionFailed(requestingServer);
       return false;
     }
-    finally { finish(succeeded ? 'ok' : 'error'); lock.current = false; if (alive.current) { setBusy(false); void refresh(); } }
-  }, [today, startupReady, identity.loading, identity.error, identity.profile, refresh, setNow]);
+    finally { finish(succeeded ? 'ok' : 'error'); lock.current = false; if (alive.current && currentScope.current === scope) { setBusy(false); void refresh(); if (demand.read().room && isAppActive()) void refreshRoom(); } }
+  }, [today, startupReady, identity.loading, identity.error, identity.profile, refresh, refreshRoom, demand, scope, setNow]);
   const value = useMemo(() => ({ today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, startupError, retryStartup, refresh, refreshRoom, toggle }), [today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, startupError, retryStartup, refresh, refreshRoom, toggle]);
-  return <StudyClockContext.Provider value={time}><Context.Provider value={value}>{children}</Context.Provider></StudyClockContext.Provider>;
+  return <StudyClockContext.Provider value={time}><StudyResourceContext.Provider value={demand}><Context.Provider value={value}>{children}</Context.Provider></StudyResourceContext.Provider></StudyClockContext.Provider>;
 }
 export function useStudy() { const state = useContext(Context); if (!state) throw new Error('StudyProvider required'); return state; }

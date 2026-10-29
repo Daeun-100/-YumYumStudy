@@ -25,6 +25,7 @@ function focusProps(study, ownerId, focused = true) {
     'expo-router': { router: {}, useIsFocused: () => focused },
     '../../components/IdentityProvider': { useIdentity: () => ({ profile: { id: ownerId, displayName: ownerId } }) },
     './StudyProvider': { useStudy: () => study },
+    './study-resources': { useStudyResources: () => {} },
     './useScreenNow': { useScreenNow: () => study.now },
     './FocusView': { FocusView: 'FocusView' },
     './presentation': presentation,

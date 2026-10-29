@@ -1,3 +1,4 @@
+import { useStudyResources } from '../study/study-resources';
 import { recordQueryVersion } from '../../lib/record-query-version';
 import { CallNotificationSettings } from '../call-friend/CallNotifications';
 import { Smartphone } from 'lucide-react-native';
@@ -20,6 +21,7 @@ import { SettingsRow, WeeklyAchievement } from './ProfileComponents';
 import config from '../../../app.json';
 
 export function ProfileScreen() {
+  useStudyResources(['today']);
   const { profile } = useIdentity();
   const study = useStudy();
   const today = study.today?.data.day.studyDate;
