@@ -25,7 +25,7 @@ function mount({ platform = 'android', enabled = true, development = false, star
     react,
     'react/jsx-runtime': { jsx: (type, props) => typeof type === 'function' ? type(props) : { type, ...props }, jsxs: (type, props) => ({ type, ...props }) },
     'react-native': { Platform: { OS: platform }, AppState: appState, Keyboard: { isVisible: () => false }, StyleSheet: { create: value => value, absoluteFill: {} }, View: 'View' },
-    'expo-updates': { isEnabled: enabled, useUpdates: () => ({ isUpdatePending: state.pending }),
+    'expo-updates': { isEnabled: enabled, channel: 'production', runtimeVersion: 'r', useUpdates: () => ({ currentlyRunning: { updateId: state.runningId }, downloadedUpdate: state.downloaded, isUpdatePending: state.pending }),
       checkForUpdateAsync: async () => { state.checks++; if (state.failCheck) throw Error('offline'); return { isAvailable: true, isRollBackToEmbedded: false }; },
       fetchUpdateAsync: async () => { state.downloads++; return { isNew: true, isRollBackToEmbedded: false }; },
       reloadAsync: async () => { state.reloads++; } },
@@ -97,4 +97,14 @@ test('failed automatic checks stay quiet, while a failed manual check shows a to
   await app.render().value.check();
   assert.equal(app.state.messages.at(-1), '업데이트를 확인하지 못했어요. 다시 시도해 주세요.');
   assert.equal(app.state.reloads, 0); app.dispose();
+});
+
+test('read-only notice target exposes downloaded UUID and excludes rollback payloads', async () => {
+  const app = mount({ startupPending: true });
+  app.state.runningId = 'running'; app.state.downloaded = { type: 'new', updateId: 'downloaded' };
+  const target = app.render().value.target;
+  assert.equal(target.downloadedId, 'downloaded'); assert.equal(target.runningId, 'running');
+  assert.equal(target.pending, true); assert.equal(target.channel, 'production'); assert.equal(target.runtime, 'r');
+  app.state.downloaded = { type: 'rollback' };
+  assert.equal(app.render().value.target.downloadedId, null); assert.equal(app.state.reloads, 0); app.dispose();
 });
