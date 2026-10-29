@@ -1,3 +1,4 @@
+import { useStudyResources } from './study-resources';
 import { useScreenNow } from './useScreenNow';
 import { StudyControl } from './StudyControl';
 import { CallFriendDialog } from '../call-friend/CallFriendDialog';
@@ -14,6 +15,7 @@ import { FocusView, type FocusMember } from './FocusView';
 import { displayedSeconds, duration, progress } from './presentation';
 
 export function FocusScreen() {
+  useStudyResources(['today', 'room']);
   const focused = useIsFocused();
   const [calledFriend, setCalledFriend] = useState<FocusMember | null>(null);
   const [allowedAppsOpen, setAllowedAppsOpen] = useState(false);

@@ -1,3 +1,4 @@
+import { useStudyResources } from '../study/study-resources';
 import { studyRoomId } from '../../lib/room';
 import { invalidateRecordQueries } from '../../data/query-cache';
 import { useAndroidBack } from '../navigation/useAndroidBack';
@@ -16,6 +17,7 @@ import { GoalsView } from './GoalsView';
 
 type Editor = { snapshot: Snapshot<GoalSettings>; base: GoalWeek; draft: GoalWeek };
 export default function GoalsScreen() {
+  useStudyResources(['today']);
   const { view } = useLocalSearchParams<{ view?: string }>();
   const identity = useIdentity();
   const study = useStudy();

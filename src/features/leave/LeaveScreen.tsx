@@ -1,3 +1,4 @@
+import { useStudyResources } from '../study/study-resources';
 import { recordQueryVersion } from '../../lib/record-query-version';
 import { useScreenNow } from '../study/useScreenNow';
 import { useMemoryQuery } from '../../data/useMemoryQuery';
@@ -17,6 +18,7 @@ import { useLeave } from './LeaveProvider';
 import { leaveGrantView, reservationReason, weeklyAchievement } from './model';
 
 export function LeaveScreen() {
+  useStudyResources(['today']);
   const backRef = useRef<{ back(): boolean }>(null);
   useAndroidBack(() => {
     if (!backRef.current?.back()) router.navigate('/');

@@ -1,3 +1,4 @@
+import { useStudyResources } from './study-resources';
 import { useScreenNow } from './useScreenNow';
 import { useState } from 'react';
 import { AllowedAppsLauncher } from '../allowed-apps/AllowedAppsLauncher';
@@ -15,6 +16,7 @@ import { displayedSeconds, goalLabel, progress, timer } from './presentation';
 import { HomeArtwork } from './HomeArtwork';
 
 export function HomeScreen() {
+  useStudyResources(['today', 'room']);
   const focused = useIsFocused();
   const [allowedAppsOpen, setAllowedAppsOpen] = useState(false);
   const identity = useIdentity();

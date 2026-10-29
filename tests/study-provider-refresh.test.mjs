@@ -1,3 +1,4 @@
+import { createHookRuntime } from './helpers/hooks.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -5,6 +6,8 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import { createStudyClock } from '../src/lib/study-clock.ts';
 import { createSharedRequest } from '../src/lib/shared-request.ts';
+import { createResourceRefresh } from '../src/lib/resource-refresh.ts';
+import { createStudyResourceDemand } from '../src/lib/study-resource-demand.ts';
 
 const source = ts.transpileModule(readFileSync(new URL('../src/features/study/StudyProvider.tsx', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
@@ -19,13 +22,16 @@ const snapshot = active => ({ serverNow: '2026-10-27T00:00:00Z', data: {
   activeSession: active ? { id: active, startedAt: '2026-10-27T00:00:00Z', endedAt: null } : null,
 } });
 
-function mount() {
-  const slots = [];
-  let cursor = 0;
-  let effects = [];
+function mount({ resources = ['today', 'room'] } = {}) {
+  const runtime = createHookRuntime();
   const timers = new Map();
   const intervals = new Map();
-  let onChange;
+  let onChange, onConnection;
+  let active = true, now = 0;
+  const demand = createStudyResourceDemand();
+  let releaseDemand = demand.acquire(resources);
+  const timeout = (callback, ms = 0) => { const id = {}; timers.set(id, { callback, ms, at: now + ms }); return id; };
+  const clear = id => timers.delete(id);
   const identity = { profile: { id: 'owner' }, loading: false, error: null, updateProfile: profile => { identity.profile = profile; } };
   const calls = { recover: 0, today: 0, room: 0, start: 0 };
   const data = {
@@ -33,34 +39,11 @@ function mount() {
     getToday: async () => { calls.today++; return snapshot(null); },
     getRoom: async () => { calls.room++; return { serverNow: '2026-10-27T00:00:00Z', data: [] }; },
     startStudy: async () => { calls.start++; return { serverNow: '2026-10-27T00:00:00Z', data: { id: 'new-session', startedAt: '2026-10-27T00:00:00Z', endedAt: null } }; },
-    subscribeStudyChanges: callback => { onChange = callback; return () => { onChange = null; }; },
+    subscribeStudyChanges: (callback, state) => { onChange = callback; onConnection = state; state('connecting'); return () => { onChange = null; onConnection = null; }; },
   };
-  const react = {
-    createContext: () => ({ Provider: 'Provider' }),
-    useContext: () => null,
-    useState: initial => {
-      const index = cursor++;
-      if (!(index in slots)) slots[index] = typeof initial === 'function' ? initial() : initial;
-      return [slots[index], value => { slots[index] = typeof value === 'function' ? value(slots[index]) : value; }];
-    },
-    useRef: value => { const index = cursor++; return slots[index] ??= { current: value }; },
-    useCallback: (callback, deps) => {
-      const index = cursor++;
-      if (!slots[index] || deps.some((dep, i) => dep !== slots[index].deps[i])) slots[index] = { callback, deps };
-      return slots[index].callback;
-    },
-    useMemo: (factory, deps) => react.useCallback(factory, deps)(),
-    useEffect: (effect, deps) => {
-      const index = cursor++;
-      if (!slots[index] || deps.some((dep, i) => dep !== slots[index].deps[i])) {
-        slots[index]?.cleanup?.();
-        slots[index] = { deps };
-        effects.push(() => { slots[index].cleanup = effect(); });
-      }
-    },
-  };
+  const react = runtime.react;
   const modules = {
-    react, 'react/jsx-runtime': { jsx: (_type, props) => _type === 'ClockProvider' ? props.children : props.value },
+    react, 'react/jsx-runtime': { jsx: (_type, props) => ['ClockProvider', 'ResourceProvider'].includes(_type) ? props.children : props.value },
     'react-native': { Platform: { OS: 'ios' }, AppState: { currentState: 'active' } },
     '../../lib/shared-request': { createSharedRequest },
     '../../lib/study-clock': { createStudyClock },
@@ -70,7 +53,10 @@ function mount() {
     '../../lib/with-timeout': { withTimeout: promise => promise },
     '../allowed-apps/native': { studyGuard: null },
     '../../lib/room': { studyRoomId: 1, withRoomOperation: run => run() },
-    '../../hooks/useRefreshOnResume': { useRefreshOnResume: callback => callback },
+    '../../hooks/useRefreshOnResume': { isAppActive: () => active },
+    '../../hooks/useAppActive': { useAppActive: () => active },
+    '../../lib/study-resource-demand': { createStudyResourceDemand: () => demand },
+    './study-resources': { StudyResourceContext: { Provider: 'ResourceProvider' } },
     '../../data/study': data,
     '../../components/IdentityProvider': { useIdentity: () => identity },
     './android-guard': { reconcileAndroidGuard: async value => ({ snapshot: value }) },
@@ -81,18 +67,39 @@ function mount() {
     './pending-action': { actionConfirmed: () => true },
     './timer-mode-core': {}, './guard-core': {},
   };
+  const hookModules = {
+    react,
+    '../lib/resource-refresh': { createResourceRefresh: options => createResourceRefresh({ ...options, schedule: timeout, cancel: clear, random: () => .5 }) },
+    './useAppActive': { useAppActive: () => active },
+    './useRefreshOnResume': { isAppActive: () => active, useRefreshOnResume: callback => callback },
+  };
+  const hookContext = { exports: {}, require: name => hookModules[name] };
+  vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/hooks/useResourceRefresh.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, hookContext);
+  modules['../../hooks/useResourceRefresh'] = hookContext.exports;
   const context = { exports: {}, require: name => {
     assert.ok(name in modules, `unexpected import ${name}`);
     return modules[name];
-  }, setTimeout: callback => { const id = {}; timers.set(id, callback); return id; }, clearTimeout: id => timers.delete(id), setInterval: (callback, ms) => { const id = {}; intervals.set(id, { callback, ms }); return id; }, clearInterval: id => intervals.delete(id) };
+  }, setTimeout: timeout, clearTimeout: clear, setInterval: (callback, ms) => { const id = {}; intervals.set(id, { callback, ms }); return id; }, clearInterval: id => intervals.delete(id) };
   vm.runInNewContext(source, context);
-  const render = () => {
-    cursor = 0;
-    const value = context.exports.StudyProvider({ children: null });
-    const pending = effects; effects = []; pending.forEach(effect => effect());
-    return value;
+  const render = () => runtime.render(() => context.exports.StudyProvider({ children: null }));
+  const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
+  return { render, calls, data, identity, change: (owner = 'friend') => onChange?.(owner),
+    connection: value => onConnection?.(value),
+    setResources(resources) { releaseDemand(); releaseDemand = demand.acquire(resources); },
+    setActive(value) { active = value; },
+    delays: () => [...timers.values()].filter(value => value.ms > 0).map(value => value.at - now),
+    async advance(ms) {
+      const end = now + ms;
+      while (true) {
+        const job = [...timers].sort((a, b) => a[1].at - b[1].at)[0];
+        if (!job || job[1].at > end) break;
+        now = job[1].at; timers.delete(job[0]); job[1].callback(); await flush();
+      }
+      now = end; await flush();
+    },
+    runTimers() { for (const [id, job] of [...timers]) if (job.ms === 0) { timers.delete(id); job.callback(); } },
   };
-  return { render, calls, data, identity, change: () => onChange?.(), pollRoom: () => { for (const value of intervals.values()) if (value.ms === 10000) value.callback(); }, runTimers: () => { const callbacks = [...timers.values()]; timers.clear(); callbacks.forEach(callback => callback()); } };
+
 }
 
 test('startup recovers once before one initial snapshot read, and concurrent retries share it', async () => {
@@ -233,17 +240,18 @@ test('friend events during a read queue a fresh snapshot instead of losing the c
   app.change();
   old.resolve({ serverNow: '2026-10-27T00:00:01Z', data: [] });
   await app.render().refreshRoom();
+  await app.advance(0);
   assert.equal(reads, 2);
   assert.equal(app.render().room.data[0].marker, 'joined-and-started');
 });
 
-test('missed friend events recover through the ten-second friend-only poll', async () => {
+test('missed friend events recover through the disconnected friend-only poll', async () => {
   const app = mount();
   await app.render().retryStartup();
   app.render();
   const ownerReads = app.calls.today;
   app.data.getRoom = async () => ({ serverNow: '2026-10-27T00:00:10Z', data: [{ profile: { id: 'friend' }, marker: 'polled' }] });
-  app.pollRoom();
+  await app.advance(15000);
   await app.render().refreshRoom();
   assert.equal(app.calls.today, ownerReads);
   assert.equal(app.render().room.data[0].marker, 'polled');
@@ -258,4 +266,34 @@ test('room refresh carries remote skin changes into the authenticated profile', 
   app.render();
   assert.equal(app.identity.profile.activeSkinId, 'bunny-toothache');
   assert.equal(app.identity.profile.character, 'bunny');
+});
+
+
+test('today-only observation never starts a room query, and hidden screens stop both polls', async () => {
+  const app = mount({ resources: ['today'] });
+  await app.render().retryStartup(); app.render();
+  assert.equal(app.calls.room, 0);
+  const before = app.calls.today;
+  await app.advance(60000); assert.equal(app.calls.today, before + 1); assert.equal(app.calls.room, 0);
+  app.setActive(false); app.render(); const hidden = app.calls.today;
+  await app.advance(120000); assert.equal(app.calls.today, hidden); assert.equal(app.calls.room, 0);
+  app.setActive(true); app.render(); await app.advance(0); assert.equal(app.calls.today, hidden + 1);
+});
+
+test('healthy friend observation uses 60 seconds and only owner events invalidate today', async () => {
+  const app = mount(); await app.render().retryStartup(); app.render();
+  app.connection('connected'); app.render(); await app.advance(0);
+  const rooms = app.calls.room, owner = app.calls.today;
+  await app.advance(15000); assert.equal(app.calls.room, rooms);
+  app.change('friend'); await app.advance(0); assert.equal(app.calls.today, owner);
+  app.change('owner'); await app.advance(0); assert.equal(app.calls.today, owner + 1);
+  app.setResources([]); app.render(); const counts = { ...app.calls };
+  await app.advance(120000); assert.deepEqual(app.calls, counts);
+});
+
+test('mandatory startup and explicit reads still run without screen subscribers', async () => {
+  const app = mount({ resources: [] }); await app.render().retryStartup(); app.render();
+  assert.equal(app.calls.recover, 1); assert.equal(app.calls.today, 1); assert.equal(app.calls.room, 0);
+  await app.advance(120000); assert.equal(app.calls.today, 1);
+  await app.render().refresh(); assert.equal(app.calls.today, 2); assert.equal(app.calls.room, 0);
 });

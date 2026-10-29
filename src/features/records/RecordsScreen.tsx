@@ -1,3 +1,4 @@
+import { useStudyResources } from '../study/study-resources';
 import { recordQueryVersion } from '../../lib/record-query-version';
 import { useScreenNow } from '../study/useScreenNow';
 import { useMemoryQuery } from '../../data/useMemoryQuery';
@@ -14,6 +15,7 @@ import { RecordsPreview } from './RecordsPreview';
 import { weekStart, type StudyRecord } from './model';
 
 export function RecordsScreen() {
+  useStudyResources(['today']);
   const study = useStudy();
   const [initialNow] = useState(() => Date.now());
   const today = study.today?.data.day.studyDate ?? getStudyDate(initialNow);
