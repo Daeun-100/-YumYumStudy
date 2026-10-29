@@ -15,6 +15,9 @@ import { goalText } from '../goals/model';
 import { shiftDate, weekStart } from '../records/model';
 import { Page, Status, ui } from '../study/StudyUI';
 import { useStudy } from '../study/StudyProvider';
+import { useScreenNow } from '../study/useScreenNow';
+import { displayedSeconds } from '../study/presentation';
+import { watermelonGoalPercent } from '../../design/watermelon-fill';
 import { ProfileIdentity } from './ProfileIdentity';
 import { getMySkins } from '../../data/skins';
 import { SettingsRow, WeeklyAchievement } from './ProfileComponents';
@@ -24,6 +27,7 @@ export function ProfileScreen() {
   useStudyResources(['today']);
   const { profile } = useIdentity();
   const study = useStudy();
+  const now = useScreenNow(!!study.today?.data.activeSession, 60000);
   const today = study.today?.data.day.studyDate;
   const loadSummary = useCallback(async () => {
     const date = study.today?.data.day.studyDate;
@@ -33,10 +37,13 @@ export function ProfileScreen() {
   }, [study.today]);
   const { data: summary, error, retry } = useMemoryQuery(['profile-summary', today], loadSummary, { version: today ? recordQueryVersion(study.today?.data, weekStart(today), today) : '' });
   const { data: collection } = useMemoryQuery(['skins'], getMySkins, { staleTime: 10000 });
-  const days = today ? Array.from({ length: 7 }, (_, index) => {
+  const weekdayProgress = today ? Array.from({ length: 7 }, (_, index) => {
     const date = shiftDate(weekStart(today), index);
     const day = date === today ? study.today?.data.day : summary?.days.find(item => item.studyDate === date);
-    return !!day?.goalAchieved && !day.isRestDay && day.attendance !== 'leave';
+    if (date > today || !day || day.isRestDay || day.attendance === 'leave') return null;
+    const snapshot = study.today;
+    const seconds = date === today && snapshot ? displayedSeconds(day, snapshot.data.activeSession, snapshot.serverNow, study.error ? Date.parse(snapshot.serverNow) : Math.max(now, Date.parse(snapshot.serverNow))) : day.closedSeconds + day.runningSeconds;
+    return watermelonGoalPercent(seconds, day.goalMinutes);
   }) : [];
   const goals = summary?.goals.current;
   const total = goals?.reduce<number>((sum, value) => sum + (value ?? 0), 0) ?? 0;
@@ -46,7 +53,7 @@ export function ProfileScreen() {
     <ProfileIdentity profile={profile} count={collection?.skins.length} onEdit={() => router.push('/profile-edit')} onSkins={() => router.push('/skins')} />
     <View style={s.rule} />
     {!!error && <><Text accessibilityRole="alert" style={ui.error}>{error}</Text><Button label="다시 불러오기" variant="secondary" onPress={() => retry()} /></>}
-    <SkeletonRegion loading={!summary} label="이번 주 기록 불러오는 중"><WeeklyAchievement achievedWeekdays={days} /></SkeletonRegion>
+    <SkeletonRegion loading={!summary} label="이번 주 기록 불러오는 중"><WeeklyAchievement weekdayProgress={weekdayProgress} /></SkeletonRegion>
     <View style={s.rule} />
     <View style={s.section}><Text style={s.eyebrow}>나의 공부</Text><SettingsRow icon="◎" label="공부 목표 설정" value={goals ? total ? `주 ${goalText(total)}` : goals.every(value => value === 0) ? '모두 쉬는 날' : '목표 미설정' : undefined} onPress={() => router.push('/goals')} />
       {summary?.goals.effectiveDate && <Text style={[ui.muted, { paddingHorizontal: spacing.lg }]}>{summary.goals.effectiveDate} 오전 6시부터 변경 예정인 목표가 있어요.</Text>}

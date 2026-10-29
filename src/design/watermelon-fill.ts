@@ -1,3 +1,10 @@
+/** Zero/null goals have no progress. Keep the unrounded ratio until rendering. */
+export function watermelonGoalPercent(seconds: number, goalMinutes: number | null): number | null {
+  if (goalMinutes === null || !Number.isFinite(goalMinutes) || goalMinutes <= 0) return null;
+  if (!Number.isFinite(seconds)) return 0;
+  return Math.max(0, Math.min(100, seconds / (goalMinutes * 60) * 100));
+}
+
 /** Clip the original image from bottom-left, using a fixed 20-degree boundary. */
 export function watermelonFillPoints(percent: number): string {
   const progress = Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : 0;

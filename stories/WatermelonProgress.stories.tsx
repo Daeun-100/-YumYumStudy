@@ -4,7 +4,8 @@ import { Text, View } from 'react-native';
 import { AchievementProgressIcon } from '../src/design/AchievementProgressIcon';
 import { AchievementBadge, SegmentedControl } from '../src/design/components';
 import { colors, spacing, typography } from '../src/design/theme';
-import { DayDetail, MonthlyCalendar, PeriodHeader, RecordMark } from '../src/features/records/RecordComponents';
+import { DayDetail, MonthlyCalendar, PeriodHeader, WeeklyChart } from '../src/features/records/RecordComponents';
+import { WeeklyAchievement } from '../src/features/profile/ProfileComponents';
 import { duration, type StudyRecord } from '../src/features/records/model';
 import { BottomTabs } from './screens/StudyLayouts';
 
@@ -20,14 +21,11 @@ const days: StudyRecord[] = values.map((percent, index) => {
     status: leave ? 'leave' : rest ? 'rest' : minutes > 0 ? 'study' : 'empty', sessions: [] };
 });
 
-function DateMark({ day }: { day: StudyRecord }) {
-  if (day.minutes <= 0 || day.goal === null || day.goal <= 0) return <RecordMark kind={day.status} />;
-  return <AchievementProgressIcon percent={day.minutes / day.goal * 100} />;
-}
-
-function Preview({ mode, percent = 60, width = 390 }: { mode: 'stages' | 'calendar' | 'single'; percent?: number; width?: number }) {
+function Preview({ mode, percent = 60, width = 390 }: { mode: 'stages' | 'calendar' | 'single' | 'week' | 'profile'; percent?: number; width?: number }) {
   const [selected, setSelected] = useState('2026-10-23');
   if (mode === 'single') return <AchievementProgressIcon percent={percent} size={48} />;
+  if (mode === 'profile') return <WeeklyAchievement weekdayProgress={[100, 75, 40, null, 0, 100, null]} />;
+  if (mode === 'week') return <View style={{ width, maxWidth: '100%', backgroundColor: colors.background, padding: spacing.lg, gap: spacing.lg }}><WeeklyChart days={days.slice(18, 25)} today={today} selected={selected} onSelect={setSelected} /><DayDetail day={days.find(day => day.date === selected)!} aggregateOnly /></View>;
   if (mode === 'stages') return <View style={{ gap: spacing.xxl }}>
     {[18, 28, 48].map(size => <View key={size} style={{ gap: spacing.lg }}>
       <Text style={{ ...typography.secondary, color: colors.secondary }}>{size}px</Text>
@@ -47,7 +45,7 @@ function Preview({ mode, percent = 60, width = 390 }: { mode: 'stages' | 'calend
         <View style={{ flex: 1, gap: 4 }}><Text style={{ ...typography.caption, color: colors.secondary }}>총 공부 시간</Text><Text style={{ ...typography.title, color: colors.text }}>{duration(elapsed.reduce((sum, day) => sum + day.minutes, 0))}</Text></View>
         <View style={{ flex: 1, gap: 4 }}><Text style={{ ...typography.caption, color: colors.secondary }}>목표 달성</Text><Text style={{ ...typography.title, color: colors.primary }}>{elapsed.filter(day => day.goal !== null && day.goal > 0 && day.minutes >= day.goal).length}일</Text></View>
       </View>
-      <MonthlyCalendar compact today={today} days={days} selected={selected} onSelect={setSelected} renderDayMark={day => <DateMark day={day} />} />
+      <MonthlyCalendar compact today={today} days={days} selected={selected} onSelect={setSelected} />
       <DayDetail day={current} aggregateOnly />
     </View>
     <BottomTabs selected="기록" onSelect={() => {}} />
@@ -58,7 +56,7 @@ const meta = {
   title: '화면 시안/수박 채움', component: Preview,
   args: { mode: 'stages', percent: 60, width: 390 },
   argTypes: { percent: { control: { type: 'range', min: 0, max: 100, step: 1 } }, mode: { table: { disable: true } }, width: { control: { type: 'range', min: 320, max: 520, step: 10 } } },
-  parameters: { docs: { description: { component: '회색 바탕 없이 컬러 수박만 왼쪽 아래부터 20도 사선으로 표시합니다. 달성 완료 뱃지는 기존 그대로이며, 달력은 실제 MonthlyCalendar에 시안용 날짜 표시를 연결합니다. 날짜를 선택하면 실제 상세 컴포넌트가 바뀝니다. 앱 화면 적용 전 검토용으로 실제 기록은 수정하지 않습니다.' } } },
+  parameters: { docs: { description: { component: '회색 바탕 없이 컬러 수박만 왼쪽 아래부터 20도 사선으로 표시합니다. 달성 완료 뱃지는 기존 그대로이며, 앱과 같은 주간·월간 기록 및 요일별 표시 컴포넌트를 사용합니다. 날짜를 선택하면 실제 상세 컴포넌트가 바뀝니다. 고정 샘플을 사용하며 실제 기록은 수정하지 않습니다.' } } },
 } satisfies Meta<typeof Preview>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -66,3 +64,5 @@ export const Stages: Story = { name: '달성률별 비교' };
 export const Monthly: Story = { name: '월간 기록 적용 시안', args: { mode: 'calendar' }, parameters: { screenLayout: true } };
 export const SmallPhone: Story = { name: '월간 · 작은 휴대폰', args: { mode: 'calendar', width: 320 }, parameters: { screenLayout: true } };
 export const Adjustable: Story = { name: '채움 비율 조절', args: { mode: 'single' } };
+export const Weekly: Story = { name: '주간 기록 적용', args: { mode: 'week' }, parameters: { screenLayout: true } };
+export const Profile: Story = { name: '나 · 요일별 채움', args: { mode: 'profile' } };
