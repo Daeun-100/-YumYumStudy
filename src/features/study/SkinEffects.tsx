@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Animated, AppState, Easing, Platform, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import type { SkinEffect, SkinEffectPlacement } from '../../design/skin-effects';
+import { WriterFragments } from './WriterFragments';
 
 function useMotionAllowed() {
   const [reduced, setReduced] = useState(true);
@@ -61,6 +62,7 @@ function MotionEffects({ effects, screen, width, height, strength = 1, phase = 0
   if (!allowed) return null;
   return <>{effects?.map((effect, index) => {
     switch (effect.kind) {
+      case 'storyFragments': return <WriterFragments key={`${screen}-${index}`} screen={screen} width={width} height={height} phase={phase} strength={Math.max(0, Math.min(2, strength))} />;
       case 'warmSteam': return <Steam key={`${screen}-${index}`} placement={effect[screen]} width={width} height={height} phase={phase} strength={Math.max(0, Math.min(2, strength))} />;
     }
   })}</>;
