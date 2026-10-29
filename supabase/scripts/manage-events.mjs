@@ -10,6 +10,12 @@ export function validateRequest(p) {
   || !/^docs\/events\/[a-zA-Z0-9_-]+\.md$/.test(p.document_path??'') || ![0,1].includes(p.room_id)) throw new Error('Explicit event ID, name, document path, room and request UUID required.');
  const timestamp=(value)=>typeof value==='string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:00(?:\.000)?(?:Z|[+-]\d\d:\d\d)$/.test(value) && Number.isFinite(Date.parse(value));
  if(!timestamp(p.run_at)) throw new Error('Start time needs a year, minute precision and explicit timezone.');
+ if(p.notification!==undefined) {
+  const n=p.notification;
+  if(!n || typeof n!=='object' || Array.isArray(n) || Object.keys(n).some(k=>!['enabled','title','body'].includes(k))
+   || (n.enabled!==undefined && typeof n.enabled!=='boolean')) throw new Error('Invalid notification settings.');
+  for(const [key,max] of [['title',80],['body',160]]) if(n[key]!==undefined && (typeof n[key]!=='string' || !n[key].trim() || [...n[key].trim()].length>max || /[\u0000-\u001f\u007f]/.test(n[key]))) throw new Error('Invalid notification copy.');
+ }
  if(p.artwork_revision && !uuid.test(p.artwork_revision)) throw new Error('Artwork revision UUID required.');
  if(p.replaces && !uuid.test(p.replaces)) throw new Error('Replacement UUID required.');
  if(p.kind==='grant_skins') {

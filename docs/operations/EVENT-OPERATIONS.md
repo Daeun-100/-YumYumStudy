@@ -80,6 +80,31 @@ CLI 자격이 없고 연결된 Supabase 도구가 있으면 다음 관리자 RPC
 | `admin_recover_event` | `p_job: uuid`, `p_phase: grant/start/end` |
 | `admin_enable_event_background` | `p_id: text`, `p_enabled: boolean` |
 
+## 스킨 지급 푸시 알림
+
+새로 지급된 스킨이 있는 사용자에게 작업당 한 번 기본 알림을 보낸다. `already_owned`, 실패·제외 대상, 배경 시작·종료에는 보내지 않는다. 여러 스킨을 함께 받아도 한 알림으로 묶는다. 예약 당시 이미 등록된 앱·웹 알림 기기를 재사용하며 알림 허용과 기기 등록이 필요하다.
+
+문구는 필수가 아니다. 기본 제목은 “이벤트 스킨 선물이 도착했어요!”, 본문은 이벤트 이름·새로 받은 스킨 수·프로필 확인 안내다. 스킨 지급 예약 JSON에 선택 항목을 추가할 수 있다.
+
+```json
+"notification": {
+  "title": "핼러윈 선물이 도착했어요!",
+  "body": "프로필에서 새 스킨을 확인해 주세요."
+}
+```
+
+- 생략하거나 빈 객체이면 기본 문구를 사용한다. 제목·본문은 각각 독립적으로 생략할 수 있다.
+- `"notification": { "enabled": false }`이면 해당 지급의 푸시를 끈다.
+- 제목 최대 80자, 본문 최대 160자이며 공백만 있는 문구·제어문자·지원하지 않는 필드는 거부한다. 문구는 예약 시 고정하며 변경은 기존 예약 대체 절차를 따른다.
+- 지급 확정 트랜잭션에서 `private.event_notifications`에 작업·사용자별 고유 알림 ID와 문구를 기록한다. `pg_net` 호출은 지급 트랜잭션이 커밋된 뒤 시작하므로 롤백된 지급의 푸시는 발송하지 않는다. 정기 조회 Cron이나 앱 타이머는 추가하지 않는다.
+- `event-notifications` Edge Function은 DB가 기록한 ID만 받아 기존 `admin-notifications`로 전달한다. 수신자·문구를 외부 요청으로 바꿀 수 없다. DB↔Edge 호출은 이미 준비된 Vault의 `log_monitor_cron_secret`과 Edge `MONITOR_CRON_SECRET`을 사용한다. 기존 키를 조회·출력하거나 회전하지 않는다.
+- `event-notifications`와 `20261029154729_event_skin_notifications`는 2026-10-30 공유 서버에 반영했다. 기존 `admin-notifications`와 `ADMIN_NOTIFICATION_TOKEN` 설정을 사용하며 인증된 dry-run에서 준비 상태를 확인했다. 앱·APK 업데이트는 필요 없다. 기존 앱의 알림 허용/등록과 알림 채널을 사용한다. 알림을 눌러 스킨 상세로 이동하는 새 동작은 포함하지 않는다.
+- 알림 전송 오류는 지급을 되돌리지 않는다. 큐 상태 `completed`는 기존 발송 함수의 처리가 완료됐다는 뜻이며 기기 표시 성공을 뜻하지 않는다. 실제 기기별 결과·Expo 접수 티켓은 같은 ID의 `public.admin_notification_dispatches`에서 확인한다. 등록 기기가 없으면 푸시가 가지 않으며 미등록 집계로 남는다.
+- 네트워크 결과가 불명확하면 새 알림 ID를 만들지 않는다. 원래 ID로 상태를 확인한 뒤 관리자 요청에 따라 `admin_retry_event_notification(p_id)`를 호출한다. 같은 ID를 기존 발송 함수가 중복 처리하지 않는다. 자동 재시도·실패자 재지급은 하지 않는다.
+- 큐에는 RLS와 직접 접근 차단을 적용한다. 조회·완료 기록·재요청 RPC는 서비스 역할 전용이다. 기존 지급·이벤트 이력을 자동으로 소급 발송하지 않는다.
+
+검증: `node supabase/scripts/check-event-notifications-db.mjs ABSOLUTE_PATH_TO_PGLITE/dist/index.js`. 이는 Vault·HTTP 큐를 대체한 격리 DB 검증이며 실제 기기 수신과 구분한다.
+
 ## 실행·누락·복구
 
 예약마다 특정 월·일·시·분의 Cron을 만들고 실행 후 해제한다. 예약 전체를 1분마다 조회하는 작업은 없다. 배경은 시작·종료 두 작업을 만들며 취소·변경 시 함께 처리한다. 연도를 포함한 서버 시각 검증과 다음 Cron 발생 시각 검증으로 다음 해 재지급을 막는다. 예약은 향후 1년 이내·분 단위만 받는다.
@@ -115,3 +140,12 @@ npm run build-storybook
 - 검증용 배경 정의는 이력 참조를 위해 비활성으로 보존하고 테스트 스킨 정의는 정리했다. `halloween` 세트는 앱 배포·수신 확인 전까지 비활성이다. [검증 이벤트 기록](../events/2026-10-29-server-verification.md)에 작업 ID와 결과를 남겼다.
 - 보안 점검의 신규 private 테이블 5개에 대한 RLS 정책 없음 정보는 직접 테이블 접근을 차단하고 제한된 함수만 사용하는 의도된 구성이다. 공개 관리자 RPC는 SECURITY INVOKER이며 앱 역할의 실행 권한이 없다. [RLS 점검 설명](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)을 참고한다.
 - 앱 배포와 운영방 실제 행사 예약은 수행하지 않았다.
+
+## 2026-10-30 지급 푸시 검증
+
+- 스킨 지급 후 알림 큐와 `event-notifications` Edge Function v2를 공유 서버에 반영했다. [검증 기록](../events/2026-10-30-event-push-verification.md).
+- 테스트 377개, 린트·타입 검사, 이벤트·원격 이미지·스킨·알림 격리 DB 검증 통과.
+- 실제 서버 트랜잭션에서 신규 지급 11건·알림 큐 11건·HTTP 대기 11건과 지정 문구를 확인 후 롤백했다. 테스트 스킨·보유·작업·알림 큐는 남지 않았으며 푸시는 전송하지 않았다.
+- 실제 DB→Edge 인증 호출은 200, 잘못된 자격 호출은 401이었다. dry-run에서 기존 발송 자격 구성 완료를 확인했다.
+- 추가 보안 점검 정보는 private 알림 큐의 정책 없음 1건이다. RLS·직접 접근 차단·서비스 전용 함수 구성이며 일반 앱 역할의 접근 차단을 확인했다. [점검 설명](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+- 실제 푸시 서비스 접수와 Android/iPhone의 기기 표시는 별도 테스트가 필요하다. 이전 지급을 소급 발송하지 않는다.

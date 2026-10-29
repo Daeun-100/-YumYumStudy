@@ -19,6 +19,12 @@ export async function createTestDatabase(modulePath) {
  alter table realtime.messages enable row level security;
  create function realtime.topic() returns text language sql as $$ select ''::text $$;
  create function realtime.send(jsonb,text,text,boolean) returns void language sql as $$ select $$;
+ create schema vault; create schema net;
+ create table vault.secrets(name text primary key,decrypted_secret text);
+ create view vault.decrypted_secrets as select * from vault.secrets;
+ create table net.test_requests(id bigint generated always as identity, url text, body jsonb);
+ create function net.http_post(url text,body jsonb default '{}'::jsonb,params jsonb default '{}'::jsonb,headers jsonb default '{}'::jsonb,timeout_milliseconds int default 2000)
+ returns bigint language plpgsql as $$ declare rid bigint; begin insert into net.test_requests(url,body) values(url,body) returning id into rid;return rid;end $$;
  create publication supabase_realtime;
  create table cron.job(jobid bigint generated always as identity primary key,jobname text unique,schedule text,command text,active boolean default true,username text default 'postgres');
  create table cron.job_run_details(jobid bigint,status text,start_time timestamptz,end_time timestamptz,return_message text);
@@ -30,7 +36,7 @@ export async function createTestDatabase(modulePath) {
  });
  for(const file of files) {
   if(file.includes('scheduled_discord_log_monitor')) continue;
-  const sql=(await readFile(`supabase/migrations/${file}`,'utf8')).replace(/create extension if not exists pg_cron;/gi,'');
+  const sql=(await readFile(`supabase/migrations/${file}`,'utf8')).replace(/create extension if not exists pg_cron;/gi,'').replace(/create extension if not exists pg_net with schema extensions;/gi,'');
   try {await db.exec(sql);} catch(e) {await db.close();throw new Error(`Migration ${file}: ${e.message}`);}
  }
  return db;
