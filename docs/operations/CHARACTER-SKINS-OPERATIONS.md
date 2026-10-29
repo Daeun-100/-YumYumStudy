@@ -63,3 +63,15 @@ node supabase/scripts/manage-skins.mjs register --skin SKIN_ID --name SKIN_NAME 
 - 격리 PostgreSQL 검증: 임시 환경에 `@electric-sql/pglite`를 설치한 뒤 `node supabase/scripts/check-skins-db.mjs ABSOLUTE_PATH_TO_PGLITE/dist/index.js`
 
 격리 검증은 기존 앱 마이그레이션을 순서대로 재생하고 지급·착용·해제, 중복 지급, 기본 캐릭터 변경, 응답 전파, 권한 제한을 검사한다. 외부 cron·Vault와 Realtime 전송은 대체 환경이므로 이 검증으로 실제 Supabase Realtime 연결이나 Android 기기 화면까지 확인했다고 판단하지 않는다.
+
+## 웹소설 작가 포메라니안 (2026-10-29)
+
+- ID: `pomeranian-writer`, 이름: `웹소설 작가 포메라니안`, 캐릭터: `pomeranian`.
+- 홈: `assets/characters/pomeranian/pomeranian-home-writer.png` (1536×1024 RGBA).
+- 집중: `assets/characters/pomeranian/pomeranian-focus-writer.png` (1254×1254 RGBA).
+- 생성 프롬프트는 각 PNG와 같은 이름의 `.prompt.txt`에 보관한다. 원본 PNG를 수정하거나 후처리하지 않았다.
+- 이미지는 앱에 번들하고 `src/design/skin-artwork.ts`에서 위 ID로 연결한다. 기본 포메라니안과 같은 배치를 사용한다. 애니메이션 효과는 포함하지 않는다.
+- 실제 Supabase 프로젝트 `hxwwhgxxvyzqqnxlgqde`에 기존 운영 방식대로 카탈로그 행을 등록했다. 등록 후 조회로 `grant_enabled=false`, 보유자 0명을 확인했다. 스키마·권한·사용자 착용 상태 변경은 없다.
+- 새 환경에서의 등록: `node supabase/scripts/manage-skins.mjs register --skin pomeranian-writer --name '웹소설 작가 포메라니안' --character pomeranian`.
+- 앱 배포 및 수신 확인 후 기존 절차에 따라 지급을 활성화한다.
+- 검증: lint, typecheck, 스킨 테스트 3개, Storybook 정적 빌드 통과. Storybook의 390px 홈·집중 화면에서 이미지와 배치를 시각 확인했다. 네이티브 기기 화면은 미검증이다.
