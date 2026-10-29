@@ -1,0 +1,14 @@
+[
+  {
+    "id": "01a185b6-0ec9-778f-9e45-d12aeb0f919c",
+    "createdAt": "2026-10-29T03:31:03.497Z",
+    "group": "2b370a0c-b7cb-4683-bc32-0f8a4cfc3139",
+    "branch": "production",
+    "message": "master ecd94c6a9db7: Merge pull request #30 from Daeun-100/develop",
+    "runtimeVersion": "4a7adc844a392bfaead47665719d0291b9f3da58",
+    "platform": "android",
+    "manifestPermalink": "https://u.expo.dev/update/01a185b6-0ec9-778f-9e45-d12aeb0f919c",
+    "isRollBackToEmbedded": false,
+    "gitCommitHash": "ecd94c6a9db7a1c7a822f83f3e5b723ac8807644"
+  }
+]

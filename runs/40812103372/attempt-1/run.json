@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "repository": "Daeun-100/-YumYumStudy",
+  "sha": "ecd94c6a9db7a1c7a822f83f3e5b723ac8807644",
+  "runId": "40812103372",
+  "attempt": "1",
+  "workflow": "Cloud Build",
+  "run": "https://github.com/Daeun-100/-YumYumStudy/actions/runs/40812103372/attempts/1",
+  "jobs": {
+    "prepare": {
+      "result": "success",
+      "mode": "update"
+    },
+    "android": {
+      "result": "skipped"
+    },
+    "web": {
+      "result": "success"
+    },
+    "record": {
+      "result": "skipped"
+    },
+    "update": {
+      "result": "success"
+    }
+  },
+  "files": [
+    {
+      "path": "artifacts/deployment-plan-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644/deployment-review.json",
+      "sha256": "4de12a20c95b27d96d5c5658baeca20c2eef3dd63abce127db8e8fa6ba07c106",
+      "bytes": 16174
+    },
+    {
+      "path": "artifacts/deployment-plan-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644/deployment-review-validation.json",
+      "sha256": "f1ef17c02e458d822c793ab94f15d0b9978dc64595a9824b2051844f2636cb95",
+      "bytes": 352
+    },
+    {
+      "path": "artifacts/deployment-plan-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644/native-compatibility.json",
+      "sha256": "9a12817f937b40b4b52ccca808f199fa8931d77d6989d1dcc545082a0c49a6b4",
+      "bytes": 209
+    },
+    {
+      "path": "artifacts/deployment-plan-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644/deployment-plan.json",
+      "sha256": "6590ef684926684ec6c7c8e5166928afc82868520b1d9c1097e88229b4c9e757",
+      "bytes": 17906
+    },
+    {
+      "path": "artifacts/production-update-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644-1/deployment-review.json",
+      "sha256": "4de12a20c95b27d96d5c5658baeca20c2eef3dd63abce127db8e8fa6ba07c106",
+      "bytes": 16174
+    },
+    {
+      "path": "artifacts/production-update-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644-1/deployment-review-validation.json",
+      "sha256": "f1ef17c02e458d822c793ab94f15d0b9978dc64595a9824b2051844f2636cb95",
+      "bytes": 352
+    },
+    {
+      "path": "artifacts/production-update-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644-1/native-compatibility.json",
+      "sha256": "9a12817f937b40b4b52ccca808f199fa8931d77d6989d1dcc545082a0c49a6b4",
+      "bytes": 209
+    },
+    {
+      "path": "artifacts/production-update-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644-1/deployment-plan.json",
+      "sha256": "6590ef684926684ec6c7c8e5166928afc82868520b1d9c1097e88229b4c9e757",
+      "bytes": 17906
+    },
+    {
+      "path": "artifacts/production-update-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644-1/eas-update.json",
+      "sha256": "d1e1e5a33f6f37536bdac8a496d6979ad495dcce6c04b4ca2b69a21d93c1e7ef",
+      "bytes": 556
+    },
+    {
+      "path": "artifacts/production-update-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644-1/update-record.json",
+      "sha256": "0f491e252d9f7863b24e2107e1b6885f46d010937b6f7f1d1c5090d50c6a6565",
+      "bytes": 779
+    },
+    {
+      "path": "artifacts/web-production-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644/web-deployment.json",
+      "sha256": "6c2e8a231af6e49bf91bf2576a90934cd05f60f534c9acb4eb2a6506804ed900",
+      "bytes": 235
+    },
+    {
+      "path": "artifacts/web-production-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644/build-record.json",
+      "sha256": "099134081f33b517f0c240997f766554d29c823b3e67a53345a763cf1e83b5f0",
+      "bytes": 269
+    },
+    {
+      "path": "artifacts/web-promotion-ecd94c6a9db7a1c7a822f83f3e5b723ac8807644-1/web-promotion-record.json",
+      "sha256": "0b7a4f9193dc1f7c087cada2d823f7a460d5faac15afef4ab7aa29060979c037",
+      "bytes": 268
+    }
+  ]
+}
