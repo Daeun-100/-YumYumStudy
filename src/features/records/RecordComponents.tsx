@@ -1,4 +1,6 @@
 import { memo } from 'react';
+import { AchievementProgressIcon } from '../../design/AchievementProgressIcon';
+import { watermelonGoalPercent } from '../../design/watermelon-fill';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AchievementBadge, AchievementIcon, Card } from '../../design/components';
 import { colors, radius, spacing, typography } from '../../design/theme';
@@ -24,13 +26,17 @@ export function RecordMark({ kind }: { kind: 'achieved' | StudyRecord['status'] 
   if (kind === 'rest') return <Text style={{ fontSize: 15, color: colors.inactive }}>／</Text>;
   return <View style={[s.dot, { backgroundColor: kind === 'study' ? colors.study : colors.track }]} />;
 }
+export function RecordDayMark({ day }: { day: StudyRecord }) {
+  const percent = day.status === 'leave' || day.status === 'rest' ? null : watermelonGoalPercent(day.minutes * 60, day.goal);
+  return percent !== null && percent > 0 ? <AchievementProgressIcon percent={percent} /> : <RecordMark kind={achieved(day) ? 'achieved' : day.status} />;
+}
 export function RecordLegend() { return <View style={s.legend}>{([['achieved', '목표 달성'], ['study', '공부함'], ['empty', '기록 없음'], ['rest', '쉬는 날'], ['leave', '연차']] as const).map(([kind, label]) => <View key={kind} style={s.legendItem}><RecordMark kind={kind} /><Text style={s.caption}>{label}</Text></View>)}</View>; }
 const dayLabel = (day: StudyRecord, compact = false) => `${day.date}, ${compact ? duration(day.minutes) : recordedDuration(day.minutes)}, ${day.goal === null ? '목표 미설정' : `목표 ${duration(day.goal)}`}, ${achieved(day) ? '목표 달성' : day.status === 'rest' ? '쉬는 날' : day.status === 'leave' ? '연차' : day.status === 'empty' ? '기록 없음' : '공부함'}`;
 export function WeeklyChart({ days, selected, onSelect, today = previewToday }: { days: StudyRecord[]; selected: string; onSelect(date: string): void; today?: string }) {
   const ceiling = Math.max(360, Math.ceil(Math.max(...days.map(day => Math.max(day.status === 'leave' ? 0 : day.goal ?? 0, day.minutes))) / 120) * 120);
   return <View style={{ gap: spacing.sm }}><View style={[s.legend, { justifyContent: 'flex-end' }]}><View style={s.legendItem}><View style={[s.dot, { backgroundColor: colors.goal }]} /><Text style={s.caption}>목표 시간</Text></View><View style={s.legendItem}><View style={[s.dot, { backgroundColor: colors.primary }]} /><Text style={s.caption}>실제 공부 시간</Text></View></View><View style={s.chart}>
     <View style={s.axis}>{[ceiling, ceiling * 2 / 3, ceiling / 3, 0].map(value => <Text key={value} style={s.caption}>{Math.round(value / 60)}h</Text>)}</View>
-    {days.map(day => <Pressable key={day.date} accessibilityRole="button" accessibilityState={{ selected: day.date === selected, disabled: day.date > today }} disabled={day.date > today} accessibilityLabel={dayLabel(day)} onPress={() => onSelect(day.date)} style={s.column}><View style={s.barArea}>{day.status !== 'leave' && <View style={[s.bar, { height: `${(day.goal ?? 0) / ceiling * 100}%`, backgroundColor: colors.goal }]} />}<View style={[s.bar, { height: `${day.minutes / ceiling * 100}%`, backgroundColor: colors.primary }]} /></View><View style={[s.daySelection, day.date === selected && { backgroundColor: day.status === 'leave' ? colors.leaveBackground : colors.soft }]}><Text style={[s.label, day.date === today && { fontWeight: '800', color: colors.primary }]}>{['일', '월', '화', '수', '목', '금', '토'][parseDate(day.date).getUTCDay()]}</Text><View style={{ alignItems: 'center', gap: 2 }}><Text style={[s.caption, day.date === today && { fontWeight: '800', color: colors.primary }]}>{parseDate(day.date).getUTCDate()}</Text></View><View style={s.weeklyMark}><RecordMark kind={achieved(day) ? 'achieved' : day.status} /></View></View></Pressable>)}
+    {days.map(day => <Pressable key={day.date} accessibilityRole="button" accessibilityState={{ selected: day.date === selected, disabled: day.date > today }} disabled={day.date > today} accessibilityLabel={dayLabel(day)} onPress={() => onSelect(day.date)} style={s.column}><View style={s.barArea}>{day.status !== 'leave' && <View style={[s.bar, { height: `${(day.goal ?? 0) / ceiling * 100}%`, backgroundColor: colors.goal }]} />}<View style={[s.bar, { height: `${day.minutes / ceiling * 100}%`, backgroundColor: colors.primary }]} /></View><View style={[s.daySelection, day.date === selected && { backgroundColor: day.status === 'leave' ? colors.leaveBackground : colors.soft }]}><Text style={[s.label, day.date === today && { fontWeight: '800', color: colors.primary }]}>{['일', '월', '화', '수', '목', '금', '토'][parseDate(day.date).getUTCDay()]}</Text><View style={{ alignItems: 'center', gap: 2 }}><Text style={[s.caption, day.date === today && { fontWeight: '800', color: colors.primary }]}>{parseDate(day.date).getUTCDate()}</Text></View><View style={s.weeklyMark}><RecordDayMark day={day} /></View></View></Pressable>)}
   </View></View>;
 }
 export function MonthlyCalendar({ days, selected, onSelect, today, allowFutureSelection = false, variant = 'records', compact = false }: { compact?: boolean; days: StudyRecord[]; selected: string; onSelect(date: string): void; today: string; allowFutureSelection?: boolean; variant?: 'records' | 'leave' }) {
@@ -49,7 +55,7 @@ export function MonthlyCalendar({ days, selected, onSelect, today, allowFutureSe
       {isRest && <View pointerEvents="none" accessible={false} accessibilityElementsHidden style={StyleSheet.absoluteFill}>{Array.from({ length: 23 }, (_, i) => <View key={i} style={{ position: 'absolute', left: -80, top: i * 12 - 90, width: 240, height: 2, backgroundColor: colors.restStripe, transform: [{ rotate: '-45deg' }] }} />)}</View>}
       <View style={{ alignItems: 'center', gap: 2 }}><Text style={[s.label, isToday && { fontWeight: '800', color: colors.primary }, disabled && { color: colors.disabledText }]}>{parseDate(day.date).getUTCDate()}</Text>{isToday && <View style={{ width: 4, height: 4, borderRadius: radius.pill, backgroundColor: colors.primary }} />}</View>
       <Text style={s.cellTime}>{description}</Text>
-      {isLeave ? <RecordMark kind="leave" /> : variant === 'leave' || isRest ? <View style={{ height: 20 }} /> : day.date <= today && <RecordMark kind={achieved(day) ? 'achieved' : day.status} />}
+      {isLeave ? <RecordMark kind="leave" /> : variant === 'leave' || isRest ? <View style={{ height: 20 }} /> : day.date <= today && <RecordDayMark day={day} />}
     </Pressable></View>;
   })}</View></CalendarContainer>;
 }
