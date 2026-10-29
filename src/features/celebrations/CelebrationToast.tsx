@@ -30,7 +30,7 @@ function CelebrationSparkle({ still }: { still: boolean }) {
 }
 export function CelebrationToast({ notice, onDismiss, onViewReward, reducedMotion = false, screenReader = false, previewPhase, autoDismiss = true }: Props) {
   const [phase, setPhase] = useState<'stamp' | 'collect' | 'reward'>(previewPhase ?? 'stamp');
-  const [stampFinished, setStampFinished] = useState(!!previewPhase || reducedMotion);
+  const [sparkleReady, setSparkleReady] = useState(!!previewPhase || reducedMotion);
   const [width, setWidth] = useState(280);
   const [entrance] = useState(() => new Animated.Value(previewPhase || reducedMotion ? 1 : 0));
   const [stamp] = useState(() => new Animated.Value(previewPhase || reducedMotion ? 1 : 0));
@@ -67,10 +67,12 @@ export function CelebrationToast({ notice, onDismiss, onViewReward, reducedMotio
       Animated.parallel([timing(entrance, 1, 380), Animated.sequence([Animated.delay(reducedMotion ? 0 : 160), timing(stamp, 1, 600)])]),
     ]);
     let collection: Animated.CompositeAnimation | undefined;
+    // Reveal at the stamp's first contact, while its small settling bounce continues.
+    const sparkleDelay = Animated.delay(reducedMotion ? 0 : 380);
+    sparkleDelay.start(({ finished }) => { if (finished && alive) setSparkleReady(true); });
     announce('오늘 목표 달성!');
     animation.start(({ finished }) => {
       if (!finished || !alive) return;
-      setStampFinished(true);
       if (!notice.reward) {
         ready.current = true; schedule(screenReader ? 10000 : 4000); return;
       }
@@ -88,7 +90,7 @@ export function CelebrationToast({ notice, onDismiss, onViewReward, reducedMotio
         });
       });
     });
-    return () => { alive = false; animation.stop(); collection?.stop(); clearTimer(); entrance.stopAnimation(); stamp.stopAnimation(); collect.stopAnimation(); };
+    return () => { alive = false; animation.stop(); sparkleDelay.stop(); collection?.stop(); clearTimer(); entrance.stopAnimation(); stamp.stopAnimation(); collect.stopAnimation(); };
     // One mounted notice owns one animation. Callback changes must not replay it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notice.date, notice.reward, reducedMotion, screenReader, previewPhase, autoDismiss]);
@@ -124,7 +126,7 @@ export function CelebrationToast({ notice, onDismiss, onViewReward, reducedMotio
                 { translateY: collect.interpolate({ inputRange: [0, 1], outputRange: [0, 17] }) },
                 { scale: collect.interpolate({ inputRange: [0, 1], outputRange: [1, gathers ? 0.25 : 0.8] }) },
               ] }}><Animated.View style={{ transform: [{ scale: today ? stamp.interpolate({ inputRange: [0, 0.55, 0.8, 1], outputRange: [1.8, 0.86, 1.08, 1] }) : 1 }, { rotate: today ? stamp.interpolate({ inputRange: [0, 1], outputRange: ['-15deg', '0deg'] }) : '0deg' }] }}><Image accessible={false} source={designAssets.watermelon} resizeMode="contain" style={s.melon} /></Animated.View></Animated.View> : (day.rest || day.leave) ? <LeavePlaneIcon /> : null}
-              {today && day.achieved && stampFinished && phase === 'stamp' && <CelebrationSparkle still={reducedMotion || !!previewPhase} />}
+              {today && day.achieved && sparkleReady && phase === 'stamp' && <CelebrationSparkle still={reducedMotion || !!previewPhase} />}
             </View>
           </View>;
         })}
