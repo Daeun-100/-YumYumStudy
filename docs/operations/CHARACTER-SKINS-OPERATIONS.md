@@ -70,8 +70,10 @@ node supabase/scripts/manage-skins.mjs register --skin SKIN_ID --name SKIN_NAME 
 - 홈: `assets/characters/pomeranian/pomeranian-home-writer.png` (1536×1024 RGBA).
 - 집중: `assets/characters/pomeranian/pomeranian-focus-writer.png` (1254×1254 RGBA).
 - 생성 프롬프트는 각 PNG와 같은 이름의 `.prompt.txt`에 보관한다. 원본 PNG를 수정하거나 후처리하지 않았다.
-- 이미지는 앱에 번들하고 `src/design/skin-artwork.ts`에서 위 ID로 연결한다. 기본 포메라니안과 같은 배치를 사용한다. 애니메이션 효과는 포함하지 않는다.
+- 이미지는 앱에 번들하고 `src/design/skin-artwork.ts`에서 위 ID로 연결한다. 기본 포메라니안과 같은 배치를 사용하고 `storyFragments` 효과를 홈·집중에 연결한다.
+- 효과는 버건디 따옴표와 갈색 마침표가 올라오고 일부 점이 밝은 노란 별(`#F6CA35`)로 바뀌는 형태다. 18.2초마다 양옆 14회·노트북 위 7회 발생하며 각 조각의 수명은 3.6초다. 홈은 사선 노트북 상단과 키보드 양옆, 집중은 올린 상단 시작점(`y=.665`)을 사용한다. 위치는 전체 원본 캔버스 기준이다.
+- 효과는 앱 코드에 포함되므로 서버 등록을 추가할 필요가 없다. 한 개의 Animated 타이머를 공유하고 네이티브에서는 native driver로 투명도와 변환만 애니메이션한다. 기존 효과와 같이 동작 줄이기·백그라운드·숨긴 웹 탭·효과 비활성화 상태에서 중지한다.
 - 실제 Supabase 프로젝트 `hxwwhgxxvyzqqnxlgqde`에 기존 운영 방식대로 카탈로그 행을 등록했다. 등록 후 조회로 `grant_enabled=false`, 보유자 0명을 확인했다. 스키마·권한·사용자 착용 상태 변경은 없다.
 - 새 환경에서의 등록: `node supabase/scripts/manage-skins.mjs register --skin pomeranian-writer --name '웹소설 작가 포메라니안' --character pomeranian`.
 - 앱 배포 및 수신 확인 후 기존 절차에 따라 지급을 활성화한다.
-- 검증: lint, typecheck, 스킨 테스트 3개, Storybook 정적 빌드 통과. Storybook의 390px 홈·집중 화면에서 이미지와 배치를 시각 확인했다. 네이티브 기기 화면은 미검증이다.
+- 검증: lint, typecheck, 스킨·효과 테스트 7개, Storybook 정적 빌드 통과. Storybook의 홈·집중 화면에서 이미지와 효과 배치를 시각 확인했다. 네이티브 기기 화면은 미검증이다.

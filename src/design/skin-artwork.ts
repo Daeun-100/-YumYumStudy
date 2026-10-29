@@ -21,7 +21,7 @@ import pomeranianWriterFocus from '../../assets/characters/pomeranian/pomeranian
 
 const source = (asset: ImageSourcePropType | string): ImageSourcePropType => typeof asset === 'string' ? { uri: asset } : asset;
 export const skinArtwork: Record<string, { character: CharacterId; name: string; home: ImageSourcePropType; focus: ImageSourcePropType; homePlacement?: { scale: number; x: number; y: number }; focusBottom?: number; effects?: readonly SkinEffect[] }> = {
-  'pomeranian-writer': { character: 'pomeranian', name: '웹소설 작가 포메라니안', home: source(pomeranianWriterHome), focus: source(pomeranianWriterFocus) },
+  'pomeranian-writer': { character: 'pomeranian', name: '웹소설 작가 포메라니안', home: source(pomeranianWriterHome), focus: source(pomeranianWriterFocus), effects: [{ kind: 'storyFragments' }] },
   // Anchors refer to the laptop base in each source canvas, not its transparent margins.
   'bunny-toothache': { character: 'bunny', name: '치통 토끼', home: source(toothacheHome), focus: source(toothacheFocus), homePlacement: { scale: .72, x: 768, y: 870 }, focusBottom: 1150 },
   'bunny-bungeoppang': { character: 'bunny', name: '붕어빵 토끼', home: source(bunnyBungeoppangHome), focus: source(bunnyBungeoppangFocus), effects: [{ kind: 'warmSteam', home: { x: 0.55, y: 0.23, width: .10, opacity: .6 }, focus: { x: 0.48, y: 0.19, width: .12, opacity: .4 } }] },
