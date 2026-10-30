@@ -430,3 +430,7 @@ verify_jwt = false
 [functions.event-notifications]
 # Authenticates the existing trusted Cron credential inside the handler.
 verify_jwt = false
+
+# Administrator-only in-app notices. Does not send OS push notifications.
+[functions.admin-toasts]
+verify_jwt = false

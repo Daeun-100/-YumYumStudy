@@ -83,9 +83,15 @@ try {
  await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub','${u}',false)`);
  assert.equal((await call('get_event_backgrounds',[0])).windows.length,1);
  await db.exec('reset role');
+ assert.equal((await call('admin_event_report',[active.id])).jobs[0].overdue,true);
+ await call('admin_recover_event',[active.id,'start']);
+ assert.equal((await call('admin_event_report',[active.id])).jobs[0].overdue,false);
  const activeRow=(await db.query('select * from private.event_jobs where id=$1',[active.id])).rows[0];
  const prolonged=await schedule({...bg,request_id:randomUUID(),replaces:active.id,run_at:activeRow.run_at.toISOString(),ends_at:future(40)});
  assert.equal(prolonged.cron_ids[0],null);assert.ok(prolonged.cron_ids[1]);
+ const prolongedReport=(await call('admin_event_report',[prolonged.id])).jobs[0];
+ assert.equal(prolongedReport.overdue,false);assert.equal(prolongedReport.runs.length,0);
+ assert.equal(prolongedReport.cron.length,1);
  await call('admin_cancel_event',[prolonged.id]);
  await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub','${u}',false)`);
  assert.equal((await call('get_event_backgrounds',[0])).windows.length,0);

@@ -1,5 +1,6 @@
 import { PostitDesignProvider } from '../features/postits/PostitDesignProvider';
 import { ArtworkProvider } from '../features/artwork/ArtworkProvider';
+import { AdminToastProvider } from '../features/admin-toasts/AdminToasts';
 import { OtaUpdateProvider } from '../features/ota/OtaUpdateProvider';
 import { AppVersionReporter } from '../features/app-version/AppVersionReporter';
 import { StartupBoundary } from '../components/StartupBoundary';
@@ -23,9 +24,9 @@ export default function RootLayout() {
       <AppVersionReporter />
       <CallNotificationLifecycle />
       <UpdateNotice variant="global" />
-      <StartupBoundary><AppToastProvider><OtaUpdateProvider><PostitDesignProvider><TestRoomSelector /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+      <StartupBoundary><AppToastProvider><OtaUpdateProvider><AdminToastProvider><PostitDesignProvider><TestRoomSelector /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
-      </Stack><AchievementCelebrations /></PostitDesignProvider></OtaUpdateProvider></AppToastProvider></StartupBoundary>
+      </Stack><AchievementCelebrations /></PostitDesignProvider></AdminToastProvider></OtaUpdateProvider></AppToastProvider></StartupBoundary>
       <StatusBar style="dark" />
     </SafeAreaView>
   </LeaveProvider></StudyProvider></ArtworkProvider></AdmissionGate></IdentityProvider></UpdateProvider></RoomBuildBoundary></SafeAreaProvider>;

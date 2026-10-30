@@ -17,8 +17,13 @@ export function createArtworkResources(deps: Deps) {
   try {manifest = decodeArtwork(raw);} catch {return Promise.resolve();}
   const key = manifest.kind === 'skin' ? `skin:${manifest.id}` : `background:${artworkReference(manifest)}`;
   const old = snapshot.get(key);
-  if (restore && old && old.state !== 'failed' && !(old.state === 'loading' && !old.manifest) || old?.state==='ready' && old.manifest && artworkSignature(old.manifest)===artworkSignature(manifest)) return Promise.resolve();
+  if (restore && old && old.state !== 'failed' && !(old.state === 'loading' && !old.manifest)) return Promise.resolve();
+  // Even an unchanged response is the latest choice and refreshes its metadata TTL.
   wanted.set(key,artworkSignature(manifest));
+  if (old?.state==='ready' && old.manifest && artworkSignature(old.manifest)===artworkSignature(manifest)) {
+   emit(key,{...old,checkedAt:deps.now()});
+   return Promise.resolve();
+  }
   const preparingKey = `${key}:${artworkSignature(manifest)}`;
   const existing = pending.get(preparingKey); if (existing) return existing;
   // Keep a verified previous image on screen until the replacement is decoded.

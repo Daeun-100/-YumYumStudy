@@ -63,3 +63,20 @@ test('server denial cannot be overwritten by a late cache preparation',async()=>
  const request=store.requestSkins(['remote-bunny']),restore=store.restore([manifest()]);network.resolve();await request;gate.resolve();await restore;
  assert.equal(store.read().get('skin:remote-bunny').state,'unsupported');store.dispose();
 });
+
+test('reverting to ready background prevents a pending replacement from publishing or persisting',async()=>{
+ const gate=deferred(),saved=[];const original=manifest({kind:'background',id:'room'}),replacement=manifest({kind:'background',id:'room',sha256:'b'.repeat(64)});
+ const store=createArtworkResources({now:()=>1,fetchSkins:async()=>[],prepare:async m=>{if(m.home.sha256!==firstHash)await gate.promise;},save:rows=>saved.push(rows)});
+ await store.ingest(original);const pending=store.ingest(replacement);await store.ingest(original);
+ gate.resolve();await pending;
+ assert.equal(store.read().get('background:asset-room').manifest.home.sha256,firstHash);
+ assert.equal(saved.at(-1)[0].home.sha256,firstHash);store.dispose();
+});
+test('unchanged server metadata refreshes skin TTL without preparing images again',async()=>{
+ let now=1,reads=0,preparations=0;
+ const store=createArtworkResources({now:()=>now,fetchSkins:async()=>{reads++;return[manifest()];},prepare:async()=>{preparations++;}});
+ await store.requestSkins(['remote-bunny']);now=60001;await store.requestSkins(['remote-bunny']);
+ assert.equal(store.read().get('skin:remote-bunny').checkedAt,now);
+ now=60002;await store.requestSkins(['remote-bunny']);assert.equal(reads,2);assert.equal(preparations,1);
+ now=120001;await store.requestSkins(['remote-bunny']);assert.equal(reads,3);store.dispose();
+});
