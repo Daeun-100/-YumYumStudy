@@ -3,7 +3,7 @@
     "name": "yumyumstudy",
     "slug": "yumyumstudy",
     "scheme": "yumyumstudy",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/app/app-icon.png",
     "userInterfaceStyle": "light",
@@ -11,7 +11,7 @@
       "supportsTablet": true
     },
     "android": {
-      "versionCode": 4,
+      "versionCode": 5,
       "package": "com.yumyumstudy.app",
       "adaptiveIcon": {
         "backgroundColor": "#028669",
