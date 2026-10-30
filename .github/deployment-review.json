@@ -1,31 +1,25 @@
 {
-  "sourceCommit": "63602a5a664404cf750eafa1d89c22c88f947425",
-  "sourceTreeDigest": "2b06851718388d2311a72576198bf81feb35e0bcf1eda6f30230ce79fe74c118",
+  "sourceCommit": "5e90e1a108bd8cc6576ecbb5479e8db61059d253",
+  "sourceTreeDigest": "b46c0b471b34116a4fc722a8f40a0f3ac4da9b0a962e2e01933ad475690b4e34",
   "baseline": {
-    "tag": "v1.1.0",
-    "sha": "d4b5b9b797879da0464fa25b9cec4b6827d86a27",
-    "runtimeVersion": "4a7adc844a392bfaead47665719d0291b9f3da58"
+    "tag": "v1.1.1",
+    "sha": "c61a22765459dc8a1e4f2488f0d032d482801b2c",
+    "runtimeVersion": "a72aa08e39de83feb4413ad7acf7afd03d141def"
   },
   "schema": 1,
   "reviewer": {
     "kind": "interactive-codex"
   },
-  "recommendation": "apk",
-  "rationale": "Galaxy 최근 앱 복귀 예외를 피하기 위해 MainActivity launchMode를 singleTask에서 singleTop으로 변경하는 네이티브 config plugin을 추가했다. 기존 APK v1.1.0에 OTA로 적용할 수 없으므로 앱/패키지/lockfile 버전을 1.1.1, Android versionCode를 5로 증가한다. 원인 확인 전의 전용 큐·종료 진단·서버 수집은 develop에서 제거되어 이번 앱 수정은 실행 모드 플러그인과 등록만 포함한다.",
+  "recommendation": "update",
+  "rationale": "할로윈 모달의 정적 포스트잇 이미지 너비·높이를 부모 영역의 100%로 명시하는 스타일 한 곳만 변경한다. 앱 버전 1.1.1과 Android versionCode 5, 네이티브 설정·의존성은 유지하며 공개 APK와 원본 runtime이 정확히 일치하여 기존 APK에 호환되는 업데이트로 판단한다.",
   "evidence": [
-    "공개 APK 기준 v1.1.0의 source/runtime은 review-context가 Release candidate와 성공한 master 빌드 기록으로 검증했다. 결정적 mode=apk, compatible=false, needsReview=false이며 exemptions=[]이다. fingerprint 제외나 OTA runtime 강제값을 추가하지 않았다.",
-    "직전 실제 운영 배포 v1.1.0-r1 이후 master 대비 앱 코드 변경은 app.config.js의 플러그인 등록과 plugins/withAndroidRecents.js뿐이다. 버전 메타데이터 외에 JS 화면이나 타이머 로직의 변경은 없다. AndroidManifest 생성 시 MainActivity에 singleTop만 지정하며 기존 exported·intent filter는 유지한다.",
-    "S25 기존 앱 1.1.0에서 프로세스와 MainActivity가 살아 있는 상태로 startActivityFromRecents가 has root ... but target is singleInstance/Task 예외 및 result=-96으로 실패했다. singleTop을 포함한 별도 테스트 APK는 같은 기기에서 기존 Activity/Task로 4회 복귀했고 기존 앱은 2회 실패했다. 사용자도 성공을 확인했다. 테스트 APK에는 당시 진단 코드가 포함됐고 별도 패키지이므로 최소 구성 운영 APK의 업데이트 실측이나 launchMode 단독 인과 검증으로 확대하지 않는다.",
-    "S23 기존 singleTask 앱은 최근 앱에서 기존 작업을 앞으로 가져오는 경로로 3회 정상 복귀했다. S25가 다른 시스템 경로를 택한 근본 조건은 미확정이다. singleTop은 singleTask와 모든 상황에서 같지 않으므로 후보 APK 검증에서 알림·딥링크·잠금 후 복귀와 작업 중복을 확인한다.",
-    "PR #59로 제거한 GuardWorker, GuardDiagnostics, ExitDiagnosticsReporter, report_android_exit 및 관련 migration/테스트/CI 변경이 없다. 별도 진단 수집 기능이나 새 개인정보 수집을 이 배포에 추가하지 않는다.",
-    "운영 도구 PR #58도 develop에 포함된다. skin grant 예약의 선택적 user_ids를 1~500개 중복 없는 UUID로 제한하고 방/입장 자격을 검증한다. 기존 예약 수정은 원래 수신자 스냅샷을 유지하며 생략 시 기존 방 전체 지급을 보존한다. private helper 권한을 회수하고 기존 관리자 RPC를 사용한다. 공개 앱 UI의 스킨 지급 인터페이스 변경은 없다.",
-    "원격 적용 이력에 event_skin_recipients(20261030135204)가 존재하고 android_exit_diagnostics(20261030084116)는 없다. 이번 준비 과정에서는 서버 변경, 지급, 예약 또는 알림 발송을 실행하지 않았다.",
-    "검증: lint/typecheck, PGlite 포함 전체 442개 테스트 통과. 별도 check-event-recipients-db는 선택 대상·입장/방 검증·예약 수정·중복 방지·지급/알림 제외·권한 검증 통과(Cron/HTTP 격리 대체). 최소 구성 네이티브 StudyGuard compileReleaseKotlin은 직전 정리 작업에서 성공했고 이후 변경은 버전 및 검토 문서뿐이다.",
-    "기존 앱 package=com.yumyumstudy.app과 production EAS profile/channel, 업데이트 URL, 서명 설정은 그대로 유지한다. master PR만 만들며 병합·운영 빌드·태그·Release 공개·업데이트 모달 안내 등록은 이 요청에서 실행하지 않는다. 실제 배포는 기존 master Cloud Build APK 경로를 따른다."
+    "공개 APK v1.1.1 대비 변경 파일은 src/features/events/HalloweenEventView.tsx 한 개다. 이미지에 width/height 100%만 추가하고 기존 180×180 컨테이너, contain, 텍스트·모달 동작은 유지한다.",
+    "React Native 정적 Image는 원본 크기를 기본 스타일로 사용하는데 absoluteFill은 크기를 덮어쓰지 않는다. 명시한 비율 크기가 부모 레이아웃에 맞춰 원본 크기를 덮어쓴다.",
+    "review-context의 mode=update, native.compatible=true, match=exact, needsReview=false, exemptions=[]를 확인했다. 원본 runtime은 공개 APK의 a72aa08e39de83feb4413ad7acf7afd03d141def와 일치한다.",
+    "lint와 typecheck, git diff --check 통과. Android 실기기 시각 검증은 수행하지 않았다. 신규 네이티브 코드, 스키마, 알림·이벤트 예약 변경은 없다."
   ],
   "releaseNotes": [
-    "일부 갤럭시에서 최근 앱 목록으로 얌얌스터디에 다시 들어가지 못하는 문제를 개선했습니다.",
-    "운영 기능: 이벤트 스킨 지급을 예약할 때 받을 친구를 선택할 수 있습니다."
+    "할로윈 이벤트 안내에서 포스트잇 이미지가 모달 밖으로 넘치는 문제를 수정했습니다."
   ],
   "exemptions": [],
   "blockers": []

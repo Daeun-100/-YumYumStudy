@@ -29,7 +29,7 @@ export function HalloweenEventView({ minutes, received, onOpen }: { minutes: num
     <EventBookmark minutes={minutes} received={received} onOpen={() => { onOpen?.(); setDetails(true); }} />
       <Dialog visible={details} label={received ? '할로윈 포스트잇 획득' : '할로윈 이벤트 안내'} onClose={() => setDetails(false)}><View style={s.detail}>
         <Text style={s.detailTitle}>{received ? '할로윈 포스트잇을 받았어요' : '30분 공부하고 선물 받기'}</Text>
-        <View style={s.largePaper}><Image accessible accessibilityLabel="한정 포스트잇 종이 미리보기" source={paperSource} resizeMode="contain" style={StyleSheet.absoluteFill} /><View style={s.paperText}><Text style={s.paperMessage}>{'오늘도 함께\n공부해요 🎃'}</Text></View></View>
+        <View style={s.largePaper}><Image accessible accessibilityLabel="한정 포스트잇 종이 미리보기" source={paperSource} resizeMode="contain" style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} /><View style={s.paperText}><Text style={s.paperMessage}>{'오늘도 함께\n공부해요 🎃'}</Text></View></View>
         <CandyProgress minutes={minutes} /><Text style={s.detailCopy}>{received ? '포스트잇 쓰기에서 선택해 보세요.' : '오늘 30분을 채우면 할로윈 포스트잇을 받아요.'}</Text>
         <DialogCloseButton label={received ? '확인했어요' : '공부하러 가기'} />
       </View></Dialog>
