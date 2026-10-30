@@ -1,9 +1,9 @@
 {
-  "sourceCommit": "481d46e6ad69d78188614ff2d1feae50d3c5015b",
-  "sourceTreeDigest": "9676d61ac56a7cf095ac8f6b57adf84c18c54467aa011dc300595076edf8fc64",
+  "sourceCommit": "9a1fd67479b6683f22ea3309e052f03cfe4a01b1",
+  "sourceTreeDigest": "c3cd256e6c108c5923d51e8c17679fbbedb43462c11e83649ba519d832826671",
   "baseline": {
-    "tag": "v1.0.2",
-    "sha": "710bd2e10b4eb8aa16378486f3cb3517770ac878",
+    "tag": "v1.1.0",
+    "sha": "d4b5b9b797879da0464fa25b9cec4b6827d86a27",
     "runtimeVersion": "4a7adc844a392bfaead47665719d0291b9f3da58"
   },
   "schema": 1,
@@ -11,28 +11,29 @@
     "kind": "interactive-codex"
   },
   "recommendation": "apk",
-  "rationale": "사용자가 새 APK 배포를 요청하여 기능 추가 기준으로 앱 버전을 1.0.2에서 1.1.0, Android versionCode를 3에서 4로 올렸다. 결정적 경로도 apk다. 황금 수박 서버 마이그레이션 적용과 운영 SQL 회귀 검증을 완료해 선행 차단 조건을 해결했다.",
+  "rationale": "직전 공개 APK v1.1.0 이후 develop의 이벤트·원격 꾸미기·포스트잇 보상·관리자 토스트 변경을 검토했다. 버전 변경 전 review-context는 scripts/admin-toasts.mjs와 scripts/secure-web-export.mjs를 미허용 빌드 입력으로 판정해 apk를 요구했다. 실제 네이티브 모듈 추가라고 단정하지 않으며 검사 허용 목록이나 지문 제외 규칙을 확장하지 않았다. 현재 정책에 따라 기능 추가용 APK 1.2.0, Android versionCode 5를 준비했다. 테스트 확인된 앱 소스에 버전 메타데이터와 이 검토 보고서만 추가한다.",
   "evidence": [
-    "공개 APK v1.0.2: source 710bd2e10b4eb8aa16378486f3cb3517770ac878, version 1.0.2, versionCode 3, production runtime 4a7adc844a392bfaead47665719d0291b9f3da58. candidate.json과 성공한 master 빌드의 보관 EAS JSON을 review-context가 검증했다. 기준 커밋은 origin/master의 조상이다.",
-    "직전 성공 운영 배포 v1.0.2-r2의 source는 ecd94c6a9db7a1c7a822f83f3e5b723ac8807644이다. releaseNotes는 이 커밋 이후 develop까지의 실제 앱 변경을 요약한다.",
-    "전체 APK 기준 diff와 master→source diff를 검토했다. app.json/package.json/package-lock.json 버전과 Android build number를 함께 상승했다. 설치 APK 메타데이터가 변경되므로 새 APK가 필요하며 기존 runtime을 덮어쓰지 않는다.",
-    "APK 이후 expo-application 직접 의존성 추가가 있으나 이미 lock에 포함됐던 패키지다. 의존성 선언만으로 새 native 모듈 추가라고 단정하지 않는다. 이번 APK 결정은 명시적 APK 요청과 버전/build number 상승에 근거한다.",
-    "네이티브 입력 검토: app.config.js/eas.json/plugins/modules 및 launcher/splash 자원은 공개 APK와 동일하다. scripts/benchmark-celebration-latency.mjs는 운영 성능 측정 도구이며 native build hook 호출이 없다. 지문 불일치를 우회하는 제외 항목은 적용하지 않았다.",
-    "앱 검토: study 화면 수요에 따른 조회/재연결, 포스트잇 병합, 목표 달성 토스트, 수박 진행률, 연차일 공부시간, 프로필 주간 7일 및 보상 잔액, 프로필 버튼으로만 OTA 적용하는 controller/provider와 저장/입력 차단을 확인했다.",
-    "서버: 저장소 20261029063647_super_watermelon_rewards.sql을 운영 프로젝트 hxwwhgxxvyzqqnxlgqde에 적용했다. 원격 이력은 MCP가 생성한 20261029105416_super_watermelon_rewards이며 같은 SQL이다. 같은 트랜잭션에서 super_watermelon.sql DO 회귀 검증을 수행한 뒤 savepoint로 테스트 데이터/정책 변경을 되돌리고 schema만 커밋했다. 실제 starts_on=2026-10-29, daily-v1과 원장/잔액/RPC 존재를 확인했다.",
-    "실제 workflow: Check가 source digest와 baseline 및 blockers를 검증한다. 서버 선행 조건 해결 후 blockers는 비어 있으며 master 병합 시 Cloud Build는 apk를 선택하고 1.1.0 APK/웹 후보와 Release 초안을 만든다. Release Publish와 production 승인 후 웹 승격/업데이트 안내를 활성화한다.",
-    "검증: npm run lint 성공, npm run typecheck 성공, npm test 344/344 성공. 새 APK 빌드/실기기 및 web UI 시각 검증은 이번 PR 준비에서 수행하지 않았다. 기존 UpdateNotice에는 나중에 닫기 동작이 있어 구버전 사용 차단은 제공하지 않는다.",
-    "운영 회귀: super_watermelon.sql의 중복 지급 방지, 7일 달성, 월 경계, 연차/휴무/미설정/부분 달성 제외, 잔액/원장 일치, 권한/입장 검사가 통과했다. friend_history.sql의 본인/동료/다른 방/미인증/범위 검사도 통과했다. synthetic 사용자로 authenticated get_today/get_history/get_watermelon_balance 계약을 확인했고 모든 fixture는 rollback했다.",
-    "운영 보안 재점검: 새 세 테이블 모두 RLS 활성화 및 authenticated 직접 SELECT/INSERT 차단, balance RPC는 authenticated 허용/anon 차단이다. Advisors의 정책 없음 INFO 3건은 RPC 전용 테이블의 의도된 차단이며 SECURITY DEFINER WARN 1건은 입장/본인/방을 검사하는 get_watermelon_balance 공개 API다. 기존 경고는 이 작업 범위에서 변경하지 않았다. 관련 안내: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy 및 https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
-    "추가 변경 검토: scripts/release-candidate.mjs는 APK 태그 커밋의 deployment-review.json을 읽고 해당 소스 tree digest와 blockers를 검증한 뒤 releaseNotes만 일반 텍스트 목록으로 앱 안내에 등록한다. GitHub Release 본문/커밋/빌드 메타데이터는 포함하지 않는다. 배포 관리 코드 변경이며 native build hook이나 앱 번들 변경은 없다. Android/web 동일 요약 및 stale/빈 요약/blocker 차단 회귀 검증을 포함해 lint/typecheck와 테스트 344/344가 통과했다."
+    "공개 APK 기준은 v1.1.0, source d4b5b9b797879da0464fa25b9cec4b6827d86a27, production runtime 4a7adc844a392bfaead47665719d0291b9f3da58이다. review-context가 Release candidate.json과 성공한 master Cloud Build 및 보관 EAS JSON을 검증했다. 최신 공개 릴리스 이후 전체 diff를 검토했다.",
+    "버전 변경 전 develop f6ffe3ecaa6f0de6d3ecc6f80d1375cf46689543의 결정적 mode도 apk였다. 원인은 새 관리자 운영 CLI와 원격 이미지용 웹 CSP export 스크립트이며 이 검사는 전체 지문 비교 이전에 보수적으로 차단한다. 네이티브 호환 지문 일치를 입증했다고 보고하지 않으며 예외는 추가하지 않았다.",
+    "app.json/package.json/package-lock.json의 버전을 1.1.0에서 1.2.0으로 함께 올리고 Android versionCode를 4에서 5로 올렸다. Expo SDK·의존성 버전·app.config.js·eas.json·네이티브 modules/plugins·런처/스플래시 설정은 v1.1.0과 동일하다. APK metadata 변경으로도 새 APK가 필요하다.",
+    "앱: 자기 방 배경 RPC와 Realtime 갱신, 주제별 원격 이미지의 경로/규격 검증·기본 이미지 대체·사용자/방 범위 캐시를 검토했다. 서버 이미지 정의만으로 새 캐릭터·실행 코드를 추가하지 않는다. 웹 CSP 변경은 자기 Supabase event-artwork 공개 경로의 이미지만 추가 허용한다.",
+    "포스트잇: 보유 디자인 선택·정사각 작성/열람·서버 스냅샷 보존과 공부 시간 조건 동기화, 재시도/범위 변경 방어 및 실제 표시 시 획득 안내 완료 처리를 검토했다. 2026-10-31 06:00부터 11-01 06:00 KST까지의 고정 할로윈 안내는 서버 보상 예약을 생성하지 않는다.",
+    "관리자 토스트: 방/사용자/플랫폼/variant 제한과 공부·저장 중 표시 억제, 로컬 완료 기록, 지정 OTA UUID/runtime/channel 일치 조건, 프로필 업데이트 행으로 이동을 검토했다. 기존 수동 OTA 적용/저장 차단은 유지한다. 공통 토스트 위치와 수박 도장 지연/속도 변경도 포함한다.",
+    "운영 도구: 배경/스킨/포스트잇 PNG prepare/upload/register/verify/list 공통화와 기존 포스트잇 CLI 전달 호환을 검토했다. 포스트잇 덮어쓰기는 네트워크 호출 전 거부하고 기존 스킨 개별 지급/착용·이벤트 예약·푸시/토스트 처리는 유지한다.",
+    "공유 서버 읽기 전용 확인: event_operations, remote_event_artwork, admin_toasts, event_skin_notifications, themed_artwork_library, simplify_toast_delete, simplify_artwork_paths, postit_design_rewards, fix_active_event_report 이력이 존재한다. simplify_toast_delete의 원격 버전은 20261029161744이고 저장소 버전은 20261029160622이다. 이 검토에서는 재적용·이력 수정을 수행하지 않았다.",
+    "공유 서버에서 get_event_backgrounds(p_room_id), get_skin_artwork(p_ids,p_room_id), sync_postit_designs(p_room_id), get_admin_toasts(), record_admin_toast(p_campaign_id,p_installation_id,p_event)의 시그니처를 확인했다. admin-toasts v3와 event-notifications v2는 ACTIVE다. 운영 테이블 수정·알림 발송·이벤트 예약은 하지 않았다.",
+    "서버 이미지 라이브러리 7건, 포스트잇 보상 규칙/보유 0건을 확인했다. 포스트잇 이미지 업로드와 마이그레이션은 준비됐으나 실제 행사는 대상 방·기간·1800초 규칙과 디자인 활성화를 별도로 운영해야 한다. 앱 배포만으로 할로윈 선물이 지급된다고 안내하지 않는다.",
+    "사용자가 Android test 채널의 develop f6ffe3e OTA를 적용해 확인했다고 응답했다. 업데이트 그룹 2ddc975c-baab-4f61-a96c-12750f32aea3, update ID 01a18bcd-93ef-7e9d-886a-3cd2361a67ac, 테스트 runtime 16a730161794c57f595e156bedaaf353630dde66이다. 이를 production APK 설치 검증이나 모든 기능/기기 검증으로 확대하지 않는다.",
+    "검증: npm run lint, npm run typecheck, npm run export:web, node scripts/deployment.mjs check 통과. npm test는 434 통과/격리 DB 1 건너뜀이며 해당 관리자 토스트 DB 검사는 PGlite 0.3.14를 지정해 별도로 1/1 통과했다. 포스트잇 보상과 주제별 이미지 격리 PostgreSQL 검사도 통과했다. 실제 새 1.2.0 APK 빌드·설치와 iPhone 실기기는 아직 미검증이다.",
+    "실제 배포는 master 병합 후 기존 Cloud Build의 apk 경로로 1.2.0 APK/웹 후보와 Release 초안을 생성한다. 후보 확인·Release 공개·production 승인 절차를 유지한다. 로컬 production 업데이트나 태그 생성은 수행하지 않았다."
   ],
   "releaseNotes": [
-    "목표를 달성하면 수박 도장과 축하 알림을 볼 수 있으며, 연차 보상이 확정되면 같은 알림에서 안내합니다.",
-    "연차 없이 월요일부터 일요일까지 7일 모두 목표를 달성하면 일요일에 황금 수박을 표시하고, 프로필에서 일반·황금 수박 보유량을 확인할 수 있습니다.",
-    "기록과 프로필의 수박이 목표 진행률에 따라 채워지며, 프로필의 주간 달성을 7일 기준으로 표시합니다.",
-    "월간 기록에서 연차를 사용한 날에도 실제 공부 시간을 확인할 수 있습니다.",
-    "열린 화면과 실시간 연결 상태에 맞춰 공부 기록과 포스트잇을 갱신하도록 개선했습니다.",
-    "다운로드된 앱 업데이트는 프로필에서 직접 적용하며, 공부나 저장 작업 중에는 적용을 미룹니다."
+    "이벤트 기간에 공부방의 홈·집중 배경을 바꾸고, 서버에 등록한 캐릭터 스킨을 표시할 수 있습니다.",
+    "보유한 포스트잇 종이 디자인을 선택해 글을 남길 수 있으며, 작성·읽기 화면을 정사각형 종이에 맞게 다듬었습니다.",
+    "공부 시간 조건 보상이 활성화되면 포스트잇 디자인을 자동으로 받고 획득 안내를 확인할 수 있습니다.",
+    "할로윈 행사 기간에는 집중 화면에서 30분 공부 진행 상황과 포스트잇 선물 안내를 확인할 수 있습니다.",
+    "관리자가 보낸 앱 내부 공지를 확인하고, 준비된 업데이트 안내에서 프로필의 업데이트 항목으로 이동할 수 있습니다.",
+    "알림 표시 위치를 조정하고 목표 달성 수박 도장 애니메이션을 더 천천히 표시합니다."
   ],
   "exemptions": [],
   "blockers": []
