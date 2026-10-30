@@ -112,7 +112,7 @@ const s = StyleSheet.create({
   noteHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
   noteFooter: { alignItems: 'flex-end' },
   author: { ...typography.link, color: colors.text, flex: 1 },
-  readingContent: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 8 },
+  readingContent: { flexGrow: 1, paddingHorizontal: 40, paddingTop: 8 },
   designSwatch: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
   // Remove the supplied circular PNG's transparent outer padding inside the round clip.
   previewCrop: { position: 'absolute', width: 48, height: 48, left: -4, top: -4 },
