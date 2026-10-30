@@ -28,8 +28,10 @@
 
 ## 배포와 운영
 
+- [관리자 운영 도구 안내](operations/OPERATOR-TOOLS.md): 이미지·이벤트/보상·알림별 도구 선택
+
 - [이벤트 기록과 예약 운영](operations/EVENT-OPERATIONS.md)
-- [서버 배경·스킨 이미지와 효과 설정 운영](operations/ARTWORK-OPERATIONS.md)
+- [서버 꾸미기 이미지와 효과 설정 운영](operations/ARTWORK-OPERATIONS.md)
 
 - [버전 및 배포 운영](operations/RELEASES.md): 배포 절차와 현재 버전관리 규칙
 - [클라우드 빌드](operations/CLOUD-BUILDS.md)
@@ -37,13 +39,14 @@
 - [사용자별 마지막 확인 버전](operations/APP-VERSION-REPORTING.md): 설치 버전·실행 코드 관측과 관리자 조회
 - [서버 운영과 장애 확인](operations/SERVER-OPERATIONS.md): DB 적용, 친구 부르기 알림, Discord 로그 감시
 - [관리자 연차](operations/ADMIN-LEAVE.md)
+- [관리자 앱 내부 알림](operations/ADMIN-TOASTS.md)
+- [포스트잇 디자인 운영](operations/POSTIT-DESIGNS.md): 디자인 등록과 공부 조건 보상
 - [캐릭터 이벤트 스킨 운영](operations/CHARACTER-SKINS-OPERATIONS.md)
 - 설치 안내 사이트는 [다운로드 페이지 안내](../download-site/README.md)를 참고한다.
 
 ## 기획과 개선안
 
 - [포스트잇 디자인 보유·지급](proposals/POSTIT-DESIGNS-SPEC.md): 서버 PNG와 조건 보상, 원형 디자인 선택
-- [포스트잇 디자인 운영](operations/POSTIT-DESIGNS.md): PNG 등록·게시와 공부 조건 등록·조회·중지
 
 - [이벤트 기록과 예약 운영 명세](proposals/EVENT-OPERATIONS-SPEC.md)
 

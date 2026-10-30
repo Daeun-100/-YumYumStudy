@@ -1,6 +1,8 @@
-# 주제별 배경·스킨 이미지 운영
+# 주제별 꾸미기 이미지 운영
 
-배경·스킨 PNG는 Supabase Storage의 `event-artwork` 버킷에 주제별로 보관한다. 에셋은 이벤트와 독립된 `private.artwork_library`에 등록하고 여러 이벤트가 같은 배경·스킨을 참조한다. 새 등록에는 이미지 버전 UUID나 초안→리비전 게시 절차를 사용하지 않는다. 기존 스킨 보유 ID와 지난 행사·구버전 앱의 이미지 기록은 보존한다.
+배경·스킨·포스트잇 PNG는 Supabase Storage의 `event-artwork` 버킷에 주제별로 보관한다. 에셋은 이벤트와 독립된 `private.artwork_library`에 등록하고 여러 이벤트가 같은 배경·스킨을 참조한다. 새 등록에는 이미지 버전 UUID나 초안→리비전 게시 절차를 사용하지 않는다. 기존 스킨 보유 ID와 지난 행사·구버전 앱의 이미지 기록은 보존한다.
+
+공통 도구는 `supabase/scripts/manage-artwork.mjs`다. 배경·스킨은 `--home`·`--focus`, 포스트잇은 `--paper`와 선택 `--preview`를 사용한다. 포스트잇 보상·신규 지급 활성화는 [포스트잇 운영](POSTIT-DESIGNS.md), 개인 스킨 지급·착용은 [스킨 운영](CHARACTER-SKINS-OPERATIONS.md), 행사 예약은 [이벤트 운영](EVENT-OPERATIONS.md)을 따른다.
 
 ## 저장 구조
 
@@ -27,9 +29,11 @@ event-artwork/
 
 ## 규격과 보안
 
-PNG 한 파일 최대 5 MiB, 두 파일 합계 최대 10 MiB. 홈 1536×1024, 스킨 집중 1254×1254, 배경 집중 1024×1536. 8비트 RGB/RGBA·비인터레이스 PNG이며 스킨에는 실제 투명 픽셀이 필요하다. 운영 도구가 서명·CRC·압축 데이터·규격·투명도와 실제 공개 다운로드 SHA-256을 검사한다.
+배경·스킨 PNG 한 파일 최대 5 MiB, 두 파일 합계 최대 10 MiB. 홈 1536×1024, 스킨 집중 1254×1254, 배경 집중 1024×1536. 8비트 RGB/RGBA·비인터레이스 PNG이며 스킨에는 실제 투명 픽셀이 필요하다. 운영 도구가 서명·CRC·압축 데이터·규격·투명도와 실제 공개 다운로드 SHA-256을 검사한다.
 
 버킷에는 공개 가능한 꾸미기 PNG만 올린다. 앱 역할에는 업로드·수정·삭제를 허용하지 않는다. 서비스 키는 신뢰된 운영 환경에서만 사용하며 인자·정의·문서에 넣지 않는다. 라이브러리는 private·RLS·직접 접근 차단을 적용하고 등록·전체 목록은 관리자 RPC로만 제공한다. 사용자용 조회는 자기 보유 또는 같은 방 친구의 착용 스킨, 자기 방 배경으로 제한한다.
+
+포스트잇은 종이·선택 미리보기 각각 최대 2 MiB의 512–2048 px 정사각 PNG다. 미리보기는 불투명 이미지여야 한다. 이미 붙인 종이를 보존하므로 포스트잇 `--replace`는 거부하며 새 파일 경로를 등록한다.
 
 ## 정의와 등록
 
@@ -59,6 +63,8 @@ node --experimental-strip-types supabase/scripts/manage-artwork.mjs upload --def
 # 이미 업로드한 파일의 manifest를 검증하고 등록
 node --experimental-strip-types supabase/scripts/manage-artwork.mjs register --definition MANIFEST.json --activate
 node --experimental-strip-types supabase/scripts/manage-artwork.mjs list --theme winter
+# 포스트잇도 같은 등록·검증·목록 명령을 사용한다. 정의에는 kind: postit을 지정한다.
+node --experimental-strip-types supabase/scripts/manage-artwork.mjs upload --definition POSTIT.json --paper PAPER.png --preview PREVIEW.png
 node --experimental-strip-types supabase/scripts/manage-artwork.mjs verify --definition MANIFEST.json
 ```
 

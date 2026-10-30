@@ -35,3 +35,26 @@ test('retired UUID creation and publishing commands fail before any network requ
  await assert.rejects(()=>prepareDefinition({...config,schemaVersion:1,revision:'00000000-0000-4000-8000-000000000001'},home,focus),/Only themed/);
  let sent=0;await assert.rejects(()=>uploadDefinition({base:'https://x.supabase.co',key:'test-only',manifest:{schemaVersion:1},homeBytes:home,focusBytes:focus,request:async()=>{sent++;}}),/Unsupported/);assert.equal(sent,0);
 });
+
+test('shared postit upload verifies paper and optional preview before registration and preserves files',async()=>{
+ const {preparePostit}=await import('../supabase/scripts/manage-artwork.mjs');
+ const paper=readFileSync('assets/postits/halloween-paper-square.png');
+ const preview=readFileSync('assets/postits/halloween-preview-fullbleed.png');
+ for(const previewBytes of [undefined,preview]){
+  const manifest=preparePostit({kind:'postit',id:'ghost',theme:'halloween',name:'Ghost',fallbackColor:'#F9E8A0',textColor:'#453F30'},paper,previewBytes);
+  const calls=[];
+  const request=async(url,options={})=>{
+   const path=new URL(url).pathname;calls.push({path,options});
+   if(path.includes('/object/public/'))return new Response(path.endsWith('paper.png')?paper:preview,{headers:{'content-type':'image/png'}});
+   return Response.json({ok:true});
+  };
+  await uploadDefinition({base:'https://x.supabase.co',key:'test-only',manifest,paperBytes:paper,previewBytes,request});
+  assert.equal(calls.length,previewBytes?5:3);
+  assert.ok(calls.at(-1).path.endsWith('/admin_register_artwork'));
+  assert.deepEqual(JSON.parse(calls.at(-1).options.body),{p_definition:manifest,p_activate:false});
+  assert.equal(calls[0].options.headers['x-upsert'],'false');
+  const before=calls.length;
+  await assert.rejects(()=>uploadDefinition({base:'https://x.supabase.co',key:'test-only',manifest,paperBytes:paper,previewBytes,replace:true,request}),/preserved/);
+  assert.equal(calls.length,before);
+ }
+});
