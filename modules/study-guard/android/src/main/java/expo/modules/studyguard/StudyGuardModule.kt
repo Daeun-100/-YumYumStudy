@@ -7,12 +7,23 @@ import android.provider.Settings
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.functions.Queues
+import expo.modules.kotlin.functions.Coroutine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class StudyGuardModule : Module() {
   private fun context() = requireNotNull(appContext.reactContext)
   override fun definition() = ModuleDefinition {
     Name("StudyGuard")
-    AsyncFunction("status") { StudyGuardService.instance?.poll(); GuardStore.snapshot(context()) }.runOnQueue(Queues.MAIN)
+    OnCreate {
+      appContext.reactContext?.applicationContext?.let { ctx ->
+        GuardWorker.handler.post { GuardDiagnostics.collect(ctx) }
+      }
+    }
+    AsyncFunction("pendingDiagnostics") { GuardDiagnostics.pending(context()) }.runOnQueue(GuardWorker.scope)
+    AsyncFunction("acknowledgeDiagnostics") { ids: List<String> -> GuardDiagnostics.acknowledge(context(), ids) }.runOnQueue(GuardWorker.scope)
+    // Read the latest observed state; never query UsageStatsManager merely to render a screen.
+    AsyncFunction("status") { GuardStore.snapshot(context()) }.runOnQueue(GuardWorker.scope)
     AsyncFunction("openUsageSettings") {
       val activity = requireNotNull(appContext.currentActivity)
       val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, Uri.parse("package:${context().packageName}"))
@@ -25,7 +36,7 @@ class StudyGuardModule : Module() {
     AsyncFunction("reviewRestrictedSettings") {
       // This records acknowledgement of the guide, not a system permission grant.
       GuardStore.prefs(context()).edit().putBoolean("restricted_settings_reviewed", true).apply()
-    }.runOnQueue(Queues.MAIN)
+    }.runOnQueue(GuardWorker.scope)
     AsyncFunction("openNotificationSettings") {
       val ctx = context()
       val intent = if (Build.VERSION.SDK_INT >= 26) Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName)
@@ -45,10 +56,10 @@ class StudyGuardModule : Module() {
     AsyncFunction("select") { packages: List<String> ->
       check(!GuardStore.state(context()).running) { "일시정지 후 허용앱을 변경해 주세요" }
       GuardStore.prefs(context()).edit().putStringSet("allowed", packages.toSet()).apply()
-    }.runOnQueue(Queues.MAIN)
+    }.runOnQueue(GuardWorker.scope)
     AsyncFunction("setTransport") { url: String, key: String, token: String, owner: String, room: Int ->
       StudyLink.transport(context(), url, key, token, owner, room)
-    }.runOnQueue(Queues.MAIN)
+    }.runOnQueue(GuardWorker.scope)
     AsyncFunction("prepareStudy") { serverNow: String ->
       check(appContext.currentActivity != null) { "스터디앱에서 시작해 주세요" }
       val ctx = context()
@@ -58,34 +69,34 @@ class StudyGuardModule : Module() {
         if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(intent) else ctx.startService(intent)
       } else StudyGuardService.instance?.poll()
       StudyLink.prepare(ctx, serverNow); GuardStore.heartbeat = GuardStore.now()
-    }.runOnQueue(Queues.MAIN)
+    }.runOnQueue(GuardWorker.scope)
     AsyncFunction("bindStudy") { id: String, owner: String, room: Int, startedAt: String ->
       StudyLink.bind(context(), id, owner, room, startedAt)
-    }.runOnQueue(Queues.MAIN)
+    }.runOnQueue(GuardWorker.scope)
     AsyncFunction("recoverStoppedStudy") { id: String, owner: String, room: Int, startedAt: String, serverNow: String ->
       StudyLink.recoverStopped(context(), id, owner, room, startedAt, serverNow)
-    }.runOnQueue(Queues.MAIN)
-    AsyncFunction("acknowledgeStop") { id: String -> StudyLink.acknowledge(context(), id); StudyLink.stopIfIdle(context()) }.runOnQueue(Queues.MAIN)
+    }.runOnQueue(GuardWorker.scope)
+    AsyncFunction("acknowledgeStop") { id: String -> StudyLink.acknowledge(context(), id); StudyLink.stopIfIdle(context()) }.runOnQueue(GuardWorker.scope)
     AsyncFunction("pause") {
       val ctx = context(); GuardStore.state(ctx).pause(GuardStore.now(), "직접 일시정지했어요"); GuardStore.log(ctx, "직접 일시정지")
-    }.runOnQueue(Queues.MAIN)
+    }.runOnQueue(GuardWorker.scope)
     AsyncFunction("finish") {
       val ctx = context(); GuardStore.state(ctx).pause(GuardStore.now(), "검증을 종료했어요"); GuardStore.log(ctx, "검증 종료")
       ctx.stopService(Intent(ctx, StudyGuardService::class.java))
-    }.runOnQueue(Queues.MAIN)
+    }.runOnQueue(GuardWorker.scope)
     AsyncFunction("reset") {
       val ctx = context(); check(!GuardStore.state(ctx).running) { "일시정지 후 초기화해 주세요" }
       GuardStore.state(ctx).reset(GuardStore.now()); GuardStore.log(ctx, "검증 시간 초기화")
-    }.runOnQueue(Queues.MAIN)
-    AsyncFunction("launch") { pkg: String ->
+    }.runOnQueue(GuardWorker.scope)
+    (AsyncFunction("launch") Coroutine { pkg: String ->
       val ctx = context(); val activity = requireNotNull(appContext.currentActivity)
       StudyGuardService.instance?.poll()
       check(GuardStore.allowed(ctx).contains(pkg)) { "허용앱으로 먼저 등록해 주세요" }
       val intent = requireNotNull(ctx.packageManager.getLaunchIntentForPackage(pkg)) { "실행 가능한 앱이 아니에요" }
       val s = GuardStore.state(ctx)
       check(s.launch(pkg, GuardStore.now())) { "스터디앱에서 공부를 시작해 주세요" }
-      try { activity.startActivity(intent); GuardStore.log(ctx, "스터디앱에서 실행: $pkg") }
+      try { withContext(Dispatchers.Main) { activity.startActivity(intent) }; GuardStore.log(ctx, "스터디앱에서 실행: $pkg") }
       catch (error: Exception) { s.pause(GuardStore.now(), "허용앱 실행 실패"); GuardStore.log(ctx, s.reason); throw error }
-    }.runOnQueue(Queues.MAIN)
+    }).runOnQueue(GuardWorker.scope)
   }
 }

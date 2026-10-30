@@ -11,6 +11,7 @@ export type GuardStatus = {
   allowed: string[]; events: { at: number; message: string }[]; pollMs: number;
 };
 type GuardNative = {
+  pendingDiagnostics?(): Promise<string>; acknowledgeDiagnostics?(ids: string[]): Promise<void>;
   status(): Promise<GuardStatus>; apps(): Promise<GuardApp[]>;
   openUsageSettings(): Promise<void>; select(packages: string[]): Promise<void>;
   openAppSettings(): Promise<void>; reviewRestrictedSettings(): Promise<void>;
