@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ArrowRight, Sparkles, X } from 'lucide-react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { UpdateToast } from '../../src/features/admin-toasts/UpdateToast';
 import { Button } from '../../src/design/components';
-import { colors, interaction, typography } from '../../src/design/theme';
+import { colors, typography } from '../../src/design/theme';
 import { StudyLayout } from '../screens/StudyLayouts';
 import { ProfileUpdates } from '../screens/ProfileUpdates';
 
@@ -14,7 +14,7 @@ export type UpdateToastPreviewProps = {
   closeCondition?: 'destination-ready' | 'external-signal';
 };
 
-// Storybook-only OTA prototype: no EAS request, reload, or production integration.
+// Shared production toast UI with mocked navigation, EAS and destination signals.
 export function UpdateToastPreview({ width = 390, height = 844, initialError = false,
   failFirstAttempt = false, closeCondition = 'destination-ready',
 }: UpdateToastPreviewProps) {
@@ -82,28 +82,8 @@ export function UpdateToastPreview({ width = 390, height = 844, initialError = f
       {location === 'home' ? <StudyLayout screen="home" running={false} width={width} height={height} activeFriendCount={0} />
         : <ProfileUpdates initialState="ready" width={width} height={height} focusUpdate onUpdateVisible={destinationReady} />}
       {visible && <View pointerEvents="box-none" style={s.layer}>
-        <View testID="update-toast" style={[s.toast, { maxHeight: height - 108 }]}>
-          <View style={s.header}>
-            <View style={s.icon} accessible={false}><Sparkles size={21} strokeWidth={1.8} color={colors.primary} /></View>
-            <View style={s.heading}>
-              <Text accessibilityRole="header" style={s.title}>업데이트가 준비됐어요</Text>
-            </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="업데이트 안내 닫기" onPress={() => dismiss(instance.current, '이번 실행에서는 안내를 닫았어요. 내려받은 업데이트는 유지돼요.')}
-              style={({ pressed }) => [s.close, pressed && { backgroundColor: colors.surfacePressed }]}>
-              <X size={19} strokeWidth={1.8} color={colors.secondary} />
-            </Pressable>
-          </View>
-          {error && <Text accessibilityLiveRegion="polite" role="status" style={s.error}>업데이트 위치로 이동하지 못했어요. 다시 시도해 주세요.</Text>}
-          {waiting && <Text accessibilityLiveRegion="polite" role="status" style={s.success}>업데이트 영역이 표시될 때까지 기다리고 있어요.</Text>}
-          <Pressable accessibilityRole="button" accessibilityLabel={error ? '업데이트 위치로 이동 다시 시도' : '바로가기'} accessibilityHint="마이페이지의 앱 업데이트 위치로 이동"
-            accessibilityState={{ busy, disabled: busy || waiting }} disabled={busy || waiting} onPress={navigate}
-            style={({ pressed }) => [s.action, pressed && { opacity: 0.7 }]}>
-            <Text style={s.actionLabel}>
-              {error ? '다시 시도하기' : '바로가기'}
-            </Text>
-            <ArrowRight size={16} color={colors.primary} strokeWidth={1.8} />
-          </Pressable>
-        </View>
+        <UpdateToast busy={busy} error={error} waiting={waiting} onNavigate={navigate}
+          onClose={() => dismiss(instance.current, '이번 안내를 닫았어요. 내려받은 업데이트는 유지돼요.')} />
       </View>}
     </View>
     <View style={[s.controls, { width }]}>
@@ -123,18 +103,6 @@ const s = StyleSheet.create({
   preview: { width: '100%', alignItems: 'center', gap: 20 },
   phone: { maxWidth: '100%', position: 'relative', backgroundColor: colors.background },
   layer: { position: 'absolute', top: 48, left: 16, right: 16, alignItems: 'center' },
-  toast: { width: '100%', maxWidth: 480, borderRadius: 24, paddingHorizontal: 16, paddingVertical: 12, gap: 4, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border, boxShadow: '0 8px 30px rgba(37, 45, 40, 0.14)' },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  icon: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.soft },
-  heading: { flex: 1, minWidth: 0, gap: 2 },
-  title: { fontSize: 17, lineHeight: 25, fontWeight: '700', color: colors.text },
-  close: { width: interaction.minTouchSize, minHeight: interaction.minTouchSize, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginRight: -8 },
-  error: { ...typography.caption, color: colors.error },
-  success: { ...typography.caption, color: colors.primary },
-  action: { minHeight: interaction.minTouchSize, paddingHorizontal: 8, paddingVertical: 0, backgroundColor: 'transparent', alignSelf: 'flex-end',
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
-  actionLabel: { ...typography.link, color: colors.primary, flexShrink: 1, textAlign: 'center' },
   controls: { maxWidth: '100%', padding: 16, borderRadius: 20, backgroundColor: colors.surface, gap: 12 },
   controlsTitle: { ...typography.link, color: colors.text },
   controlsText: { ...typography.secondary, color: colors.secondary },

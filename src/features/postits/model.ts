@@ -1,5 +1,5 @@
 export const postitColors = ['#F9E8A0', '#F7CED4', '#DAE8BE'] as const;
-export type Postit = { id: string; room_id: number; author: string; text: string; color: string; x: number; y: number; study_date: string; deleted_at: string | null };
+export type Postit = { id: string; room_id: number; author: string; text: string; color: string; x: number; y: number; study_date: string; deleted_at: string | null; design_id?: string | null; design_revision?: string | null };
 export function decodePostit(value: unknown): Postit {
   if (!value || typeof value !== 'object') throw new Error('포스트잇 정보를 확인할 수 없어요.');
   const n = value as Record<string, unknown>;

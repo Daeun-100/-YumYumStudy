@@ -18,8 +18,9 @@ export function changesApp(files) {
   return files.some(file => !/^(docs\/|tests\/|supabase\/|download-site\/|\.github\/|stories\/|\.storybook\/)/.test(file)
     && !/^[^/]+\.md$/.test(file));
 }
-export function deploymentMode({ changed, runtimeVersion, baseline, version, revision, nativeCompatible = baseline?.runtimeVersion === runtimeVersion }) {
+export function deploymentMode({ changed, runtimeVersion, baseline, version, revision, nativeCompatible = baseline?.runtimeVersion === runtimeVersion, nativeNeedsReview = false }) {
   if (!changed) return 'skip';
+  if (nativeNeedsReview) return 'needs-review';
   if (!baseline?.runtimeVersion || !nativeCompatible
     || baseline.version !== version || baseline.revision !== revision) return 'apk';
   return 'update';
@@ -139,7 +140,7 @@ async function main() {
     const baseline = publishedBaseline();
     const app = appConfig();
     const native = await nativeCompatibility(process.cwd(), baseline);
-    const mode = deploymentMode({ changed, baseline, version: app.version, revision: app.android.versionCode, nativeCompatible: native.compatible });
+    const mode = deploymentMode({ changed, baseline, version: app.version, revision: app.android.versionCode, nativeCompatible: native.compatible, nativeNeedsReview: native.needsReview });
     const snapshot = sourceSnapshot();
     if (command === 'review-check') {
       verifyReviewDecision(readReview(), { digest: snapshot.sourceTreeDigest, baseline, mode, exemptions: native.exemptions });
@@ -165,7 +166,7 @@ async function main() {
       const observedRuntimeVersion = changed ? currentRuntime() : null;
       const native = needsReview ? await nativeCompatibility(process.cwd(), baseline) : { compatible: true, exemptions: [], reasons: [] };
       save('native-compatibility.json', native);
-      const mode = deploymentMode({ changed, baseline, version: app.version, revision: app.android.versionCode, nativeCompatible: native.compatible });
+      const mode = deploymentMode({ changed, baseline, version: app.version, revision: app.android.versionCode, nativeCompatible: native.compatible, nativeNeedsReview: native.needsReview });
       const review = needsReview ? readReview() : null;
       if (needsReview) verifyReviewDecision(review, { digest: sourceSnapshot().sourceTreeDigest, baseline, mode, exemptions: native.exemptions });
       save('deployment-review-validation.json', { status: needsReview ? 'verified' : 'not-required', mode, sha,

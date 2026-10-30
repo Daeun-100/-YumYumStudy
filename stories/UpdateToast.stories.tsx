@@ -8,7 +8,7 @@ const meta = {
   parameters: {
     screenLayout: true,
     layout: 'fullscreen',
-    docs: { description: { component: 'EAS OTA를 내려받아 적용할 준비가 된 상태의 외부 제어형 토스트 시안입니다. 자동으로 사라지지 않고, X 또는 호출 기능의 닫기 요청으로 종료합니다. 앱 기본 버전은 바뀌지 않으므로 새 APK 버전·다운로드 링크를 표시하지 않습니다. 버튼은 최신 develop의 마이페이지 이용 안내에 있는 앱 업데이트 · 적용하기 행으로 이동만 하며 OTA 적용·앱 다시 시작을 실행하지 않습니다. 목적지 표시 완료가 닫힘 조건입니다. 모든 작업은 모의 동작이며 실제 앱의 업데이트 경로에는 아직 연결하지 않았습니다.' } },
+    docs: { description: { component: 'EAS OTA를 내려받아 적용할 준비가 된 상태의 실제 앱과 UpdateToast 표시 컴포넌트를 공유하는 토스트입니다. 자동으로 사라지지 않고, X 또는 호출 기능의 닫기 요청으로 종료합니다. 앱 기본 버전은 바뀌지 않으므로 새 APK 버전·다운로드 링크를 표시하지 않습니다. 버튼은 최신 develop의 마이페이지 이용 안내에 있는 앱 업데이트 · 적용하기 행으로 이동만 하며 OTA 적용·앱 다시 시작을 실행하지 않습니다. 목적지 표시 완료가 닫힘 조건입니다. 모든 작업은 모의 동작이며 이 미리보기에서는 서버 발송과 OTA 적용을 실행하지 않습니다.' } },
   },
   args: { width: 390, height: 844, initialError: false, failFirstAttempt: false, closeCondition: 'destination-ready' },
   argTypes: {

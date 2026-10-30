@@ -16,7 +16,7 @@ export function secureWebHtml(html, projectUrl) {
     "script-src-attr 'none'",
     // React Native Web inserts styles dynamically and uses inline style attributes.
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    `img-src 'self' data: blob: ${url.origin}/storage/v1/object/public/event-artwork/`,
     "font-src 'self' data:",
     `connect-src 'self' ${url.origin} wss://${url.hostname}`,
     "worker-src 'self'",

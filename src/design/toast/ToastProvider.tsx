@@ -85,7 +85,7 @@ export function ToastSlot({ children, id, dedupeKey, onShow, onDismiss }: { chil
   return null;
 }
 const s = StyleSheet.create({
-  root: { flex: 1 }, host: { position: 'absolute', top: 8, left: 16, right: 16, zIndex: 100, elevation: 12 },
+  root: { flex: 1 }, host: { position: 'absolute', top: 32, left: 16, right: 16, zIndex: 100, elevation: 12 },
   card: { width: '100%', maxWidth: layout.contentWidth, alignSelf: 'center', flexDirection: 'row', gap: 12, alignItems: 'center', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, elevation: 8, boxShadow: '0 8px 24px rgba(25,55,35,0.16)' },
   icon: { width: 38, height: 38, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, copy: { flex: 1, minWidth: 0, gap: 3 },
   title: { ...typography.body, fontWeight: '700', color: colors.text }, message: { ...typography.secondary, color: colors.secondary },

@@ -1,3 +1,4 @@
+import type { OtaTarget } from '../admin-toasts/model';
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { AppState, Keyboard, Platform, StyleSheet, View } from 'react-native';
 import * as Updates from 'expo-updates';
@@ -10,8 +11,8 @@ import { useToast } from '../../design/toast';
 import { createOtaController, type OtaSnapshot } from './controller';
 import { beginUpdateReload, cancelUpdateReload, updateReloadBlocked } from './reload-gate';
 
-type OtaState = OtaSnapshot & { enabled: boolean; check(): Promise<void>; apply(): Promise<void> };
-const disabled: OtaState = { enabled: false, pending: false, phase: 'idle', check: async () => {}, apply: async () => {} };
+type OtaState = OtaSnapshot & { target: OtaTarget; enabled: boolean; check(): Promise<void>; apply(): Promise<void> };
+const disabled: OtaState = { target: { enabled: false, pending: false, downloadedId: null, runningId: null, channel: null, runtime: null }, enabled: false, pending: false, phase: 'idle', check: async () => {}, apply: async () => {} };
 const Context = createContext<OtaState>(disabled);
 export function useOtaUpdate() { return useContext(Context); }
 
@@ -26,7 +27,7 @@ function NativeOtaUpdateProvider({ children }: PropsWithChildren) {
   const identity = useIdentity();
   const pathname = usePathname();
   const toast = useToast();
-  const { isUpdatePending } = Updates.useUpdates();
+  const { isUpdatePending, downloadedUpdate, currentlyRunning } = Updates.useUpdates();
   const [snapshot, setSnapshot] = useState<OtaSnapshot>({ pending: false, phase: 'idle' });
   const [reloading, setReloading] = useState(false);
   const current = useRef({ study, leave, identity, pathname });
@@ -81,7 +82,11 @@ function NativeOtaUpdateProvider({ children }: PropsWithChildren) {
       toast.show({ message, showIcon: false, durationMs: 2500 });
     } else if (result === 'failed') toast.show({ message: '업데이트를 적용하지 못했어요. 다시 시도해 주세요.', showIcon: false });
   }, [toast]);
-  const value = useMemo<OtaState>(() => ({ ...snapshot, enabled: true, check, apply }), [snapshot, check, apply]);
+  const target = useMemo<OtaTarget>(() => ({ enabled: true, pending: isUpdatePending,
+    downloadedId: downloadedUpdate?.type === 'new' ? downloadedUpdate.updateId : null,
+    runningId: currentlyRunning.updateId ?? null, channel: Updates.channel, runtime: Updates.runtimeVersion,
+  }), [isUpdatePending, downloadedUpdate, currentlyRunning.updateId]);
+  const value = useMemo<OtaState>(() => ({ ...snapshot, target, enabled: true, check, apply }), [snapshot, target, check, apply]);
   return <Context.Provider value={value}>{children}{reloading && <View style={styles.blockInput} accessibilityViewIsModal />}</Context.Provider>;
 }
 const styles = StyleSheet.create({ blockInput: { ...StyleSheet.absoluteFill, zIndex: 1000 } });

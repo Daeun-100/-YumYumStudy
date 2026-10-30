@@ -112,3 +112,10 @@ test('custom content already owning an exit is not delayed a second time', () =>
   const app = mount({ reducedMotion: false }), id = app.show({ durationMs: null, render: () => null }); app.present();
   app.store.dismiss(id, 'room:user'); assert.equal(app.store.read().active, null);
 });
+
+test('feature-owned completion permits a blocked custom toast to register again', () => {
+  const app = mount();
+  const options = { id: 'admin', dedupeKey: 'admin:event', rememberCompleted: false, durationMs: null, render: () => null };
+  app.show(options); app.present(); app.environment({ blocked: true });
+  app.environment({ blocked: false }); assert.equal(app.show(options), 'admin');
+});

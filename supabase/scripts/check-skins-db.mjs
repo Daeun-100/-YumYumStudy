@@ -1,36 +1,9 @@
 // Isolated PostgreSQL verification. Install @electric-sql/pglite in a temporary
 // directory and pass its dist/index.js path; no app dependency or remote writes.
-import { readFile, readdir } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
-const { PGlite } = await import(process.argv[2] ? pathToFileURL(process.argv[2]).href : '@electric-sql/pglite');
-const db = new PGlite();
+import { createTestDatabase } from './test-database.mjs';
+const db = await createTestDatabase(process.argv[2]);
 try {
- await db.exec(`
- create role anon; create role authenticated; create role service_role bypassrls;
- create schema auth; create schema extensions; create schema realtime;
- create table auth.users(id uuid primary key);
- create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
- grant usage on schema public,auth to anon,authenticated,service_role;
- grant execute on function auth.uid() to anon,authenticated,service_role;
- alter default privileges in schema public grant all on tables to service_role;
- create table realtime.messages(extension text);
- alter table realtime.messages enable row level security;
- create function realtime.topic() returns text language sql as $$ select ''::text $$;
- create function realtime.send(jsonb,text,text,boolean) returns void language sql as $$ select $$;
- create publication supabase_realtime;
- `);
- const files = (await readdir('supabase/migrations')).filter(f=>f.endsWith('.sql')).sort((a,b)=> {
-  const x=BigInt(a.split('_')[0]), y=BigInt(b.split('_')[0]); return x<y?-1:x>y?1:a.localeCompare(b);
- });
- for (const file of files) {
-  // External scheduler/Vault are unrelated to skin behavior. Keep the weekly
-  // leave function SQL, skipping only its pg_cron installation and scheduling.
-  if (file.includes('scheduled_discord_log_monitor')) continue;
-  let sql = await readFile(`supabase/migrations/${file}`,'utf8');
-  sql=sql.replace(/create extension if not exists pg_cron;/gi,'').replace(/^select cron\.schedule\(.*$/gmi,'');
-  try { await db.exec(sql); } catch(e) { throw new Error(`Migration ${file}: ${e.message}`); }
- }
  console.log('All application migrations replayed (external cron/Vault excluded).');
  await db.exec(`
  insert into auth.users(id) values('00000000-0000-4000-8000-000000000001'),('00000000-0000-4000-8000-000000000002'),('00000000-0000-4000-8000-000000000003');

@@ -1,13 +1,14 @@
+import type { ComponentRef, RefObject } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RefreshCw } from 'lucide-react-native';
 import { colors, spacing, typography } from '../../design/theme';
 
 
-export function OtaUpdateRowView({ pending, busy = false, onPress }: { pending: boolean; busy?: boolean; onPress(): void }) {
+export function OtaUpdateRowView({ pending, busy = false, onPress, targetRef }: { targetRef?: RefObject<ComponentRef<typeof View> | null>; pending: boolean; busy?: boolean; onPress(): void }) {
   return <View style={s.row}>
     <View style={s.icon} accessible={false}><RefreshCw size={20} color={colors.primary} strokeWidth={1.8} /></View>
     <Text style={s.label}>앱 업데이트</Text>
-    <Pressable accessibilityRole="button" accessibilityLabel={busy ? '업데이트 처리 중' : pending ? '적용하기' : '앱 업데이트 다시 확인'}
+    <Pressable ref={targetRef} accessibilityRole="button" accessibilityLabel={busy ? '업데이트 처리 중' : pending ? '적용하기' : '앱 업데이트 다시 확인'}
       accessibilityState={{ disabled: busy, busy }} disabled={busy} onPress={onPress}
       style={({ pressed }) => [s.action, busy ? s.loading : pending ? s.ready : s.latest, pressed && { opacity: 0.8 }]}>
       {busy ? <ActivityIndicator size="small" color={colors.primary} />

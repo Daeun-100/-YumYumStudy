@@ -1,10 +1,13 @@
+import { useSkinArtwork } from '../artwork/useSkinArtwork';
+import { ArtworkImage } from '../artwork/ArtworkImage';
+import { resolveCharacterArtwork as defaultArtwork } from '../../design/skin-artwork';
+import { useEventBackgrounds } from '../events/useEventBackgrounds';
 import { useStudyResources } from './study-resources';
 import { useScreenNow } from './useScreenNow';
 import { useState } from 'react';
 import { AllowedAppsLauncher } from '../allowed-apps/AllowedAppsLauncher';
-import { resolveCharacterArtwork } from '../../design/skin-artwork';
 import { useMeasuredLayout } from '../../hooks/useMeasuredLayout';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useIsFocused } from 'expo-router';
 import { useIdentity } from '../../components/IdentityProvider';
 import { AchievementBadge, Button } from '../../design/components';
@@ -18,6 +21,7 @@ import { HomeArtwork } from './HomeArtwork';
 export function HomeScreen() {
   useStudyResources(['today', 'room']);
   const focused = useIsFocused();
+  const eventBackgrounds = useEventBackgrounds(focused);
   const [allowedAppsOpen, setAllowedAppsOpen] = useState(false);
   const identity = useIdentity();
   const study = useStudy();
@@ -32,6 +36,7 @@ export function HomeScreen() {
   const todayLeave = data?.day.attendance === 'leave';
   const percent = progress(seconds, data?.day.goalMinutes ?? null);
   const activeFriends = study.room?.data.filter(member => member.profile.id !== identity.profile?.id && member.activeSession) ?? [];
+  const { resolveCharacterArtwork } = useSkinArtwork(activeFriends.map(member=>member.profile.activeSkinId));
   const friendMessage = `지금 ${activeFriends.length}명이 공부 중이에요`;
 
   return <View style={s.outer}><View style={s.page}>
@@ -45,9 +50,9 @@ export function HomeScreen() {
         <View style={s.goalRow}>{todayLeave ? <Pressable accessibilityRole="button" accessibilityLabel="연차 탭으로 이동" onPress={() => router.navigate('/leave')} style={({ pressed }) => [s.goal, { minHeight: 44, justifyContent: 'center', borderRadius: 12 }, pressed && { backgroundColor: colors.surfacePressed }]}><Text style={[s.secondary, { color: colors.leave }]}>✈  오늘 연차  ›</Text></Pressable> : <Button label={data ? `${goalLabel(data.day.goalMinutes)}  ›` : '오늘 목표 —'} variant="ghost" size="compact" onPress={() => router.navigate({ pathname: '/goals', params: { view: 'preview' } })} disabled={!data} style={s.goal} />}{percent !== null && percent >= 100 && <AchievementBadge label="달성 완료" />}</View>
       </View>
       <View onLayout={artwork.onLayout} style={s.scene}>
-        {height !== null && scene && <HomeArtwork effectsEnabled={focused} activeSkinId={identity.profile?.activeSkinId} character={identity.profile?.character ?? 'bunny'} width={scene.width} height={scene.height} />}
+        {height !== null && scene && <HomeArtwork backgroundId={eventBackgrounds.home} effectsEnabled={focused} activeSkinId={identity.profile?.activeSkinId} character={identity.profile?.character ?? 'bunny'} width={scene.width} height={scene.height} />}
         {!!activeFriends.length && !study.roomError && <View accessibilityLabel={friendMessage} style={s.friends}>
-          {!!activeFriends.length && <View style={s.avatars}>{activeFriends.slice(0, 3).map(member => <View key={member.profile.id} style={s.avatar}><Image fadeDuration={0} source={resolveCharacterArtwork(member.profile.character, member.profile.activeSkinId).focus} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${member.profile.displayName} 캐릭터`} /></View>)}</View>}
+          {!!activeFriends.length && <View style={s.avatars}>{activeFriends.slice(0, 3).map(member => <View key={member.profile.id} style={s.avatar}><ArtworkImage fallbackSource={defaultArtwork(member.profile.character).focus} fadeDuration={0} source={resolveCharacterArtwork(member.profile.character, member.profile.activeSkinId).focus} resizeMode="contain" style={{ width: 30, height: 30 }} accessibilityLabel={`${member.profile.displayName} 캐릭터`} /></View>)}</View>}
           <Text style={[s.secondary, { flex: 1, color: colors.text }]}>{friendMessage}</Text>
         </View>}
       </View>

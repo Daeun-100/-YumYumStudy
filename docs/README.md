@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | `product/` | 제품 방향, 현재 정책, 화면 사용 흐름과 기능 명세 | 기능을 기획하거나 기대 동작을 판단할 때 |
 | `development/` | 기술 설계, 데이터·API 계약과 개발 테스트 | 코드를 수정하거나 플랫폼 동작을 검증할 때 |
+| `events/` | 이벤트 기획·활동·보상·연출과 결과 | 행사를 기록하거나 지난 이벤트를 참고할 때 |
 | `operations/` | 배포, 버전 관리와 관리자 운영 절차 | APK·웹·OTA를 배포하거나 연차·스킨을 관리할 때 |
 | `proposals/` | 기획·개선 설계와 관련 시안 | 문서의 구현 상태를 확인하며 후속 기능과 개선을 검토할 때 |
 
@@ -27,16 +28,27 @@
 
 ## 배포와 운영
 
+- [관리자 운영 도구 안내](operations/OPERATOR-TOOLS.md): 이미지·이벤트/보상·알림별 도구 선택
+
+- [이벤트 기록과 예약 운영](operations/EVENT-OPERATIONS.md)
+- [서버 꾸미기 이미지와 효과 설정 운영](operations/ARTWORK-OPERATIONS.md)
+
 - [버전 및 배포 운영](operations/RELEASES.md): 배포 절차와 현재 버전관리 규칙
 - [클라우드 빌드](operations/CLOUD-BUILDS.md)
 - [EAS Update](operations/EAS_UPDATE.md)
 - [사용자별 마지막 확인 버전](operations/APP-VERSION-REPORTING.md): 설치 버전·실행 코드 관측과 관리자 조회
 - [서버 운영과 장애 확인](operations/SERVER-OPERATIONS.md): DB 적용, 친구 부르기 알림, Discord 로그 감시
 - [관리자 연차](operations/ADMIN-LEAVE.md)
+- [관리자 앱 내부 알림](operations/ADMIN-TOASTS.md)
+- [포스트잇 디자인 운영](operations/POSTIT-DESIGNS.md): 디자인 등록과 공부 조건 보상
 - [캐릭터 이벤트 스킨 운영](operations/CHARACTER-SKINS-OPERATIONS.md)
 - 설치 안내 사이트는 [다운로드 페이지 안내](../download-site/README.md)를 참고한다.
 
 ## 기획과 개선안
+
+- [포스트잇 디자인 보유·지급](proposals/POSTIT-DESIGNS-SPEC.md): 서버 PNG와 조건 보상, 원형 디자인 선택
+
+- [이벤트 기록과 예약 운영 명세](proposals/EVENT-OPERATIONS-SPEC.md)
 
 - [목표 달성 보상 명세](proposals/GOAL-ACHIEVEMENT-REWARDS-SPEC.md): 7일 완주 금색 수박, 기존 인포 팝업 안내와 수집·소비 제외
 

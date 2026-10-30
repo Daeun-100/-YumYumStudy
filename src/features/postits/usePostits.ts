@@ -1,3 +1,4 @@
+import { usePostitDesigns } from './PostitDesignProvider';
 import { useIsFocused } from 'expo-router';
 import { measure } from '../../lib/performance';
 import { useCallback, useEffect, useRef, useLayoutEffect, useState } from 'react';
@@ -14,6 +15,7 @@ import { decodePostit, mergePostit, type Postit } from './model';
 
 export function usePostits() {
   const focused = useIsFocused();
+  const refreshDesigns = usePostitDesigns().refresh;
   const active = useAppActive();
   const { uid, profile } = useIdentity();
   const now = useScreenNow(true, 60000);
@@ -55,6 +57,7 @@ export function usePostits() {
         const result: Postit[] = data.notes.map(decodePostit);
         if (result.some(n => n.room_id !== room)) throw new Error();
         setDate(data.date); setLoadedScope(scope);
+        void refreshDesigns();
         const duringRequest = events.current.filter(event => event.sequence > seen).map(event => event.note);
         setNotes(previous => [...previous.filter(n => n.deleted_at && n.study_date === data.date), ...duringRequest].reduce(mergePostit, result));
         events.current = events.current.filter(event => event.sequence > seen);
@@ -64,7 +67,7 @@ export function usePostits() {
         throw failure;
       }
     }, changed);
-  }, [scope, room]);
+  }, [scope, room, refreshDesigns]);
   const observation = useResourceRefresh({ scope: `${scope}:postits`, enabled, connected, refresh: load });
   const request = observation.request, markFresh = observation.markFresh;
   const refresh = useCallback(async () => { try { await load(); markFresh(); } catch { /* State exposes the error. */ } }, [load, markFresh]);
@@ -85,6 +88,7 @@ export function usePostits() {
             try {
               const note = decodePostit(payload);
               if (note.room_id !== room) return;
+              if (note.design_revision) void refreshDesigns();
               events.current.push({ sequence: ++changes.current, note });
               setNotes(previous => mergePostit(previous, note));
             } catch { void request(true); }
@@ -96,7 +100,7 @@ export function usePostits() {
       } catch { if (!disposed) { setConnected(false); setError('실시간 연결을 다시 시도하고 있어요.'); } }
     })();
     return () => { disposed = true; generation.current = version + 1; if (channel) void client.removeChannel(channel); };
-  }, [scope, enabled, room, request]);
+  }, [scope, enabled, room, request, refreshDesigns]);
   const studyDate = now ? getStudyDate(now) : date;
   useEffect(() => { if (enabled && date && studyDate !== date) void request(true); }, [enabled, date, studyDate, request]);
   const mutate = async (name: string, args: Record<string, unknown>) => {
@@ -109,7 +113,7 @@ export function usePostits() {
     }));
   };
   return { notes: loadedScope === scope ? notes.filter(n => n.study_date === studyDate && !n.deleted_at) : [], error, refresh,
-    add: (id: string, text: string, color: string, x: number, y: number) => mutate('put_room_postit', { p_id: id, p_text: text, p_color: color, p_x: x, p_y: y }),
+    add: (id: string, text: string, color: string, x: number, y: number, designId?: string) => mutate(designId ? 'put_designed_postit' : 'put_room_postit', { p_id: id, p_text: text, p_color: color, p_x: x, p_y: y, ...(designId ? { p_design_id: designId } : {}) }),
     remove: (id: string) => mutate('delete_room_postit', { p_id: id }),
   };
 }

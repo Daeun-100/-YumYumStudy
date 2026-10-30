@@ -116,3 +116,9 @@ test('OTA workflow waits for web build and promotes it only after Android public
   assert.match(update, /WEB_DEPLOYMENT_ID: \$\{\{ needs.web.outputs.deployment_id \}\}/);
   assert.match(update, /web-promotion-record.json/);
 });
+
+test('unclassified inputs are review blockers, not APK requests', () => {
+  assert.equal(deploymentMode({ ...input, nativeCompatible: false, nativeNeedsReview: true }), 'needs-review');
+  assert.equal(deploymentMode({ ...input, nativeCompatible: true, nativeNeedsReview: true }), 'needs-review');
+  assert.equal(deploymentMode({ ...input, changed: false, nativeNeedsReview: true }), 'skip');
+});
