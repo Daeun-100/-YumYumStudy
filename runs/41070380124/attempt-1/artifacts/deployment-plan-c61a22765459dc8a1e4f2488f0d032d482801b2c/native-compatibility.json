@@ -1,0 +1,13 @@
+{
+  "compatible": false,
+  "exemptions": [],
+  "reasons": [
+    "Package metadata, dependencies, or non-deployment scripts changed",
+    "Native/build input changed: package-lock.json",
+    "Native/build input changed: plugins/withAndroidRecents.js"
+  ],
+  "rawRuntime": null,
+  "normalizedRuntime": null,
+  "match": null,
+  "needsReview": false
+}

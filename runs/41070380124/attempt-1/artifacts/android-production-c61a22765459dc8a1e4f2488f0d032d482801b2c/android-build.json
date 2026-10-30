@@ -1,0 +1,58 @@
+[
+  {
+    "id": "f2359f15-4856-4b71-afd5-4983b28161f9",
+    "status": "FINISHED",
+    "platform": "ANDROID",
+    "artifacts": {
+      "buildUrl": "https://expo.dev/artifacts/eas/uD_NLkHssPL3jjIKidGEaEuoz5HFvvHiyTDyppouqnE.apk",
+      "applicationArchiveUrl": "https://expo.dev/artifacts/eas/uD_NLkHssPL3jjIKidGEaEuoz5HFvvHiyTDyppouqnE.apk"
+    },
+    "fingerprint": {
+      "id": "01a18d2d-7c6b-7345-8211-a862e12fce3f",
+      "hash": "a72aa08e39de83feb4413ad7acf7afd03d141def"
+    },
+    "initiatingActor": {
+      "id": "54fd26be-270a-465c-af0a-976151244801",
+      "displayName": "daeun-100"
+    },
+    "logFiles": [
+      "https://storage.googleapis.com/eas-workflows-production/logs/973ad697-739b-49cc-bd6f-fbef67a1059e/f2359f15-4856-4b71-afd5-4983b28161f9/2026-10-30T14%3A20%3A29Z-6a4d890c-64d4-4977-8679-904e092cb080.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20261030%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20261030T143425Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=17182040e39c12eebe961ce165c10a22e86821502d576b328782f608e5221b516acc1e58cba801ec09e6c845fddd26dd6b5b396861cd00396836edc0473b4cbc7b5af2ff5f8cccb1f5b45e7e4e0543a72a70809924f4849fcfe5682b3467486c63ee834536df554151dc74f9cbf96ab8bf8edbec2c466b92d4be9e0861ed0733501d730cd758a326644f1143cff6595ae0844de20cfdfc995bbfe725ed62ae2225f2e2b0978298934047907081eb93489cdd8356f198519d7b2e96c50442de6259861b43333828b9d4d3e1977964a3c67ea3bcc258caedc12806ba063cf6fde5d7e069a75ebc69062f2dfe94803f18a0a4b01ef9ef81c26d8a43a5ef17f3f031"
+    ],
+    "app": {
+      "id": "973ad697-739b-49cc-bd6f-fbef67a1059e",
+      "name": "YumYumStudy",
+      "slug": "yumyumstudy",
+      "ownerAccount": {
+        "id": "40c9b677-8c27-4a9f-904c-4524588c1797",
+        "name": "daeun-100s-team"
+      }
+    },
+    "updateChannel": {
+      "id": "01a17c41-c6e6-7327-9966-c30b0a7aa889",
+      "name": "production"
+    },
+    "distribution": "INTERNAL",
+    "buildProfile": "production",
+    "appIdentifier": "com.yumyumstudy.app",
+    "sdkVersion": "58.0.0",
+    "appVersion": "1.1.1",
+    "appBuildVersion": "5",
+    "runtime": {
+      "id": "01a18d2d-7c61-7219-aae9-84884ccbc838",
+      "version": "a72aa08e39de83feb4413ad7acf7afd03d141def"
+    },
+    "gitCommitHash": "c61a22765459dc8a1e4f2488f0d032d482801b2c",
+    "gitCommitMessage": "Merge pull request #61 from Daeun-100/develop\n\nrelease: 1.1.1 갤럭시 최근 앱 복귀 수정",
+    "priority": "NORMAL",
+    "createdAt": "2026-10-30T14:18:50.798Z",
+    "updatedAt": "2026-10-30T14:40:17.239Z",
+    "completedAt": "2026-10-30T14:40:16.912Z",
+    "expirationDate": "2026-11-13T14:18:50.849Z",
+    "isForIosSimulator": false,
+    "metrics": {
+      "buildWaitTime": 2527,
+      "buildQueueTime": 100835,
+      "buildDuration": 1182752
+    }
+  }
+]

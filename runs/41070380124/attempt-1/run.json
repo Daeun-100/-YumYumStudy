@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "repository": "Daeun-100/-YumYumStudy",
+  "sha": "c61a22765459dc8a1e4f2488f0d032d482801b2c",
+  "runId": "41070380124",
+  "attempt": "1",
+  "workflow": "Cloud Build",
+  "run": "https://github.com/Daeun-100/-YumYumStudy/actions/runs/41070380124/attempts/1",
+  "jobs": {
+    "prepare": {
+      "result": "success",
+      "mode": "apk"
+    },
+    "android": {
+      "result": "success"
+    },
+    "web": {
+      "result": "success"
+    },
+    "record": {
+      "result": "success"
+    },
+    "update": {
+      "result": "skipped"
+    }
+  },
+  "files": [
+    {
+      "path": "artifacts/android-production-c61a22765459dc8a1e4f2488f0d032d482801b2c/android-build.json",
+      "sha256": "058fa861362db6bd35c9cca3619f7ca4a9189561e9d72e533e20b7573528ba1d",
+      "bytes": 2832
+    },
+    {
+      "path": "artifacts/android-production-c61a22765459dc8a1e4f2488f0d032d482801b2c/build-record.json",
+      "sha256": "ad4627da4589cd4fd2bef3b169057e553e23ffed5bb40e45513abc4ca911e011",
+      "bytes": 269
+    },
+    {
+      "path": "artifacts/candidate-metadata-c61a22765459dc8a1e4f2488f0d032d482801b2c/candidate.json",
+      "sha256": "0047f111467f128080b6e34f191291b0f60dd66f1e9d0166cee29c48f8e96622",
+      "bytes": 465
+    },
+    {
+      "path": "artifacts/candidate-metadata-c61a22765459dc8a1e4f2488f0d032d482801b2c/release.json",
+      "sha256": "6201d7d85e4d6064dac1b42b224db51582739433d089e29a806134f2fddb4a31",
+      "bytes": 114
+    },
+    {
+      "path": "artifacts/deployment-plan-c61a22765459dc8a1e4f2488f0d032d482801b2c/deployment-review.json",
+      "sha256": "c43e08e6c9b96c03266363e6c98d2adbc87cc037a26cdf15f3a1f704abbbba9d",
+      "bytes": 4536
+    },
+    {
+      "path": "artifacts/deployment-plan-c61a22765459dc8a1e4f2488f0d032d482801b2c/deployment-review-validation.json",
+      "sha256": "aad7bd4daf75d54e310d17555e2fdc1e343a74540637e16e836788aeb369fb70",
+      "bytes": 349
+    },
+    {
+      "path": "artifacts/deployment-plan-c61a22765459dc8a1e4f2488f0d032d482801b2c/native-compatibility.json",
+      "sha256": "f19a7f0a6b08f8759dac8175f0f0f74d31e7026a7b13078d6a709bc090e67fc1",
+      "bytes": 348
+    },
+    {
+      "path": "artifacts/deployment-plan-c61a22765459dc8a1e4f2488f0d032d482801b2c/deployment-plan.json",
+      "sha256": "488b7f47e021e0d0b012f62f8624c2946bd1815b79c1e00291c622b153dc65dc",
+      "bytes": 5905
+    },
+    {
+      "path": "artifacts/web-production-c61a22765459dc8a1e4f2488f0d032d482801b2c/web-deployment.json",
+      "sha256": "c4e5c304255fe691d3472bf6a63f213252a8778a657765846a140637d9f5028d",
+      "bytes": 235
+    },
+    {
+      "path": "artifacts/web-production-c61a22765459dc8a1e4f2488f0d032d482801b2c/build-record.json",
+      "sha256": "7aced527b201508cf2612f0f1c7b4b9be340d479b98e3d55d6fec0105dd29f37",
+      "bytes": 269
+    }
+  ]
+}
