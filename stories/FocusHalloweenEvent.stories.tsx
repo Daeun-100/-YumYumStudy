@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { useState } from 'react';
-import { Candy, Gift } from 'lucide-react-native';
+import { Candy, Check, Gift } from 'lucide-react-native';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PostitBoard } from '../src/features/postits/PostitBoard';
 import type { Postit } from '../src/features/postits/model';
@@ -24,8 +24,9 @@ function CandyProgress({ minutes }: { minutes: number }) {
 function EventBookmark({ minutes, confirming, onOpen }: { minutes: number; confirming: boolean; onOpen(): void }) {
   const count = Math.min(3, Math.floor(minutes / 10));
   const received = count === 3 && !confirming;
-  return <Pressable accessibilityRole="button" accessibilityLabel={received ? '할로윈 포스트잇 선물 확인' : `할로윈 이벤트, 사탕 3개 중 ${count}개, 안내 열기`} onPress={onOpen} style={({ pressed }) => [s.bookmark, pressed && { backgroundColor: '#F4DFC4' }]}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={received ? '할로윈 포스트잇 선물 도착, 확인하기' : `할로윈 이벤트, 사탕 3개 중 ${count}개, 안내 열기`} onPress={onOpen} style={({ pressed }) => [s.bookmark, pressed && { backgroundColor: '#F4DFC4' }]}>
     {received ? <Gift size={20} color="#9B6333" strokeWidth={1.6} /> : <Candy size={21} color="#9B6333" strokeWidth={1.6} />}
+    {received && <View pointerEvents="none" style={s.bookmarkCheck}><Check size={10} color="#FFFFFF" strokeWidth={2.5} /></View>}
   </Pressable>;
 }
 function Preview({ minutes = 20, width = 390, confirming = false }: { minutes?: number; width?: number; confirming?: boolean }) {
@@ -59,6 +60,7 @@ function Preview({ minutes = 20, width = 390, confirming = false }: { minutes?: 
 const s = StyleSheet.create({
   phone: { maxWidth: '100%', overflow: 'hidden', borderRadius: 28, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
   bookmark: { position: 'absolute', top: 144, right: 0, width: 44, minHeight: 48, borderTopLeftRadius: 14, borderBottomLeftRadius: 14, backgroundColor: '#FFF1DC', borderColor: '#E8C89E', borderWidth: 1, borderRightWidth: 0, alignItems: 'center', justifyContent: 'center' },
+  bookmarkCheck: { position: 'absolute', top: 5, right: 4, width: 15, height: 15, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   candies: { flexDirection: 'row', gap: 5 }, step: { gap: 3, alignItems: 'center' }, candy: { width: 31, height: 31, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   emptyCandy: { backgroundColor: '#F0E8DE', borderWidth: 1, borderStyle: 'dashed', borderColor: '#D3C7B9' }, stepLabel: { fontSize: 9, color: '#9B9084', fontWeight: '600' },
   detail: { padding: 22, backgroundColor: '#FFFCF7', borderRadius: 24, gap: 14, alignItems: 'center' }, detailTitle: { ...typography.title, color: '#68472E', textAlign: 'center' },
