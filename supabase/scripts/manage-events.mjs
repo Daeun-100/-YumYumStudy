@@ -18,6 +18,11 @@ export function validateRequest(p) {
  }
  if('artwork_revision' in p || 'skin_revisions' in p) throw new Error('Image revisions are no longer supported.');
  if(p.replaces && !uuid.test(p.replaces)) throw new Error('Replacement UUID required.');
+ if('user_ids' in p) {
+  if(p.kind!=='grant_skins' || !Array.isArray(p.user_ids) || p.user_ids.length<1 || p.user_ids.length>500
+   || !p.user_ids.every(id=>typeof id==='string' && uuid.test(id))
+   || new Set(p.user_ids.map(id=>id.toLowerCase())).size!==p.user_ids.length) throw new Error('Choose 1–500 distinct recipient UUIDs for a skin grant.');
+ }
  if(p.kind==='grant_skins') {
   if(!Array.isArray(p.skin_ids)||!p.skin_ids.length||!p.skin_ids.every(id=>/^[a-z0-9][a-z0-9_-]{0,79}$/.test(id))) throw new Error('Skin IDs required.');
  } else if(p.kind==='set_backgrounds') {
