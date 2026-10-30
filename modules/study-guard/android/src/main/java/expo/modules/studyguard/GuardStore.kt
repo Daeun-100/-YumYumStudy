@@ -15,7 +15,6 @@ internal object GuardStore {
   var heartbeat = 0L
   fun prefs(context: Context) = context.getSharedPreferences("study_guard_probe", Context.MODE_PRIVATE)
   fun state(context: Context): GuardSession {
-    GuardWorker.assertCurrent()
     if (session == null) {
       session = GuardSession(context.packageName).also {
         it.accumulated = prefs(context).getLong("elapsed", 0)

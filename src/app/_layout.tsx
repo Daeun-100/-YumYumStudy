@@ -1,4 +1,3 @@
-import { ExitDiagnosticsReporter } from '../features/exit-diagnostics/ExitDiagnosticsReporter';
 import { PostitDesignProvider } from '../features/postits/PostitDesignProvider';
 import { ArtworkProvider } from '../features/artwork/ArtworkProvider';
 import { AdminToastProvider } from '../features/admin-toasts/AdminToasts';
@@ -23,7 +22,6 @@ export default function RootLayout() {
   return <SafeAreaProvider><RoomBuildBoundary><UpdateProvider><IdentityProvider><AdmissionGate><ArtworkProvider><StudyProvider><LeaveProvider>
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <AppVersionReporter />
-      <ExitDiagnosticsReporter />
       <CallNotificationLifecycle />
       <UpdateNotice variant="global" />
       <StartupBoundary><AppToastProvider><OtaUpdateProvider><AdminToastProvider><PostitDesignProvider><TestRoomSelector /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
