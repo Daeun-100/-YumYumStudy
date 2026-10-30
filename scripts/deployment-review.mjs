@@ -67,6 +67,7 @@ export function validateReview(review, digest) {
 }
 export function verifyReviewDecision(review, { digest, baseline, mode, exemptions }) {
   validateReview(review, digest);
+  assert.notEqual(mode, 'needs-review', 'Unclassified build inputs require review before deployment');
   assert.deepEqual(review.baseline, baselineIdentity(baseline), 'Published APK baseline changed; refresh the review');
   assert.deepEqual([...review.exemptions].sort(), [...exemptions].sort(), 'Declared deployment exemptions differ from verified changes');
   assert.equal(review.blockers.length, 0, 'Deployment review has unresolved blockers');
@@ -121,19 +122,43 @@ export function normalizationHook(before, oldScripts) {
     return chunk;
   };
 }
-export function nativeInputReasons(files, scripts) {
-  const reasons = [];
-  // Audited operator/CI tools; full fingerprint equality is still required.
-  const adminScript = /^(deployment(?:-review|-history)?|release-candidate|check-release|build-record|publish-release-info|admin-notifications|update-release)\.mjs$/;
+// Explicitly audited operator and web-only tools. This does not exclude any fingerprint input.
+const nonNativeScripts = new Set([
+  'deployment.mjs', 'deployment-review.mjs', 'deployment-history.mjs', 'release-candidate.mjs',
+  'check-release.mjs', 'build-record.mjs', 'publish-release-info.mjs', 'admin-notifications.mjs',
+  'admin-toasts.mjs', 'update-release.mjs', 'secure-web-export.mjs',
+]);
+function calledByNativeHook(file, scripts) {
+  const callsFile = (name, seen = new Set()) => {
+    if (seen.has(name)) return false;
+    seen.add(name);
+    const command = String(scripts[name] ?? '');
+    if (command.includes(file)) return true;
+    // Follow package-script indirection as well as direct node invocations.
+    return Object.keys(scripts).some(next => {
+      const escaped = next.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const invocation = new RegExp(`(?:npm|pnpm|bun)\\s+run\\s+${escaped}(?=\\s|$|[;&|])|yarn\\s+(?:run\\s+)?${escaped}(?=\\s|$|[;&|])`);
+      return invocation.test(command) && callsFile(next, seen);
+    });
+  };
+  return Object.keys(scripts).some(name => /^(preinstall|install|postinstall|prepare|prebuild|eas-build)/.test(name) && callsFile(name));
+}
+export function classifyNativeInputs(files, scripts) {
+  const nativeReasons = [], reviewReasons = [];
   for (const file of files) {
-    const nativeHooks = Object.entries(scripts).filter(([name]) => /^(preinstall|install|postinstall|prepare|prebuild|eas-build)/.test(name));
-    if (file.startsWith('scripts/') && nativeHooks.some(([, command]) => String(command).includes(file))) {
-      reasons.push(`Changed script is called by a native build hook: ${file}`);
+    const hooked = file.startsWith('scripts/') && calledByNativeHook(file, scripts);
+    if (hooked) nativeReasons.push(`Changed script is called by a native build hook: ${file}`);
+    if (/^(android\/|ios\/|modules\/|plugins\/|fingerprint\.config\.|\.fingerprintignore$|eas\.json$|package-lock\.json$)/.test(file)) {
+      nativeReasons.push(`Native/build input changed: ${file}`);
+    } else if (file.startsWith('scripts/') && !hooked && !nonNativeScripts.has(file.slice(8))) {
+      reviewReasons.push(`Unclassified script requires review: ${file}`);
     }
-    if (/^(android\/|ios\/|modules\/|plugins\/|fingerprint\.config\.|\.fingerprintignore$|eas\.json$|package-lock\.json$)/.test(file)
-      || (file.startsWith('scripts/') && !adminScript.test(file.slice(8)))) reasons.push(`Native/build input changed: ${file}`);
   }
-  return reasons;
+  return { nativeReasons, reviewReasons };
+}
+export function nativeInputReasons(files, scripts) {
+  const { nativeReasons, reviewReasons } = classifyNativeInputs(files, scripts);
+  return [...nativeReasons, ...reviewReasons];
 }
 const dependencyFields = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
 function withoutDependencyDeclarations(files) {
@@ -147,14 +172,19 @@ function withoutDependencyDeclarations(files) {
  * must never hide dependency changes, native hooks, sources or ignore rules.
  */
 export async function compareNativeFingerprints({ baseline, before, after, files }, fingerprint) {
-  const result = (compatible, exemptions, reasons, rawRuntime = null, normalizedRuntime = null, match = null) =>
-    ({ compatible, exemptions, reasons, rawRuntime, normalizedRuntime, match });
+  const result = (compatible, exemptions, reasons, rawRuntime = null, normalizedRuntime = null, match = null, needsReview = false) =>
+    ({ compatible, exemptions, reasons, rawRuntime, normalizedRuntime, match, needsReview });
   if (!baseline?.runtimeVersion) return result(false, [], ['No published fingerprint runtime']);
   const analysis = inspectAdministrativeChanges(before, after);
   const newScripts = JSON.parse(after['package.json']).scripts ?? {};
   const inputReasons = paths => [...new Set([
     ...nativeInputReasons(paths, analysis.oldScripts), ...nativeInputReasons(paths, newScripts),
   ])];
+  const reviewReasons = [...new Set([
+    ...classifyNativeInputs(files, analysis.oldScripts).reviewReasons,
+    ...classifyNativeInputs(files, newScripts).reviewReasons,
+  ])];
+  if (reviewReasons.length) return result(false, analysis.exemptions, reviewReasons, null, null, null, true);
   const exactAnalysis = inspectAdministrativeChanges(
     withoutDependencyDeclarations(before), withoutDependencyDeclarations(after));
   const exactReasons = [...exactAnalysis.reasons, ...inputReasons(files.filter(file => file !== 'package-lock.json'))];
@@ -170,6 +200,7 @@ export async function compareNativeFingerprints({ baseline, before, after, files
   }
   const reasons = [...new Set([...analysis.reasons, ...inputReasons(files)])];
   if (reasons.length) return result(false, analysis.exemptions, reasons, rawRuntime);
+  if (analysis.exemptions.length === 0) return result(false, [], ['Unexplained native fingerprint differences remain'], rawRuntime);
   const normalizedRuntime = await resolve(normalizationHook(before, analysis.oldScripts));
   const compatible = normalizedRuntime === baseline.runtimeVersion;
   return result(compatible, analysis.exemptions,

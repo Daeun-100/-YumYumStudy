@@ -167,3 +167,43 @@ test('administrative normalization remains available only when dependency inputs
   assert.equal(calls[0], undefined);
   assert.equal(typeof calls[1], 'function');
 });
+
+test('audited admin and web tools still need a matching complete fingerprint', async () => {
+  const tools = ['scripts/admin-toasts.mjs', 'scripts/secure-web-export.mjs'];
+  for (const runtime of [baseline.runtimeVersion, 'f'.repeat(40)]) {
+    const result = await compareNativeFingerprints(comparison(packageBefore, tools), async hook => {
+      assert.equal(hook, undefined);
+      return { hash: runtime };
+    });
+    assert.equal(result.compatible, runtime === baseline.runtimeVersion);
+    assert.equal(result.needsReview, false);
+  }
+  await assert.rejects(compareNativeFingerprints(comparison(packageBefore, tools), async () => { throw Error('fingerprint failed'); }), /fingerprint failed/);
+});
+
+test('audited tools called by direct or indirect native hooks remain blocked', async () => {
+  for (const file of ['scripts/admin-toasts.mjs', 'scripts/secure-web-export.mjs']) {
+    for (const launcher of ['npm run', 'pnpm run', 'bun run', 'yarn', 'yarn run']) {
+      const pkg = { ...packageBefore, scripts: { postinstall: `${launcher} build-helper`, 'build-helper': `${launcher} worker`, worker: `node ${file}` } };
+      const result = await compareNativeFingerprints({ baseline, before: files(pkg), after: files(pkg), files: [file] }, async () => {
+        assert.fail('native hook changes must be blocked before fingerprint acceptance');
+      });
+      assert.equal(result.compatible, false);
+      assert.ok(result.reasons.some(r => r.includes('native build hook')));
+    }
+    const pkg = { ...packageBefore, scripts: { postinstall: 'npm run helper', helper: 'npm run postinstall' } };
+    assert.deepEqual(nativeInputReasons([file], pkg.scripts), [], 'cyclic unrelated package scripts terminate');
+  }
+});
+
+test('unclassified scripts require review rather than an automatic APK decision or OTA approval', async () => {
+  const result = await compareNativeFingerprints(comparison(packageBefore, ['scripts/new-tool.mjs']), async () => {
+    assert.fail('unknown scripts must be reviewed before fingerprint acceptance');
+  });
+  assert.equal(result.compatible, false);
+  assert.equal(result.needsReview, true);
+  assert.match(result.reasons[0], /Unclassified script/);
+  assert.throws(() => verifyReviewDecision({ ...report(), recommendation: 'needs-review' }, {
+    digest, baseline, mode: 'needs-review', exemptions: [],
+  }), /require review before deployment/);
+});
