@@ -10,7 +10,7 @@ import android.os.*
 
 class StudyGuardService : Service() {
   companion object { var instance: StudyGuardService? = null; private set }
-  private val handler = GuardWorker.handler
+  private val handler = Handler(Looper.getMainLooper())
   private var cursor = 0L
   private var lastSaved = 0L
   private var observationStart = 0L
@@ -23,7 +23,6 @@ class StudyGuardService : Service() {
   private val seen = mutableMapOf<String, Long>()
   private val ticker = object : Runnable {
     override fun run() {
-      if (instance !== this@StudyGuardService) return
       try { poll() } catch (_: Exception) {
         GuardStore.state(this@StudyGuardService).pause(GuardStore.now(), "사용정보 조회에 실패하여 일시정지했어요")
         GuardStore.log(this@StudyGuardService, "사용정보 조회 실패")
@@ -32,32 +31,29 @@ class StudyGuardService : Service() {
     }
   }
   override fun onCreate() {
-    super.onCreate()
+    super.onCreate(); instance = this
     val manager = getSystemService(NotificationManager::class.java)
     if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(NotificationChannel(StudyNotification.CHANNEL, "공부 타이머", NotificationManager.IMPORTANCE_LOW))
     val open = packageManager.getLaunchIntentForPackage(packageName)!!
     notificationOpen = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     notificationPause = PendingIntent.getService(this, 1, Intent(this, StudyGuardService::class.java).setAction("STOP"), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-    // Meet the foreground-service deadline without waiting for storage or usage queries.
-    val notification = StudyNotification.build(this, 0, false, notificationOpen, notificationPause)
+    val state = GuardStore.state(this)
+    val elapsed = state.elapsed(GuardStore.now())
+    val notification = StudyNotification.build(this, elapsed, state.running, notificationOpen, notificationPause)
+    notificationSecond = elapsed / 1000; notificationRunning = state.running
     if (Build.VERSION.SDK_INT >= 34) startForeground(StudyNotification.ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
     else startForeground(StudyNotification.ID, notification)
-    handler.post {
-      instance = this
-      cursor = System.currentTimeMillis(); observationStart = cursor; GuardStore.heartbeat = GuardStore.now()
-      GuardDiagnostics.record(this, "service_created")
-      handler.post(ticker)
-    }
+    cursor = System.currentTimeMillis(); observationStart = cursor; GuardStore.heartbeat = GuardStore.now()
+    handler.post(ticker)
   }
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    if (intent?.action == "STOP") handler.post {
+    if (intent?.action == "STOP") {
       GuardStore.state(this).pause(GuardStore.now(), "알림에서 공부를 일시정지했어요")
       GuardStore.log(this, "공부 일시정지"); stopSelf()
     }
     return START_NOT_STICKY
   }
   fun poll() {
-    GuardWorker.assertCurrent()
     val now = GuardStore.now()
     val wallNow = System.currentTimeMillis()
     val s = GuardStore.state(this)
@@ -124,23 +120,14 @@ class StudyGuardService : Service() {
     notificationSecond = seconds; notificationRunning = state.running
   }
   override fun onTaskRemoved(rootIntent: Intent?) {
-    handler.post {
-      if (instance !== this) return@post
-      GuardDiagnostics.record(this, "task_removed")
-      GuardStore.state(this).pause(GuardStore.now(), "최근 앱에서 스터디앱을 종료하여 일시정지했어요")
-      GuardStore.log(this, "앱 종료"); stopSelf()
-    }
+    GuardStore.state(this).pause(GuardStore.now(), "최근 앱에서 스터디앱을 종료하여 일시정지했어요")
+    GuardStore.log(this, "앱 종료"); stopSelf()
   }
   override fun onDestroy() {
-    handler.post {
-      handler.removeCallbacks(ticker)
-      if (instance !== this) return@post
-      GuardDiagnostics.record(this, "service_destroyed")
-      val s = GuardStore.state(this)
-      if (s.running) s.pause(GuardStore.now(), "감시 서비스가 종료되어 일시정지했어요")
-      GuardStore.save(this); instance = null
-    }
-    super.onDestroy()
+    handler.removeCallbacks(ticker)
+    val s = GuardStore.state(this)
+    if (s.running) s.pause(GuardStore.now(), "감시 서비스가 종료되어 일시정지했어요")
+    GuardStore.save(this); instance = null; super.onDestroy()
   }
   override fun onBind(intent: Intent?) = null
 }

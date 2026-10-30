@@ -24,8 +24,8 @@ jobs:
       - run: npm test
       - name: Install isolated PostgreSQL test runtime
         run: npm install --prefix "$RUNNER_TEMP/admin-toast-db" --ignore-scripts --no-audit --no-fund @electric-sql/pglite@0.3.14
-      - name: Verify toast and exit diagnostic grants and RLS in PostgreSQL
-        run: PGLITE_MODULE="$RUNNER_TEMP/admin-toast-db/node_modules/@electric-sql/pglite/dist/index.js" node --experimental-strip-types --test tests/admin-toasts-db.test.mjs tests/exit-diagnostics-db.test.mjs
+      - name: Verify admin toast grants and RLS in PostgreSQL
+        run: PGLITE_MODULE="$RUNNER_TEMP/admin-toast-db/node_modules/@electric-sql/pglite/dist/index.js" node --experimental-strip-types --test tests/admin-toasts-db.test.mjs
       - run: npm run export:web
         env:
           APP_VARIANT: test
