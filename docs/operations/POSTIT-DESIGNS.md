@@ -9,6 +9,8 @@
 - `20261029162732_postit_design_rewards` 마이그레이션과 지원 앱을 기존 릴리스 절차로 반영한 뒤 실제 디자인과 보상 규칙을 활성화한다. 이 문서가 production 배포·업로드·행사 등록을 승인하거나 완료했음을 뜻하지 않는다.
 - 최초 지원 코드 배포 후에는 같은 규격의 새 PNG와 보상 규칙 등록에 앱 재배포가 필요 없다.
 
+이미지 준비·업로드·검증·등록·목록은 공통 `manage-artwork.mjs`를 사용한다. `manage-postit-designs.mjs`는 보상 규칙·지급 활성화 관리에 사용한다. 기존 이미지 명령은 공통 도구로 전달하는 호환 진입점으로 유지한다.
+
 ## 디자인 PNG
 
 종이와 선택 사항인 preview는 모두 512–2048 px 정사각 PNG로 등록한다. 권장 제작 크기는 1254×1254다. preview는 네 모서리까지 그림으로 채운 불투명 이미지로 만들고 투명 여백·원형 테두리를 넣지 않는다. 앱이 확대 없이 원형으로 잘라 표시하므로 주요 그림은 중앙 내접원 안에 둔다. 각 파일은 8비트 RGB/RGBA·비인터레이스, 2 MiB 이하다. 별도 preview가 없으면 종이 일부를 원형으로 잘라 표시한다. 글씨는 앱이 덧그리므로 중앙을 비우고 본문과 색상 대비를 확보한다.
@@ -21,6 +23,7 @@
 
 ```json
 {
+  "kind": "postit",
   "id": "halloween-ghost",
   "theme": "halloween",
   "name": "할로윈 포스트잇",
@@ -33,14 +36,14 @@
 
 ```sh
 # 검사·manifest 생성만 수행한다. 이미지 버전 UUID는 입력하지 않는다.
-node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs prepare --definition /private/tmp/postit-definition.json --paper /absolute/path/paper.png --preview /absolute/path/preview.png --out /private/tmp/postit-manifest.json
+node --experimental-strip-types supabase/scripts/manage-artwork.mjs prepare --definition /private/tmp/postit-definition.json --paper /absolute/path/paper.png --preview /absolute/path/preview.png --out /private/tmp/postit-manifest.json
 
 # 업로드·공개 다운로드 해시 확인·독립 라이브러리 등록. 사용자 지급은 하지 않는다.
-node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs upload --definition /private/tmp/postit-definition.json --paper /absolute/path/paper.png --preview /absolute/path/preview.png
+node --experimental-strip-types supabase/scripts/manage-artwork.mjs upload --definition /private/tmp/postit-definition.json --paper /absolute/path/paper.png --preview /absolute/path/preview.png
 
 # 업로드된 PNG를 확인한 뒤 지급 가능 상태로 등록한다.
-node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs register --definition /private/tmp/postit-manifest.json --activate
-node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs list --theme halloween
+node --experimental-strip-types supabase/scripts/manage-artwork.mjs register --definition /private/tmp/postit-manifest.json --activate
+node --experimental-strip-types supabase/scripts/manage-artwork.mjs list --theme halloween
 
 # 신규 지급만 중지. 기존 보유와 이미 붙인 종이는 유지한다.
 node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs disable --design halloween-ghost
