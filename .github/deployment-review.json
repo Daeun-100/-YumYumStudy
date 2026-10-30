@@ -1,6 +1,6 @@
 {
-  "sourceCommit": "b3e226217ce0138505011a62a4cd8ce2658c0357",
-  "sourceTreeDigest": "43c30c866e96e098efdf7ba2a7fb3684f901c55cd2d0cfd60156d66cd92f93e0",
+  "sourceCommit": "63602a5a664404cf750eafa1d89c22c88f947425",
+  "sourceTreeDigest": "2b06851718388d2311a72576198bf81feb35e0bcf1eda6f30230ce79fe74c118",
   "baseline": {
     "tag": "v1.1.0",
     "sha": "d4b5b9b797879da0464fa25b9cec4b6827d86a27",
@@ -10,32 +10,22 @@
   "reviewer": {
     "kind": "interactive-codex"
   },
-  "recommendation": "update",
-  "rationale": "실제 production 환경에서 현재 소스의 전체 원본 Android fingerprint가 공개 APK v1.1.0 runtime과 정확히 일치했다(match=exact). 앱/패키지 버전 1.1.0 및 Android versionCode 4를 유지하므로 기존 APK에 EAS Update로 배포할 수 있다. 관리자 토스트/웹 export 도구를 네이티브 변경으로 오분류한 검사를 수정했다. 지문 제외나 런타임 강제값, 새 정규화 예외는 추가하지 않았다. 미분류 스크립트는 APK로 단정하지 않고 needs-review로 배포를 차단한다.",
+  "recommendation": "apk",
+  "rationale": "Galaxy 최근 앱 복귀 예외를 피하기 위해 MainActivity launchMode를 singleTask에서 singleTop으로 변경하는 네이티브 config plugin을 추가했다. 기존 APK v1.1.0에 OTA로 적용할 수 없으므로 앱/패키지/lockfile 버전을 1.1.1, Android versionCode를 5로 증가한다. 원인 확인 전의 전용 큐·종료 진단·서버 수집은 develop에서 제거되어 이번 앱 수정은 실행 모드 플러그인과 등록만 포함한다.",
   "evidence": [
-    "공개 APK 기준은 v1.1.0, source d4b5b9b797879da0464fa25b9cec4b6827d86a27, production runtime 4a7adc844a392bfaead47665719d0291b9f3da58이다. production 환경의 review-context가 공개 Release candidate 및 성공한 master Cloud Build/보관 EAS 결과와 baseline을 재검증했다.",
-    "현재 소스의 rawRuntime=4a7adc844a392bfaead47665719d0291b9f3da58, match=exact, compatible=true, exemptions=[], reasons=[], needsReview=false다. 전체 원본 지문을 계산했으며 normalizationHook이나 임의 파일 제외로 일치를 만들지 않았다.",
-    "잘못 올렸던 1.2.0/versionCode 5를 되돌렸다. app.json/package.json/package-lock.json/app.config.js/eas.json/modules/plugins/config/firebase/assets/app은 v1.1.0과 diff가 없다. 설치 버전은 1.1.0, versionCode 4를 유지한다.",
-    "배포 검사 수정: scripts/admin-toasts.mjs는 관리자 운영 CLI, scripts/secure-web-export.mjs는 web export 이후 CSP 처리임을 소스와 package scripts에서 검토해 명시적 비네이티브 도구 목록에 추가했다. 알려진 도구도 기존/신규 native hook 직접 호출 또는 npm/pnpm/bun/yarn 패키지 명령 경유 호출 시 차단한다. native source/plugin/fingerprint rule 가드는 유지한다.",
-    "미분류 scripts 파일은 native.needsReview=true 및 결정적 mode=needs-review로 구분한다. verifyReviewDecision은 해당 mode 자체를 거부하므로 보고서에 needs-review를 쓰거나 APK 버전을 올려 검토를 우회할 수 없다. 지문 계산 오류/비정상 hash는 계속 실패하며 허용된 관리상 정규화 사유가 없으면 원본 지문 불일치를 정규화로 재시도하지 않는다.",
-    "앱: 자기 방 배경 RPC와 Realtime 갱신, 주제별 원격 이미지의 경로/규격 검증·기본 이미지 대체·사용자/방 범위 캐시를 검토했다. 서버 이미지 정의만으로 새 캐릭터·실행 코드를 추가하지 않는다. 웹 CSP 변경은 자기 Supabase event-artwork 공개 경로의 이미지만 추가 허용한다.",
-    "포스트잇: 보유 디자인 선택·정사각 작성/열람·서버 스냅샷 보존과 공부 시간 조건 동기화, 재시도/범위 변경 방어 및 실제 표시 시 획득 안내 완료 처리를 검토했다. 2026-10-31 06:00부터 11-01 06:00 KST까지의 고정 할로윈 안내는 서버 보상 예약을 생성하지 않는다.",
-    "관리자 토스트: 방/사용자/플랫폼/variant 제한과 공부·저장 중 표시 억제, 로컬 완료 기록, 지정 OTA UUID/runtime/channel 일치 조건, 프로필 업데이트 행으로 이동을 검토했다. 기존 수동 OTA 적용/저장 차단은 유지한다. 공통 토스트 위치와 수박 도장 지연/속도 변경도 포함한다.",
-    "운영 도구: 배경/스킨/포스트잇 PNG prepare/upload/register/verify/list 공통화와 기존 포스트잇 CLI 전달 호환을 검토했다. 포스트잇 덮어쓰기는 네트워크 호출 전 거부하고 기존 스킨 개별 지급/착용·이벤트 예약·푸시/토스트 처리는 유지한다.",
-    "공유 서버 읽기 전용 확인: event_operations, remote_event_artwork, admin_toasts, event_skin_notifications, themed_artwork_library, simplify_toast_delete, simplify_artwork_paths, postit_design_rewards, fix_active_event_report 이력이 존재한다. simplify_toast_delete의 원격 버전은 20261029161744이고 저장소 버전은 20261029160622이다. 이 검토에서는 재적용·이력 수정을 수행하지 않았다.",
-    "공유 서버에서 get_event_backgrounds(p_room_id), get_skin_artwork(p_ids,p_room_id), sync_postit_designs(p_room_id), get_admin_toasts(), record_admin_toast(p_campaign_id,p_installation_id,p_event)의 시그니처를 확인했다. admin-toasts v3와 event-notifications v2는 ACTIVE다. 운영 테이블 수정·알림 발송·이벤트 예약은 하지 않았다.",
-    "서버 이미지 라이브러리 7건, 포스트잇 보상 규칙/보유 0건을 확인했다. 포스트잇 이미지 업로드와 마이그레이션은 준비됐으나 실제 행사는 대상 방·기간·1800초 규칙과 디자인 활성화를 별도로 운영해야 한다. 앱 배포만으로 할로윈 선물이 지급된다고 안내하지 않는다.",
-    "사용자가 Android test 채널의 develop f6ffe3e OTA를 적용해 확인했다고 응답했다. 업데이트 그룹 2ddc975c-baab-4f61-a96c-12750f32aea3, update ID 01a18bcd-93ef-7e9d-886a-3cd2361a67ac, 테스트 runtime 16a730161794c57f595e156bedaaf353630dde66이다. 이를 production APK 설치 검증이나 모든 기능/기기 검증으로 확대하지 않는다.",
-    "검증: lint, typecheck 및 전체 테스트 438 통과/격리 DB 1 건너뜀. 새 회귀는 운영/웹 도구 전체 원본 지문 일치·불일치/계산 실패, native hook 직접·간접 호출 및 순환 참조, 미분류 입력의 needs-review와 배포 차단을 확인한다. 같은 앱 소스의 웹 export/CSP와 관리자 토스트 DB 1/1·포스트잇/주제 이미지 격리 DB 검사는 직전 PR 준비에서 통과했다. 이번 추가 변경은 배포 검사·문서와 버전 복구이며 실제 앱 기능은 테스트 확인한 develop과 동일하다.",
-    "실제 배포는 master 병합 후 기존 Cloud Build의 update 경로에서 production Android OTA와 웹 export를 생성하고 검증한다. 게시 직전 baseline/runtime/master source를 재확인하며 성공 후 자동화가 v1.1.0-rN 배포 기록을 만든다. 태그/수정 차수를 수동 생성하지 않는다. 이 요청에서 master 병합·운영 업데이트 게시·행사 활성화·알림 발송은 수행하지 않았다."
+    "공개 APK 기준 v1.1.0의 source/runtime은 review-context가 Release candidate와 성공한 master 빌드 기록으로 검증했다. 결정적 mode=apk, compatible=false, needsReview=false이며 exemptions=[]이다. fingerprint 제외나 OTA runtime 강제값을 추가하지 않았다.",
+    "직전 실제 운영 배포 v1.1.0-r1 이후 master 대비 앱 코드 변경은 app.config.js의 플러그인 등록과 plugins/withAndroidRecents.js뿐이다. 버전 메타데이터 외에 JS 화면이나 타이머 로직의 변경은 없다. AndroidManifest 생성 시 MainActivity에 singleTop만 지정하며 기존 exported·intent filter는 유지한다.",
+    "S25 기존 앱 1.1.0에서 프로세스와 MainActivity가 살아 있는 상태로 startActivityFromRecents가 has root ... but target is singleInstance/Task 예외 및 result=-96으로 실패했다. singleTop을 포함한 별도 테스트 APK는 같은 기기에서 기존 Activity/Task로 4회 복귀했고 기존 앱은 2회 실패했다. 사용자도 성공을 확인했다. 테스트 APK에는 당시 진단 코드가 포함됐고 별도 패키지이므로 최소 구성 운영 APK의 업데이트 실측이나 launchMode 단독 인과 검증으로 확대하지 않는다.",
+    "S23 기존 singleTask 앱은 최근 앱에서 기존 작업을 앞으로 가져오는 경로로 3회 정상 복귀했다. S25가 다른 시스템 경로를 택한 근본 조건은 미확정이다. singleTop은 singleTask와 모든 상황에서 같지 않으므로 후보 APK 검증에서 알림·딥링크·잠금 후 복귀와 작업 중복을 확인한다.",
+    "PR #59로 제거한 GuardWorker, GuardDiagnostics, ExitDiagnosticsReporter, report_android_exit 및 관련 migration/테스트/CI 변경이 없다. 별도 진단 수집 기능이나 새 개인정보 수집을 이 배포에 추가하지 않는다.",
+    "운영 도구 PR #58도 develop에 포함된다. skin grant 예약의 선택적 user_ids를 1~500개 중복 없는 UUID로 제한하고 방/입장 자격을 검증한다. 기존 예약 수정은 원래 수신자 스냅샷을 유지하며 생략 시 기존 방 전체 지급을 보존한다. private helper 권한을 회수하고 기존 관리자 RPC를 사용한다. 공개 앱 UI의 스킨 지급 인터페이스 변경은 없다.",
+    "원격 적용 이력에 event_skin_recipients(20261030135204)가 존재하고 android_exit_diagnostics(20261030084116)는 없다. 이번 준비 과정에서는 서버 변경, 지급, 예약 또는 알림 발송을 실행하지 않았다.",
+    "검증: lint/typecheck, PGlite 포함 전체 442개 테스트 통과. 별도 check-event-recipients-db는 선택 대상·입장/방 검증·예약 수정·중복 방지·지급/알림 제외·권한 검증 통과(Cron/HTTP 격리 대체). 최소 구성 네이티브 StudyGuard compileReleaseKotlin은 직전 정리 작업에서 성공했고 이후 변경은 버전 및 검토 문서뿐이다.",
+    "기존 앱 package=com.yumyumstudy.app과 production EAS profile/channel, 업데이트 URL, 서명 설정은 그대로 유지한다. master PR만 만들며 병합·운영 빌드·태그·Release 공개·업데이트 모달 안내 등록은 이 요청에서 실행하지 않는다. 실제 배포는 기존 master Cloud Build APK 경로를 따른다."
   ],
   "releaseNotes": [
-    "이벤트 기간에 공부방의 홈·집중 배경을 바꾸고, 서버에 등록한 캐릭터 스킨을 표시할 수 있습니다.",
-    "보유한 포스트잇 종이 디자인을 선택해 글을 남길 수 있으며, 작성·읽기 화면을 정사각형 종이에 맞게 다듬었습니다.",
-    "공부 시간 조건 보상이 활성화되면 포스트잇 디자인을 자동으로 받고 획득 안내를 확인할 수 있습니다.",
-    "할로윈 행사 기간에는 집중 화면에서 30분 공부 진행 상황과 포스트잇 선물 안내를 확인할 수 있습니다.",
-    "관리자가 보낸 앱 내부 공지를 확인하고, 준비된 업데이트 안내에서 프로필의 업데이트 항목으로 이동할 수 있습니다.",
-    "알림 표시 위치를 조정하고 목표 달성 수박 도장 애니메이션을 더 천천히 표시합니다."
+    "일부 갤럭시에서 최근 앱 목록으로 얌얌스터디에 다시 들어가지 못하는 문제를 개선했습니다.",
+    "운영 기능: 이벤트 스킨 지급을 예약할 때 받을 친구를 선택할 수 있습니다."
   ],
   "exemptions": [],
   "blockers": []
