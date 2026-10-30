@@ -20,7 +20,7 @@ module.exports = () => {
       url: `https://u.expo.dev/${base.extra.eas.projectId}`,
       requestHeaders: { 'expo-channel-name': variant },
     },
-    plugins: [...base.plugins, ['expo-secure-store', { configureAndroidBackup: true }]],
+    plugins: [...base.plugins, ['expo-secure-store', { configureAndroidBackup: true }], './plugins/withAndroidRecents'],
     name: test ? '얌얌스터디 테스트' : base.name,
     scheme: test ? 'yumyumstudy-test' : base.scheme,
     android: { ...base.android, googleServicesFile: './config/firebase/google-services.json', package: test ? `${base.android.package}.test` : base.android.package },
