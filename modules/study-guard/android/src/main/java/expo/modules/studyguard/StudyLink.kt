@@ -2,8 +2,6 @@ package expo.modules.studyguard
 
 import android.content.Context
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 import org.json.JSONObject
 import java.net.URL
 import java.text.SimpleDateFormat
@@ -30,7 +28,7 @@ internal object StudyLink {
   private fun iso(value: Long) = formatter().format(java.util.Date(value))
   private var nextAttempt = 0L
   private val executor = Executors.newSingleThreadExecutor()
-  private val main = Handler(Looper.getMainLooper())
+  private val stateHandler = GuardWorker.handler
   private fun load(context: Context) {
     if (loaded) return
     loaded = true
@@ -127,7 +125,7 @@ internal object StudyLink {
           }
         } finally { connection.disconnect() }
       } catch (_: Exception) { /* Keep the durable outbox; never log tokens or request headers. */ }
-      main.post {
+      stateHandler.post {
         sending = false
         if (success && link?.optString("sessionId") == id) {
           link!!.put("confirmed", true); persist(context)
