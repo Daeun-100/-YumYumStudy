@@ -24,5 +24,6 @@
 | --- | --- | --- | --- |
 | [서버 예약 검증 · 0번방](2026-10-29-server-verification.md) | `2026-event-server-verification` | 2026-10-29 21:08~21:09 | 종료 · 서버 검증 통과 |
 | [서버 이미지 저장소 검증](2026-10-29-artwork-verification.md) | `2026-artwork-verification` | 2026-10-29 | 완료 · 비활성 검증 |
+| [포스트잇 서버·최종 PNG 준비](2026-10-30-postit-design-server.md) | 서버 반영 기록 | 2026-10-30 | 완료 · 비활성 등록, 행사 미예약 |
 
 템플릿은 실제 이벤트 목록에 포함하지 않는다.

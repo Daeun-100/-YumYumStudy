@@ -72,5 +72,7 @@ test('web policy hashes existing boot scripts and blocks injected inline handler
   assert.match(html, /connect-src 'self' https:\/\/example.supabase.co wss:\/\/example.supabase.co/);
   assert.doesNotMatch(html, /unsafe-eval|script-src[^;]*unsafe-inline/);
   assert.ok(html.indexOf('Content-Security-Policy') < html.indexOf('<script>'));
+  assert.ok(html.includes("img-src 'self' data: blob: https://example.supabase.co/storage/v1/object/public/event-artwork/"));
+  assert.equal(html.includes("img-src *"), false);
   assert.throws(() => secureWebHtml('<head></head>', 'http://attacker.test'));
 });

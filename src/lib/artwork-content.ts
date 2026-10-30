@@ -47,10 +47,10 @@ export function decodeArtwork(value: unknown): ArtworkManifest {
  return {schemaVersion:2,theme:v.theme as string,kind,id:v.id as string,name:v.name,home,focus,effects,
   ...(kind==='skin'?{character:v.character as CharacterId}:{}),...(homePlacement?{homePlacement}:{}),...(focusBottom===undefined?{}:{focusBottom})};
 }
-export function validThemedPath(path: unknown, theme: string, kind: 'skin'|'background'): path is string {
+export function validThemedPath(path: unknown, theme: string, kind: 'skin'|'background'|'postit'): path is string {
  if(typeof path!=='string'||path.length>240||!artworkId.test(theme))return false;
- const prefix=kind==='skin'?`${theme}/skins/`:`${theme}/backgrounds/`;
- return path.startsWith(prefix) && /^[a-z0-9][a-z0-9_-]{0,79}\/(?:backgrounds|skins)\/(?:[a-z0-9][a-z0-9_-]{0,79}\/)*[a-z0-9][a-z0-9_-]{0,79}\.png$/.test(path);
+ const prefix=kind==='skin'?`${theme}/skins/`:kind==='postit'?`${theme}/postits/`:`${theme}/backgrounds/`;
+ return path.startsWith(prefix) && /^[a-z0-9][a-z0-9_-]{0,79}\/(?:backgrounds|skins|postits)\/(?:[a-z0-9][a-z0-9_-]{0,79}\/)*[a-z0-9][a-z0-9_-]{0,79}\.png$/.test(path);
 }
 // Stable library reference and change detection are internal cache details, not operator versions.
 export const artworkReference=(m:ArtworkManifest)=>`asset-${m.id}`;
@@ -58,9 +58,12 @@ export const artworkSignature=(m:ArtworkManifest)=>JSON.stringify(m);
 export function artworkUrl(base: string, file: ArtworkFile): string {
  const u = new URL(base);
  const theme=file.path.split('/')[0];
- const themed=validThemedPath(file.path,theme,'skin')||validThemedPath(file.path,theme,'background');
+ const themed=validThemedPath(file.path,theme,'skin')||validThemedPath(file.path,theme,'background')||validThemedPath(file.path,theme,'postit');
  if (u.protocol !== 'https:' || !u.hostname.endsWith('.supabase.co') || u.username || u.password || u.pathname !== '/' || u.search || u.hash
   || !themed) throw Error('Untrusted artwork URL');
  if(!/^[a-f0-9]{64}$/.test(file.sha256))throw Error('Invalid artwork hash');
  return `${u.origin}/storage/v1/object/public/${ARTWORK_BUCKET}/${file.path}?hash=${file.sha256}`;
 }
+
+// Internal identifiers used by postit ownership and preserved paper snapshots.
+export const artworkRevision = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

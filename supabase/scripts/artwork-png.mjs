@@ -4,9 +4,10 @@ const crcTable=Array.from({length:256},(_,index)=>{let n=index;for(let i=0;i<8;i
 function crc(bytes){let n=0xffffffff;for(const b of bytes)n=crcTable[(n^b)&255]^(n>>>8);return(n^0xffffffff)>>>0;}
 /** Decode bounded PNG rows to reject damaged files and opaque character cutouts. */
 export function inspectPng(bytes,{kind,screen}){
- if(!Buffer.isBuffer(bytes)||bytes.length>5242880||bytes.length<45||!bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error('PNG up to 5 MiB required.');
+ if(!Buffer.isBuffer(bytes)||bytes.length>(kind==='postit'?2097152:5242880)||bytes.length<45||!bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error(`PNG up to ${kind==='postit'?2:5} MiB required.`);
  const width=bytes.readUInt32BE(16),height=bytes.readUInt32BE(20),depth=bytes[24],color=bytes[25];
- const expected=screen==='home'?[1536,1024]:kind==='skin'?[1254,1254]:[1024,1536];
+ const expected=kind==='postit'?[width,height]:screen==='home'?[1536,1024]:kind==='skin'?[1254,1254]:[1024,1536];
+ if(kind==='postit'&&(width<512||width>2048||height<512||height>2048||width!==height))throw Error('Expected 512–2048 px square paper or preview PNG.');
  if(width!==expected[0]||height!==expected[1]||depth!==8||![2,6].includes(color)||bytes[26]!==0||bytes[27]!==0||bytes[28]!==0)throw Error(`Expected non-interlaced 8-bit ${expected.join('x')} RGB/RGBA PNG.`);
  if(kind==='skin'&&color!==6)throw Error('Skin PNG needs transparent RGBA.');
  let at=8,ended=false;const idat=[];
@@ -19,6 +20,7 @@ export function inspectPng(bytes,{kind,screen}){
   if(at===8&&(type!=='IHDR'||length!==13))throw Error('PNG header required.');
   if(type==='IHDR'&&at!==8)throw Error('Duplicate PNG header.');
   if(/^[A-Z]/.test(type)&&!['IHDR','PLTE','IDAT','IEND'].includes(type))throw Error('Unsupported critical PNG chunk.');
+  if(kind==='postit'&&screen==='preview'&&type==='tRNS')throw Error('Preview PNG must be opaque and full-bleed.');
   if(type==='IDAT')idat.push(bytes.subarray(at+8,end-4));
   if(type==='IEND'){if(length||end!==bytes.length)throw Error('Invalid PNG end.');ended=true;}
   at=end;
@@ -38,6 +40,7 @@ export function inspectPng(bytes,{kind,screen}){
   }
   previous=row;
  }
+ if(kind==='postit'&&screen==='preview'&&transparent)throw Error('Preview PNG must be opaque and full-bleed; the app applies the circular clip.');
  if(kind==='skin'&&!transparent)throw Error('Skin PNG has no transparent pixels.');
  return {bytes:bytes.length,width,height,sha256:createHash('sha256').update(bytes).digest('hex')};
 }

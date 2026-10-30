@@ -14,7 +14,7 @@ import { ArtworkContext } from './ArtworkContext';
 const downloads = new Map<string,Promise<void>>();
 let running = 0;
 const queue: (()=>void)[] = [];
-async function prepareImage(asset: ArtworkFile) {
+export async function prepareArtworkFile(asset: ArtworkFile) {
  const uri=artworkUrl(process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',asset);
  const existing=downloads.get(uri);if(existing)return existing;
  const task=(async()=>{
@@ -41,7 +41,7 @@ export function ArtworkProvider({children}:PropsWithChildren) {
   now:Date.now,
   url:asset=>artworkUrl(process.env.EXPO_PUBLIC_SUPABASE_URL??'',asset),
   fetchSkins:async ids=>{const result=await callRpc('get_skin_artwork',{p_ids:ids,p_room_id:room});if(!Array.isArray(result))throw Error('Invalid artwork response');return result;},
-  prepare:async m=>{await Promise.all([prepareImage(m.home),prepareImage(m.focus)]);},
+  prepare:async m=>{await Promise.all([prepareArtworkFile(m.home),prepareArtworkFile(m.focus)]);},
   save:manifests=>{if(owner)void AsyncStorage.setItem(`artwork-v1:${owner}:${room}`,JSON.stringify(manifests.slice(-200))).catch(()=>{});},
  }),[owner,room]);
  useEffect(()=>{
