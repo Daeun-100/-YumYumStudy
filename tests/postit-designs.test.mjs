@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {decodePostitArtwork,decodeOwnedDesigns,decodePostitDefinition} from '../src/features/postits/designs.ts';
@@ -38,25 +39,25 @@ test('theme/path registration needs no revision UUID and uses a hash cache key',
  assert.throws(()=>decodePostitDefinition({...themed,paper:{...themed.paper,path:'winter/postits/paper.png'}}));
 });
 
-test('approved portrait paper and circular preview retain original PNG bytes',()=>{
- const paperBytes=readFileSync('assets/postits/halloween-paper.png'), previewBytes=readFileSync('assets/postits/halloween-preview.png');
- const definition=preparePostit({id:'halloween-ghost',theme:'halloween',name:'할로윈 유령 포스트잇',fallbackColor:'#F7CED4',textColor:'#503454'},paperBytes,previewBytes);
- assert.equal(definition.paper.width,1122);assert.equal(definition.paper.height,1402);assert.equal(definition.preview.width,1254);assert.equal(definition.preview.height,1254);
- assert.equal(definition.paper.sha256,'ed44fdace93c1bac479017b4ae478a0a22fc2a0a83d7476ad193ef292a5769a6');
- assert.equal(definition.preview.sha256,'a0a7a8dd52953b770db019ac326f1cf2d9352111bc5f6e80c591894aec57a0a4');
- assert.throws(()=>decodePostitDefinition({...definition,preview:{...definition.preview,height:1402}}));
- assert.throws(()=>preparePostit({...definition},paperBytes),/Preview PNG file required/);
+test('source originals remain intact but non-square paper is no longer accepted',()=>{
+ const original=readFileSync('assets/postits/halloween-paper.png');
+ assert.equal(createHash('sha256').update(original).digest('hex'),'ed44fdace93c1bac479017b4ae478a0a22fc2a0a83d7476ad193ef292a5769a6');
+ assert.throws(()=>preparePostit(config,original),/square/);
+ assert.throws(()=>preparePostit(config,readFileSync('assets/postits/halloween-paper-landscape.png')),/square/);
+ for(const file of ['paper','preview'])assert.throws(()=>decodePostitDefinition({...preparePostit(config,bytes),[file]:{...manifest.paper,width:1122,height:1402}}));
 });
-
- test('landscape Halloween redraw is accepted with unchanged circular preview',()=>{
- const paper=readFileSync('assets/postits/halloween-paper-landscape.png');
- const preview=readFileSync('assets/postits/halloween-preview.png');
+test('full-bleed preview is square, opaque, bounded and accepted without UI zoom',()=>{
+ const paper=readFileSync('assets/postits/halloween-paper-square.png');
+ const preview=readFileSync('assets/postits/halloween-preview-fullbleed.png');
  const definition=preparePostit(config,paper,preview);
- assert.equal(definition.paper.width,1437);assert.equal(definition.paper.height,1095);
- assert.ok(Math.abs(definition.paper.width/definition.paper.height-420/320)<0.001);
- assert.equal(decodePostitDefinition(definition).paper.sha256,definition.paper.sha256);
- assert.throws(()=>decodePostitDefinition({...definition,paper:{...definition.paper,width:2048,height:512}}));
- });
+ assert.equal(definition.preview.width,definition.preview.height);
+ assert.ok(definition.preview.bytes<=2097152);
+ assert.equal(decodePostitDefinition(definition).preview.sha256,definition.preview.sha256);
+ assert.throws(()=>preparePostit({...definition},paper),/Preview PNG file required/);
+ const original=readFileSync('assets/postits/halloween-preview.png');
+ assert.equal(createHash('sha256').update(original).digest('hex'),'a0a7a8dd52953b770db019ac326f1cf2d9352111bc5f6e80c591894aec57a0a4');
+ assert.throws(()=>inspectPng(original,{kind:'postit',screen:'preview'}),/opaque/);
+});
 
 test('square Halloween paper matches the square sheet without stretching',()=>{
  const paper=readFileSync('assets/postits/halloween-paper-square.png');

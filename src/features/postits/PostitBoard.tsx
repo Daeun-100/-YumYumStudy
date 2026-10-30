@@ -89,7 +89,7 @@ export function PostitBoard({ createId, scene, notes, add, remove, error, noteBo
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ gap: 8 }}>
           <View accessibilityRole="radiogroup" accessibilityLabel="종이 디자인" style={{ flexDirection: 'row', gap: 8 }}>
             {postitColors.map((value, index) => <Pressable key={value} accessibilityRole="radio" accessibilityLabel={['노랑', '분홍', '연두'][index]} accessibilityState={{ checked: !design && value === color }} aria-checked={!design && value === color} onPress={() => { setColor(value); setDesignId(undefined); }} style={[s.swatch, { backgroundColor: value, borderColor: !design && value === color ? colors.primary : 'transparent' }]} />)}
-            {designs.map(item => <Pressable key={item.id} accessibilityRole="radio" accessibilityLabel={item.name} accessibilityState={{ checked: design?.id === item.id }} aria-checked={design?.id === item.id} onPress={() => setDesignId(item.id)} style={[s.swatch, { backgroundColor: item.preview ? 'transparent' : item.fallbackColor, borderColor: design?.id === item.id ? colors.primary : 'transparent' }]}><View pointerEvents="none" style={s.designSwatch}><View style={item.preview ? s.previewCrop : s.designCrop}><PostitPaper artwork={item} color={item.fallbackColor} imageUrl={imageUrl} part={item.preview ? 'preview' : 'paper'} /></View></View></Pressable>)}
+            {designs.map(item => <Pressable key={item.id} accessibilityRole="radio" accessibilityLabel={item.name} accessibilityState={{ checked: design?.id === item.id }} aria-checked={design?.id === item.id} onPress={() => setDesignId(item.id)} style={[s.swatch, { backgroundColor: item.preview ? 'transparent' : item.fallbackColor, borderColor: design?.id === item.id ? colors.primary : 'transparent' }]}><View pointerEvents="none" style={s.designSwatch}><View style={item.preview ? StyleSheet.absoluteFill : s.designCrop}><PostitPaper artwork={item} color={item.fallbackColor} imageUrl={imageUrl} part={item.preview ? 'preview' : 'paper'} /></View></View></Pressable>)}
           </View>
         </ScrollView><Text style={s.caption}>{draft.length}/50</Text></View>
         {!!designError && <Pressable accessibilityRole="button" accessibilityLabel="종이 디자인 다시 불러오기" onPress={onOpen}><Text style={s.error}>{designError} 다시 불러오기</Text></Pressable>}
@@ -114,8 +114,6 @@ const s = StyleSheet.create({
   author: { ...typography.link, color: colors.text, flex: 1 },
   readingContent: { flexGrow: 1, paddingHorizontal: 40, paddingTop: 8 },
   designSwatch: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
-  // Remove the supplied circular PNG's transparent outer padding inside the round clip.
-  previewCrop: { position: 'absolute', width: 48, height: 48, left: -4, top: -4 },
   designCrop: { position: 'absolute', width: 88, height: 88, top: 0, left: 0 },
   smallCaption: { ...typography.caption, color: colors.secondary, flexShrink: 1 },
   delete: { minHeight: 44, paddingHorizontal: 12, marginRight: -12, flexDirection: 'row', gap: 5, alignItems: 'center' },

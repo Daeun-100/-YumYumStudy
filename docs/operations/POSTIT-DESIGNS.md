@@ -11,9 +11,9 @@
 
 ## 디자인 PNG
 
-종이 PNG는 가로·세로 각각 512–2048 px, 가로:세로 비율 1:2–2:1을 지원한다. 별도 원형 선택 이미지 preview는 선택 사항이며 정사각 PNG로 등록한다. 각 파일은 8비트 RGB/RGBA·비인터레이스, 2 MiB 이하다. 별도 preview가 없으면 종이 일부를 원형으로 잘라 표시한다. 글씨는 앱이 덧그리므로 중앙을 비우고 본문과 색상 대비를 확보한다.
+종이와 선택 사항인 preview는 모두 512–2048 px 정사각 PNG로 등록한다. 권장 제작 크기는 1254×1254다. preview는 네 모서리까지 그림으로 채운 불투명 이미지로 만들고 투명 여백·원형 테두리를 넣지 않는다. 앱이 확대 없이 원형으로 잘라 표시하므로 주요 그림은 중앙 내접원 안에 둔다. 각 파일은 8비트 RGB/RGBA·비인터레이스, 2 MiB 이하다. 별도 preview가 없으면 종이 일부를 원형으로 잘라 표시한다. 글씨는 앱이 덧그리므로 중앙을 비우고 본문과 색상 대비를 확보한다.
 
-현재 할로윈 배경은 assets/postits/halloween-paper-square.png (1254×1254), 선택 이미지는 사용자가 제공한 assets/postits/halloween-preview.png (1254×1254)다. 원래 세로 종이는 보존했다. 작성·읽기 종이는 공통 PostitSheet로 최대 가로 420, 가로:세로 1:1 고정 비율을 사용하며 작은 화면에서는 세로도 함께 줄인다. 배경은 원본 비율을 유지해 채운다. 작성 취소는 우측 상단 ×로 제공한다. 집중 화면의 모달은 타이머까지 포함한 전체 화면을 덮는다.
+현재 할로윈 배경은 assets/postits/halloween-paper-square.png (1254×1254), 선택 이미지는 새 규격으로 다시 그린 assets/postits/halloween-preview-fullbleed.png (1254×1254)다. 원래 세로 종이는 보존했다. 작성·읽기 종이는 공통 PostitSheet로 최대 가로 420, 가로:세로 1:1 고정 비율을 사용하며 작은 화면에서는 세로도 함께 줄인다. 배경은 원본 비율을 유지해 채운다. 작성 취소는 우측 상단 ×로 제공한다. 집중 화면의 모달은 타이머까지 포함한 전체 화면을 덮는다.
 
 운영 환경에서 `SUPABASE_URL`과 비공개 `SUPABASE_SERVICE_ROLE_KEY`를 사용한다. 키는 명령 인자나 JSON에 넣지 않는다. 모든 명령은 저장소 루트에서 실행한다.
 
@@ -21,7 +21,7 @@
 
 ```json
 {
-  "id": "halloween-paper",
+  "id": "halloween-ghost",
   "theme": "halloween",
   "name": "할로윈 포스트잇",
   "fallbackColor": "#F9E8A0",
@@ -43,11 +43,11 @@ node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs regis
 node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs list --theme halloween
 
 # 신규 지급만 중지. 기존 보유와 이미 붙인 종이는 유지한다.
-node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs disable --design halloween-paper
-node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs enable --design halloween-paper
+node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs disable --design halloween-ghost
+node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs enable --design halloween-ghost
 ```
 
-기본 파일 경로는 `halloween/postits/halloween-paper/paper.png`다. 입력 JSON의 `paper.path`로 같은 주제의 다른 PNG 경로를 명시할 수도 있다. 경로와 SHA-256으로 이미지 캐시를 구분한다. 기존 파일을 다른 이미지로 덮어쓰지 않는다. 응답 유실·부분 실패에는 같은 파일·경로·정의로 재시도한다. 다른 해시이면 중단하고 새 파일 경로를 등록한다.
+기본 파일 경로는 `halloween/postits/halloween-ghost/paper.png`다. 입력 JSON의 `paper.path`로 같은 주제의 다른 PNG 경로를 명시할 수도 있다. 경로와 SHA-256으로 이미지 캐시를 구분한다. 기존 파일을 다른 이미지로 덮어쓰지 않는다. 응답 유실·부분 실패에는 같은 파일·경로·정의로 재시도한다. 다른 해시이면 중단하고 새 파일 경로를 등록한다.
 
 이미 붙인 종이를 보존하기 위한 스냅샷 ID는 서버가 자동 생성한다. 운영자는 UUID를 생성·선택하거나 별도 이미지 버전을 게시하지 않는다. 같은 정의 재등록은 스냅샷을 늘리지 않는다. 새 정의는 이후 작성에 적용하고 과거 종이·파일·지급 근거는 보존한다.
 
@@ -64,7 +64,7 @@ node --experimental-strip-types supabase/scripts/manage-postit-designs.mjs enabl
   "name": "할로윈 30분 공부",
   "document_path": "docs/events/2026-halloween.md",
   "room_id": 0,
-  "design_id": "halloween-paper",
+  "design_id": "halloween-ghost",
   "starts_at": "2026-10-31T06:00:00+09:00",
   "ends_at": "2026-11-01T06:00:00+09:00",
   "required_seconds": 1800
@@ -115,3 +115,5 @@ Storybook `화면/포스트잇 디자인 보상`에서 원형 견본 선택·작
 이번 행사의 북마크·설명·미리보기는 앱 코드에 포함한다. `src/features/events/halloween-event.ts`에서 한국시간 2026-10-31 06:00 이상, 2026-11-01 06:00 미만으로 고정한다. 매년 반복하지 않는다. 실제 FocusScreen과 Storybook은 공통 HalloweenEventView를 사용한다. 집중 화면의 기존 시계로 기간 경계를 확인하므로 켜둔 상태에서도 표시·숨김이 반영된다. 종료하면 열려 있는 이벤트 안내도 닫히고, 보유 디자인은 유지된다.
 
 진행 표시는 해당 공부 날짜의 기존 누적 시간을 사용하고, 지급 완료 체크는 서버 보유 목록의 `halloween-ghost`로 확인한다. UI 기간 설정은 서버의 지급 예약을 만들거나 활성화하지 않는다. 실제 지급을 위해서는 같은 디자인 ID·행사 시간·1800초 조건의 보상 규칙을 별도로 등록해야 한다. UI 기간이나 문구 변경에는 지원 앱 업데이트가 필요하다. 구조 개선 이슈 #54는 이번 변경에 포함하지 않는다.
+
+보유·지급 확인 실패는 캐시를 유지하면서 같은 예약 타이머로 15초·30초·최대 60초 간격으로 재시도한다. 성공하면 재시도를 해제하고 서버의 다음 확인 시각으로 돌아간다. 백그라운드에서는 타이머를 멈추며 사용자·방 전환 후 이전 응답은 적용하지 않는다.

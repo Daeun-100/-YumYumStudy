@@ -63,7 +63,7 @@ begin
  then raise exception 'Invalid postit PNG' using errcode='22023';end if;
  w:=(a->>'width')::numeric;h:=(a->>'height')::numeric;
  if w not between 512 and 2048 or h not between 512 and 2048 or w<>trunc(w) or h<>trunc(h)
-  or (part='preview' and w<>h) or (part='paper' and (w>h*2 or h>w*2)) then raise exception 'Invalid postit PNG dimensions' using errcode='22023';end if;
+  or w<>h then raise exception 'Invalid postit PNG dimensions' using errcode='22023';end if;
  if not exists(select 1 from storage.objects o where o.bucket_id='event-artwork' and o.name=a->>'path' and o.metadata->>'mimetype'='image/png' and (o.metadata->>'size')::bigint=(a->>'bytes')::bigint)
  then raise exception 'Upload verified postit PNG first' using errcode='22023';end if;
  end loop;

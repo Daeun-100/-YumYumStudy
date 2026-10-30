@@ -25,7 +25,8 @@ export function PostitDesignProvider({ children }: PropsWithChildren) {
   const prepared = useRef(new Set<string>());
   const epoch = useRef(0);
   const syncedEpoch = useRef(-1);
-  useLayoutEffect(() => { const version = ++epoch.current; return () => { epoch.current = version + 1; }; }, [scope]);
+  const retryDelay = useRef(15000);
+  useLayoutEffect(() => { const version = ++epoch.current; retryDelay.current = 15000; return () => { epoch.current = version + 1; }; }, [scope]);
   const refresh = useCallback(function refreshCurrent(): Promise<void> {
     if (!owner || !current.current.active || current.current.scope !== scope) return Promise.resolve();
     const version = epoch.current, flightKey = `${scope}:${version}`;
@@ -37,6 +38,7 @@ export function PostitDesignProvider({ children }: PropsWithChildren) {
         const owned = decodeOwnedDesigns(raw.owned), visible = decodeVisibleDesigns(raw.visible);
         if (current.current.scope !== scope || epoch.current !== version) return;
         syncedEpoch.current = version;
+        retryDelay.current = 15000;
         setData({ scope, owned, visible, error: null });
         const wait = raw.nextCheckSeconds;
         setSchedule(typeof wait === 'number' && Number.isFinite(wait) && wait > 0 ? { scope, at: Date.now() + Math.ceil(wait * 1000) + 250 } : null);
@@ -51,7 +53,13 @@ export function PostitDesignProvider({ children }: PropsWithChildren) {
           }
         }
       } catch {
-        if (current.current.scope === scope && epoch.current === version) setData(old => ({ ...(old.scope === scope ? old : { scope, ...empty }), error: '종이 디자인을 불러오지 못했어요. 다시 시도해 주세요.' }));
+        if (current.current.scope === scope && epoch.current === version) {
+          setData(old => ({ ...(old.scope === scope ? old : { scope, ...empty }), error: '종이 디자인을 불러오지 못했어요. 다시 시도해 주세요.' }));
+          // Reuse the single scheduled check; failures back off instead of dropping the grant check.
+          setSchedule({ scope, at: Date.now() + retryDelay.current });
+          retryDelay.current = Math.min(60000, retryDelay.current * 2);
+          trailing.current.delete(flightKey);
+        }
       }
     })().finally(() => {
       if (flights.current.get(flightKey) === task) flights.current.delete(flightKey);

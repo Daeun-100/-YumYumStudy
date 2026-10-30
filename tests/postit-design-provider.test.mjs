@@ -75,3 +75,38 @@ test('a reward threshold refresh immediately updates ownership and the disk cach
  assert.equal(JSON.parse(h.storage.get('postit-designs-v1:owner:0')).owned.length,1);
  assert.equal(h.timers.size,0);h.dispose();
 });
+
+async function fireScheduled(h){
+ assert.equal(h.timers.size,1);
+ const [id,job]=[...h.timers][0];h.timers.delete(id);job.run();await flush();h.render();
+}
+test('failed threshold checks back off with one timer and resume server scheduling after recovery',async()=>{
+ const h=setup();h.reply(response([],1));h.render();await flush();h.render();h.online(false);
+ for(const delay of [15000,30000,60000,60000]){
+  await fireScheduled(h);
+  assert.ok(h.render().error);
+  const wait=[...h.timers.values()][0].ms;assert.ok(wait<=delay&&wait>delay-1000);
+ }
+ h.online(true);h.reply(response());await fireScheduled(h);
+ assert.equal(h.render().owned.length,1);assert.equal(h.render().error,null);assert.equal(h.timers.size,0);
+ h.online(false);await h.render().refresh();h.render();
+ assert.ok([...h.timers.values()][0].ms<=15000);assert.ok([...h.timers.values()][0].ms>14000);
+ h.active(false);h.render();assert.equal(h.timers.size,0);
+ h.online(true);h.active(true);h.reply(response([],120));h.render();await flush();h.render();
+ assert.equal(h.timers.size,1);assert.ok([...h.timers.values()][0].ms>119000);
+ h.dispose();assert.equal(h.timers.size,0);
+});
+test('a failed shared request does not immediately replay queued refreshes',async()=>{
+ const h=setup();let reject;
+ h.hold(new Promise((_,fail)=>reject=fail));h.render();
+ const pending=h.render().refresh();h.render().refresh();
+ assert.equal(h.reads(),1);h.hold(null);h.online(false);reject(Error('offline'));await pending;await flush();h.render();
+ assert.equal(h.reads(),1);assert.equal(h.timers.size,1);
+ h.dispose();
+});
+test('a previous account failure cannot schedule a retry for the new account',async()=>{
+ const h=setup();let reject;
+ h.hold(new Promise((_,fail)=>reject=fail));h.render();h.hold(null);h.reply(response([]));h.owner('other');h.render();await flush();h.render();
+ reject(Error('old request failed'));await flush();
+ assert.equal(h.render().error,null);assert.equal(h.timers.size,0);h.dispose();
+});

@@ -11,14 +11,14 @@ export function decodePostitArtwork(value: unknown): PostitArtwork {
   if (m.schemaVersion !== 2 || m.kind !== 'postit' || typeof m.id !== 'string' || !artworkId.test(m.id)
     || typeof m.theme !== 'string' || typeof m.revision !== 'string' || !artworkRevision.test(m.revision) || typeof m.name !== 'string' || !m.name.trim() || m.name.length > 60
     || !postitColors.includes(m.fallbackColor as typeof postitColors[number]) || !/^#[a-f0-9]{6}$/i.test(m.textColor)) throw Error('Unsupported postit artwork');
-  const file = (a: ArtworkFile | undefined, square: boolean): ArtworkFile => {
+  const file = (a: ArtworkFile | undefined): ArtworkFile => {
     if (!a || !validThemedPath(a.path, m.theme, 'postit') || typeof a.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(a.sha256)
       || !Number.isInteger(a.width) || !Number.isInteger(a.height) || a.width < 512 || a.width > 2048 || a.height < 512 || a.height > 2048
-      || (square ? a.width !== a.height : a.width > a.height * 2 || a.height > a.width * 2)
+      || a.width !== a.height
       || !Number.isSafeInteger(a.bytes) || a.bytes < 1 || a.bytes > 2 * 1024 * 1024) throw Error('Invalid postit image');
     return { path: a.path, sha256: a.sha256, width: a.width, height: a.height, bytes: a.bytes };
   };
-  return { schemaVersion: m.schemaVersion, theme: m.theme, kind: 'postit', id: m.id, revision: m.revision, name: m.name, fallbackColor: m.fallbackColor, textColor: m.textColor, paper: file(m.paper, false), ...(m.preview !== undefined ? { preview: file(m.preview, true) } : {}) };
+  return { schemaVersion: m.schemaVersion, theme: m.theme, kind: 'postit', id: m.id, revision: m.revision, name: m.name, fallbackColor: m.fallbackColor, textColor: m.textColor, paper: file(m.paper), ...(m.preview !== undefined ? { preview: file(m.preview) } : {}) };
 }
 export function decodeOwnedDesigns(value: unknown): OwnedPostitDesign[] {
   if (!Array.isArray(value)) throw Error('Invalid owned designs');
