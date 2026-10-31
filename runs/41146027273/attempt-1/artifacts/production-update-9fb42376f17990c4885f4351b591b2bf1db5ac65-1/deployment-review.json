@@ -1,0 +1,26 @@
+{
+  "sourceCommit": "5e90e1a108bd8cc6576ecbb5479e8db61059d253",
+  "sourceTreeDigest": "b46c0b471b34116a4fc722a8f40a0f3ac4da9b0a962e2e01933ad475690b4e34",
+  "baseline": {
+    "tag": "v1.1.1",
+    "sha": "c61a22765459dc8a1e4f2488f0d032d482801b2c",
+    "runtimeVersion": "a72aa08e39de83feb4413ad7acf7afd03d141def"
+  },
+  "schema": 1,
+  "reviewer": {
+    "kind": "interactive-codex"
+  },
+  "recommendation": "update",
+  "rationale": "할로윈 모달의 정적 포스트잇 이미지 너비·높이를 부모 영역의 100%로 명시하는 스타일 한 곳만 변경한다. 앱 버전 1.1.1과 Android versionCode 5, 네이티브 설정·의존성은 유지하며 공개 APK와 원본 runtime이 정확히 일치하여 기존 APK에 호환되는 업데이트로 판단한다.",
+  "evidence": [
+    "공개 APK v1.1.1 대비 변경 파일은 src/features/events/HalloweenEventView.tsx 한 개다. 이미지에 width/height 100%만 추가하고 기존 180×180 컨테이너, contain, 텍스트·모달 동작은 유지한다.",
+    "React Native 정적 Image는 원본 크기를 기본 스타일로 사용하는데 absoluteFill은 크기를 덮어쓰지 않는다. 명시한 비율 크기가 부모 레이아웃에 맞춰 원본 크기를 덮어쓴다.",
+    "review-context의 mode=update, native.compatible=true, match=exact, needsReview=false, exemptions=[]를 확인했다. 원본 runtime은 공개 APK의 a72aa08e39de83feb4413ad7acf7afd03d141def와 일치한다.",
+    "lint와 typecheck, git diff --check 통과. Android 실기기 시각 검증은 수행하지 않았다. 신규 네이티브 코드, 스키마, 알림·이벤트 예약 변경은 없다."
+  ],
+  "releaseNotes": [
+    "할로윈 이벤트 안내에서 포스트잇 이미지가 모달 밖으로 넘치는 문제를 수정했습니다."
+  ],
+  "exemptions": [],
+  "blockers": []
+}
