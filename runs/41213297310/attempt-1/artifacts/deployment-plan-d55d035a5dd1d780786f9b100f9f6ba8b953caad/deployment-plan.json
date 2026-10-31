@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "mode": "update",
+  "sha": "d55d035a5dd1d780786f9b100f9f6ba8b953caad",
+  "observedRuntimeVersion": "a72aa08e39de83feb4413ad7acf7afd03d141def",
+  "runtimeVersion": "a72aa08e39de83feb4413ad7acf7afd03d141def",
+  "baseline": {
+    "schema": 1,
+    "repository": "Daeun-100/-YumYumStudy",
+    "runId": 41070380124,
+    "sha": "c61a22765459dc8a1e4f2488f0d032d482801b2c",
+    "version": "1.1.1",
+    "revision": 5,
+    "runtimeVersion": "a72aa08e39de83feb4413ad7acf7afd03d141def",
+    "buildId": "f2359f15-4856-4b71-afd5-4983b28161f9",
+    "deploymentId": "production-c61a22765459-13-1",
+    "apkName": "yumyumstudy-v1.1.1.apk",
+    "apkSha256": "e83f37c274e838e2a078055f556713e169dbe03f1ddcdde4c66c8bb709caf09d",
+    "tag": "v1.1.1"
+  },
+  "native": {
+    "compatible": true,
+    "exemptions": [],
+    "reasons": [],
+    "rawRuntime": "a72aa08e39de83feb4413ad7acf7afd03d141def",
+    "normalizedRuntime": "a72aa08e39de83feb4413ad7acf7afd03d141def",
+    "match": "exact",
+    "needsReview": false
+  },
+  "review": {
+    "sourceCommit": "c17fa68803709dd2099571acc3a11e4f47a0f494",
+    "sourceTreeDigest": "dce14e181638c6f4d2d94fc1ecc791d552390d0d7e3f3f0fac72ef475c6de3ae",
+    "baseline": {
+      "tag": "v1.1.1",
+      "sha": "c61a22765459dc8a1e4f2488f0d032d482801b2c",
+      "runtimeVersion": "a72aa08e39de83feb4413ad7acf7afd03d141def"
+    },
+    "schema": 1,
+    "reviewer": {
+      "kind": "interactive-codex"
+    },
+    "recommendation": "update",
+    "rationale": "할로윈 버튼 표시 종료를 서버와 동일한 11월 2일 오전 6시로 연장하고 11월 1일 공부 진행률을 허용한다. 순수 날짜·진행률 계산 변경이며 기존 APK와 호환된다.",
+    "evidence": [
+      "변경 앱 소스는 halloween-event.ts의 종료 일시와 허용 공부일 목록 및 판정뿐이다. 화면·네이티브 API·의존성·버전·서버 스키마 변경은 없다.",
+      "기존 APK v1.1.1의 원본 runtime과 정확히 일치한다. mode=update, compatible=true, match=exact, needsReview=false, exemptions=[].",
+      "종료 직전·정각·기간 밖, 11월 1일 진행률과 소유 여부, 화면 표시 테스트 및 lint·typecheck 통과. 실기기 표시는 미검증이다."
+    ],
+    "releaseNotes": [
+      "할로윈 이벤트 버튼을 11월 2일 오전 6시까지 유지하고, 연장된 날의 공부 진행률도 표시합니다."
+    ],
+    "exemptions": [],
+    "blockers": []
+  },
+  "version": "1.1.1",
+  "revision": 5,
+  "repository": "Daeun-100/-YumYumStudy",
+  "run": "https://github.com/Daeun-100/-YumYumStudy/actions/runs/41213297310"
+}

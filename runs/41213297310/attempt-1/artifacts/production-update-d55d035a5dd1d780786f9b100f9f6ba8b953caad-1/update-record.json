@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "status": "published",
+  "channel": "production",
+  "platform": "android",
+  "sha": "d55d035a5dd1d780786f9b100f9f6ba8b953caad",
+  "runtimeVersion": "a72aa08e39de83feb4413ad7acf7afd03d141def",
+  "apkTag": "v1.1.1",
+  "message": "master d55d035a5dd1: Merge pull request #67 from Daeun-100/develop",
+  "updateId": "01a19286-1934-796f-a7bf-648c68ec54c9",
+  "groupId": "53dd14a9-1db9-4dc7-a33e-c263ca8f3393",
+  "createdAt": "2026-10-31T15:13:44.244Z",
+  "url": "https://expo.dev/accounts/daeun-100s-team/projects/yumyumstudy/updates/53dd14a9-1db9-4dc7-a33e-c263ca8f3393",
+  "run": "https://github.com/Daeun-100/-YumYumStudy/actions/runs/41213297310",
+  "releaseTag": "v1.1.1-r3",
+  "releaseUrl": "https://github.com/Daeun-100/-YumYumStudy/releases/tag/v1.1.1-r3"
+}
