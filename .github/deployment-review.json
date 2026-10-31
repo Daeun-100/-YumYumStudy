@@ -1,6 +1,6 @@
 {
-  "sourceCommit": "08dc59772e4a7354416e2ba8f600361c0ae3f62a",
-  "sourceTreeDigest": "665036d9364b65f41812073951463115eb2dd1b4e390bbba90c1ac80484003b5",
+  "sourceCommit": "c17fa68803709dd2099571acc3a11e4f47a0f494",
+  "sourceTreeDigest": "dce14e181638c6f4d2d94fc1ecc791d552390d0d7e3f3f0fac72ef475c6de3ae",
   "baseline": {
     "tag": "v1.1.1",
     "sha": "c61a22765459dc8a1e4f2488f0d032d482801b2c",
@@ -11,17 +11,14 @@
     "kind": "interactive-codex"
   },
   "recommendation": "update",
-  "rationale": "웹 이미지 선로딩의 void 성공 반환을 공통 함수에서 정규화하고 앱 활성·복귀 처리를 통합한다. 네이티브 코드·의존성·설정 변경 없이 공개 APK v1.1.1과 전체 원본 fingerprint가 정확히 일치하므로 기존 APK 호환 업데이트로 판단한다.",
+  "rationale": "할로윈 버튼 표시 종료를 서버와 동일한 11월 2일 오전 6시로 연장하고 11월 1일 공부 진행률을 허용한다. 순수 날짜·진행률 계산 변경이며 기존 APK와 호환된다.",
   "evidence": [
-    "직전 운영 master 9fb42376 이후 변경은 PR #64의 이미지 로딩 및 활성 상태 공통화, 테스트·Storybook·CI·개발 규칙이다. 버전 1.1.1과 Android versionCode 5를 유지하며 네이티브 모듈·의존성·서버 스키마를 변경하지 않는다.",
-    "review-context 결과 mode=update, compatible=true, match=exact, needsReview=false, exemptions=[]이며 rawRuntime이 공개 APK의 a72aa08e39de83feb4413ad7acf7afd03d141def와 정확히 일치한다.",
-    "깨끗한 최신 develop checkout에서 lint·typecheck 통과. 전체 테스트 447개 통과, 1개 건너뜀. PR #64 자동 검사에서 웹·Android export 통과.",
-    "iPhone 17 Pro iOS 26.5 시뮬레이터 Safari에서 앱과 같은 prepareImage를 사용하는 로컬 HTTP fixture로 홈·집중 배경/스킨 및 보유 스킨 이미지를 확인했다. 수정 전 falsy 판정으로 동일 오류 재현 후 수정 복원으로 정상 표시를 확인했다. 새로고침·Safari 복귀 후 정상 표시를 확인했다.",
-    "실제 서버 계정의 지급·장착 저장은 테스트 방 권한 오류로 확인하지 못했다. 실제 iPhone·Android 실기기 및 홈 화면 설치 앱 검증은 수행하지 않았다. 플랫폼 API 계약 테스트와 Android export 자동 검사 추가는 사용자 기능과 구분된 개발 검증 개선이다."
+    "변경 앱 소스는 halloween-event.ts의 종료 일시와 허용 공부일 목록 및 판정뿐이다. 화면·네이티브 API·의존성·버전·서버 스키마 변경은 없다.",
+    "기존 APK v1.1.1의 원본 runtime과 정확히 일치한다. mode=update, compatible=true, match=exact, needsReview=false, exemptions=[].",
+    "종료 직전·정각·기간 밖, 11월 1일 진행률과 소유 여부, 화면 표시 테스트 및 lint·typecheck 통과. 실기기 표시는 미검증이다."
   ],
   "releaseNotes": [
-    "웹앱에서 서버 배경과 지급받은 스킨 이미지가 정상적으로 다운로드되어도 표시되지 않던 문제를 수정했습니다.",
-    "앱과 웹의 화면 복귀 처리를 통합하고, 웹에서 인터넷 연결이 복구되면 알림 등록 상태를 다시 갱신하도록 개선했습니다."
+    "할로윈 이벤트 버튼을 11월 2일 오전 6시까지 유지하고, 연장된 날의 공부 진행률도 표시합니다."
   ],
   "exemptions": [],
   "blockers": []
