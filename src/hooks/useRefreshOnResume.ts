@@ -1,12 +1,7 @@
 import { useCallback, useEffect } from 'react';
-import { AppState, Platform } from 'react-native';
+import { appActivity } from '../lib/app-activity';
 
-// Also shared by polling and realtime callbacks: hidden screens do not fetch.
-export function isAppActive(): boolean {
-  return Platform.OS === 'web'
-    ? typeof document !== 'undefined' && document.visibilityState === 'visible'
-    : AppState.currentState === 'active';
-}
+export const isAppActive = appActivity.isActive;
 
 /** Refresh on return and on web connectivity recovery, only while active.
  * Initial loads remain the caller's responsibility.
@@ -18,17 +13,7 @@ export function useRefreshOnResume(refresh: () => void | Promise<void>, enabled 
 
   useEffect(() => {
     if (!enabled) return;
-    if (Platform.OS === 'web') {
-      if (typeof document === 'undefined' || typeof window === 'undefined') return;
-      document.addEventListener('visibilitychange', refreshIfActive);
-      window.addEventListener('online', refreshIfActive);
-      return () => {
-        document.removeEventListener('visibilitychange', refreshIfActive);
-        window.removeEventListener('online', refreshIfActive);
-      };
-    }
-    const subscription = AppState.addEventListener('change', refreshIfActive);
-    return () => subscription.remove();
+    return appActivity.onResume(refreshIfActive);
   }, [enabled, refreshIfActive]);
 
   return refreshIfActive;

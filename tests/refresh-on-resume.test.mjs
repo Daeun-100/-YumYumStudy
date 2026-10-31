@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { createAppActivity } from '../src/lib/app-activity-core.ts';
 
 const source = ts.transpileModule(readFileSync(new URL('../src/hooks/useRefreshOnResume.ts', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS },
@@ -31,7 +32,12 @@ function mount(platform, enabled = true) {
     exports: {}, document: target, window: target,
     require: name => name === 'react'
       ? { useCallback: callback => callback, useEffect: effect => { cleanups.push(effect()); } }
-      : { Platform: { OS: platform }, AppState: appState },
+      : { appActivity: createAppActivity(platform === 'web' ? {
+          kind: 'web', document: () => target, window: () => target,
+        } : {
+          kind: 'native', currentState: () => appState.currentState,
+          subscribe: callback => { const sub = appState.addEventListener('change', callback); return () => sub.remove(); },
+        }) },
   };
   vm.runInNewContext(source, context);
   const refreshIfActive = context.exports.useRefreshOnResume(() => { calls++; }, enabled);
@@ -82,5 +88,20 @@ test('disabled hook neither subscribes nor refreshes', () => {
     hook.refreshIfActive();
     assert.equal(hook.calls(), 0);
     assert.equal(hook.listenerCount(), 0);
+  }
+});
+
+test('web without DOM is inactive and subscriptions can be safely disposed', () => {
+  const activity = createAppActivity({ kind: 'web', document: () => undefined, window: () => undefined });
+  assert.equal(activity.isActive(), false);
+  const stop = activity.onResume(() => assert.fail('must not refresh without DOM'));
+  stop();
+  activity.subscribe(() => {})();
+});
+
+test('native unknown startup state remains inactive', () => {
+  for (const state of [null, undefined]) {
+    const activity = createAppActivity({ kind: 'native', currentState: () => state, subscribe: () => () => {} });
+    assert.equal(activity.isActive(), false);
   }
 });

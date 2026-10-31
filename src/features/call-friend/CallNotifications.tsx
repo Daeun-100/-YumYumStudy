@@ -1,5 +1,6 @@
+import { appActivity } from '../../lib/app-activity';
 import { useEffect, useState } from 'react';
-import { AppState, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useIdentity } from '../../components/IdentityProvider';
 import { Button } from '../../design/components';
@@ -13,9 +14,9 @@ export function CallNotificationLifecycle() {
     // Refresh registered destinations only; never prompt on launch or re-enable opted-out devices.
     const refresh = () => { void refreshPush().catch(() => {}); };
     refresh();
-    const sub = AppState.addEventListener('change', state => { if (state === 'active') refresh(); });
+    const unsubscribe = appActivity.onResume(refresh);
     const stop = listenForCalls(() => router.navigate('/focus'));
-    return () => { stop(); sub.remove(); };
+    return () => { stop(); unsubscribe(); };
   }, [uid]);
   return null;
 }
