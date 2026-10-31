@@ -1,0 +1,9 @@
+{
+  "compatible": true,
+  "exemptions": [],
+  "reasons": [],
+  "rawRuntime": "a72aa08e39de83feb4413ad7acf7afd03d141def",
+  "normalizedRuntime": "a72aa08e39de83feb4413ad7acf7afd03d141def",
+  "match": "exact",
+  "needsReview": false
+}

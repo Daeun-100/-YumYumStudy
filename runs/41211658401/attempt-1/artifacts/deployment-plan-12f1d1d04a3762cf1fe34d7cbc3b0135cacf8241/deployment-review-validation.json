@@ -1,0 +1,11 @@
+{
+  "status": "verified",
+  "mode": "update",
+  "sha": "12f1d1d04a3762cf1fe34d7cbc3b0135cacf8241",
+  "sourceTreeDigest": "665036d9364b65f41812073951463115eb2dd1b4e390bbba90c1ac80484003b5",
+  "baseline": {
+    "tag": "v1.1.1",
+    "sha": "c61a22765459dc8a1e4f2488f0d032d482801b2c",
+    "runtimeVersion": "a72aa08e39de83feb4413ad7acf7afd03d141def"
+  }
+}

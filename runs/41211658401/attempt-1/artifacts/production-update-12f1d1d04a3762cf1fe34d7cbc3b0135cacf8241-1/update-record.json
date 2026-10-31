@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "status": "published",
+  "channel": "production",
+  "platform": "android",
+  "sha": "12f1d1d04a3762cf1fe34d7cbc3b0135cacf8241",
+  "runtimeVersion": "a72aa08e39de83feb4413ad7acf7afd03d141def",
+  "apkTag": "v1.1.1",
+  "message": "master 12f1d1d04a37: Merge pull request #65 from Daeun-100/codex/release-web-artwork",
+  "updateId": "01a19272-be94-7051-9530-c94b0ecac71d",
+  "groupId": "0f348a3b-2eca-4a2e-958e-af0380052ca1",
+  "createdAt": "2026-10-31T14:52:35.860Z",
+  "url": "https://expo.dev/accounts/daeun-100s-team/projects/yumyumstudy/updates/0f348a3b-2eca-4a2e-958e-af0380052ca1",
+  "run": "https://github.com/Daeun-100/-YumYumStudy/actions/runs/41211658401",
+  "releaseTag": "v1.1.1-r2",
+  "releaseUrl": "https://github.com/Daeun-100/-YumYumStudy/releases/tag/v1.1.1-r2"
+}

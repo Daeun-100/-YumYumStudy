@@ -1,0 +1,28 @@
+{
+  "sourceCommit": "08dc59772e4a7354416e2ba8f600361c0ae3f62a",
+  "sourceTreeDigest": "665036d9364b65f41812073951463115eb2dd1b4e390bbba90c1ac80484003b5",
+  "baseline": {
+    "tag": "v1.1.1",
+    "sha": "c61a22765459dc8a1e4f2488f0d032d482801b2c",
+    "runtimeVersion": "a72aa08e39de83feb4413ad7acf7afd03d141def"
+  },
+  "schema": 1,
+  "reviewer": {
+    "kind": "interactive-codex"
+  },
+  "recommendation": "update",
+  "rationale": "웹 이미지 선로딩의 void 성공 반환을 공통 함수에서 정규화하고 앱 활성·복귀 처리를 통합한다. 네이티브 코드·의존성·설정 변경 없이 공개 APK v1.1.1과 전체 원본 fingerprint가 정확히 일치하므로 기존 APK 호환 업데이트로 판단한다.",
+  "evidence": [
+    "직전 운영 master 9fb42376 이후 변경은 PR #64의 이미지 로딩 및 활성 상태 공통화, 테스트·Storybook·CI·개발 규칙이다. 버전 1.1.1과 Android versionCode 5를 유지하며 네이티브 모듈·의존성·서버 스키마를 변경하지 않는다.",
+    "review-context 결과 mode=update, compatible=true, match=exact, needsReview=false, exemptions=[]이며 rawRuntime이 공개 APK의 a72aa08e39de83feb4413ad7acf7afd03d141def와 정확히 일치한다.",
+    "깨끗한 최신 develop checkout에서 lint·typecheck 통과. 전체 테스트 447개 통과, 1개 건너뜀. PR #64 자동 검사에서 웹·Android export 통과.",
+    "iPhone 17 Pro iOS 26.5 시뮬레이터 Safari에서 앱과 같은 prepareImage를 사용하는 로컬 HTTP fixture로 홈·집중 배경/스킨 및 보유 스킨 이미지를 확인했다. 수정 전 falsy 판정으로 동일 오류 재현 후 수정 복원으로 정상 표시를 확인했다. 새로고침·Safari 복귀 후 정상 표시를 확인했다.",
+    "실제 서버 계정의 지급·장착 저장은 테스트 방 권한 오류로 확인하지 못했다. 실제 iPhone·Android 실기기 및 홈 화면 설치 앱 검증은 수행하지 않았다. 플랫폼 API 계약 테스트와 Android export 자동 검사 추가는 사용자 기능과 구분된 개발 검증 개선이다."
+  ],
+  "releaseNotes": [
+    "웹앱에서 서버 배경과 지급받은 스킨 이미지가 정상적으로 다운로드되어도 표시되지 않던 문제를 수정했습니다.",
+    "앱과 웹의 화면 복귀 처리를 통합하고, 웹에서 인터넷 연결이 복구되면 알림 등록 상태를 다시 갱신하도록 개선했습니다."
+  ],
+  "exemptions": [],
+  "blockers": []
+}
