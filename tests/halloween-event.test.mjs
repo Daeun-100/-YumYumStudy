@@ -7,9 +7,9 @@ import {createHookRuntime} from './helpers/hooks.mjs';
 import * as config from '../src/features/events/halloween-event.ts';
 const {HALLOWEEN_EVENT:event,isHalloweenEventActive,halloweenStudyMinutes}=config;
 const start=Date.parse(event.startsAt),end=Date.parse(event.endsAt);
-test('Halloween UI is visible for exactly 24 hours from 6am KST in 2026',()=>{
+test('Halloween UI is visible for the extended 48 hours from 6am KST in 2026',()=>{
  assert.equal(start,Date.parse('2026-10-30T21:00:00Z'));
- assert.equal(end-start,86400000);
+ assert.equal(end-start,2*86400000);
  assert.equal(isHalloweenEventActive(start-1),false);
  assert.equal(isHalloweenEventActive(start),true);
  assert.equal(isHalloweenEventActive(end-1),true);
@@ -19,12 +19,15 @@ test('Halloween UI is visible for exactly 24 hours from 6am KST in 2026',()=>{
 });
 test('progress ignores previous study dates and clamps to the 30 minute target',()=>{
  assert.equal(halloweenStudyMinutes('2026-10-30',1800),0);
+ assert.equal(halloweenStudyMinutes('2026-11-02',1800),0);
+ assert.equal(halloweenStudyMinutes('2026-11-01',600),10);
+ assert.equal(halloweenStudyMinutes('2026-11-01',1800),30);
  assert.equal(halloweenStudyMinutes(undefined,1800),0);
- assert.equal(halloweenStudyMinutes(event.studyDate,null),0);
- assert.equal(halloweenStudyMinutes(event.studyDate,NaN),0);
- assert.equal(halloweenStudyMinutes(event.studyDate,-1),0);
- assert.equal(halloweenStudyMinutes(event.studyDate,600),10);
- assert.equal(halloweenStudyMinutes(event.studyDate,3600),30);
+ assert.equal(halloweenStudyMinutes(event.studyDates[0],null),0);
+ assert.equal(halloweenStudyMinutes(event.studyDates[0],NaN),0);
+ assert.equal(halloweenStudyMinutes(event.studyDates[0],-1),0);
+ assert.equal(halloweenStudyMinutes(event.studyDates[0],600),10);
+ assert.equal(halloweenStudyMinutes(event.studyDates[0],3600),30);
 });
 test('clock boundaries and navigation gate the UI; gift check requires ownership',()=>{
  const hooks=createHookRuntime();let reads=0;
@@ -33,7 +36,7 @@ test('clock boundaries and navigation gate the UI; gift check requires ownership
  const context={exports:{},require:key=>{assert.ok(key in modules,key);return modules[key];}};
  const source=ts.transpileModule(readFileSync('src/features/events/HalloweenEvent.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  vm.runInNewContext(source,context);
- const props={now:start-1,focused:true,studyDate:event.studyDate,seconds:1800};
+ const props={now:start-1,focused:true,studyDate:event.studyDates[0],seconds:1800};
  const render=()=>hooks.render(()=>context.exports.HalloweenEvent(props));
  assert.equal(render(),null);assert.equal(reads,0);
  props.now=start;assert.equal(render().props.received,false);assert.equal(reads,1);
@@ -41,6 +44,8 @@ test('clock boundaries and navigation gate the UI; gift check requires ownership
  state.owned=[{artwork:{id:'another-paper'}}];assert.equal(render().props.received,false);
  state.owned=[{artwork:{id:event.designId}}];assert.equal(render().props.received,true);
  render().props.onOpen();assert.equal(reads,2);
+ state.owned=[];props.now=Date.parse('2026-11-01T06:00:00+09:00');props.studyDate='2026-11-01';props.seconds=600;
+ assert.equal(render().props.minutes,10);assert.equal(render().props.received,false);
  props.now=end;assert.equal(render(),null);
  props.now=start;props.focused=false;assert.equal(render(),null);
  hooks.dispose();
