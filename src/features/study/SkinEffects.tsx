@@ -1,27 +1,23 @@
+import { useAppActive } from '../../hooks/useAppActive';
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Animated, AppState, Easing, Platform, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Platform, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import type { SkinEffect, SkinEffectPlacement } from '../../design/skin-effects';
 
 function useMotionAllowed() {
   const [reduced, setReduced] = useState(true);
-  const [active, setActive] = useState(AppState.currentState === 'active');
-  const [visible, setVisible] = useState(true);
+  const active = useAppActive();
   useEffect(() => {
     let mounted = true;
     let changed = false;
     const reduction = AccessibilityInfo.addEventListener('reduceMotionChanged', value => { changed = true; setReduced(value); });
     AccessibilityInfo.isReduceMotionEnabled().then(value => { if (mounted && !changed) setReduced(value); }).catch(() => {});
-    const state = AppState.addEventListener('change', value => setActive(value === 'active'));
-    const visibility = () => setVisible(document.visibilityState !== 'hidden');
-    if (Platform.OS === 'web') { visibility(); document.addEventListener('visibilitychange', visibility); }
     return () => {
       mounted = false;
-      reduction.remove(); state.remove();
-      if (Platform.OS === 'web') document.removeEventListener('visibilitychange', visibility);
+      reduction.remove();
     };
   }, []);
-  return !reduced && active && visible;
+  return !reduced && active;
 }
 
 function Steam({ placement, width, height, phase, strength }: { placement: SkinEffectPlacement; width: number; height: number; phase: number; strength: number }) {

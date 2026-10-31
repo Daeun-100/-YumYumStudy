@@ -9,6 +9,7 @@ import { callRpc } from '../../data/rpc';
 import { artworkUrl, type ArtworkFile } from '../../lib/artwork-content';
 import { createArtworkResources } from '../../lib/artwork-resources';
 import { ArtworkContext } from './ArtworkContext';
+import { prepareImage } from '../../lib/prepare-image';
 
 // Sharing these public artwork downloads across stores does not share entitlements.
 const downloads = new Map<string,Promise<void>>();
@@ -23,9 +24,7 @@ export async function prepareArtworkFile(asset: ArtworkFile) {
    let timer:ReturnType<typeof setTimeout>|undefined;
    try {
     await Promise.race([
-     (async()=>{if(!await Image.prefetch(uri))throw Error('Image unavailable');
-      const size=await new Promise<{width:number;height:number}>((resolve,reject)=>Image.getSize(uri,(width,height)=>resolve({width,height}),reject));
-      if(size.width!==asset.width||size.height!==asset.height)throw Error('Image dimensions changed');})(),
+     prepareImage(Image, uri, asset),
      new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('Image download timed out')),20000);}),
     ]);
    }finally{clearTimeout(timer);}
