@@ -55,3 +55,11 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Cross-platform API contracts
+
+- Shared features must use a common contract for platform-dependent return values, errors, activity, and cleanup. Keep native/browser API differences inside the adapter, not duplicated in screens.
+- Image preparation uses `src/lib/prepare-image.ts`; native `true` and web `void` both mean success. Preserve explicit failure, rejection, dimensions, and timeout checks.
+- Foreground state and resume/network recovery use `src/lib/app-activity.ts`, `useAppActive`, and `useRefreshOnResume`. Keep direct AppState usage only where native-only behavior requires it (for example Android StudyGuard or native OTA).
+- For new or changed platform APIs, test native and web success, failure, unsupported/startup states, and subscription cleanup. Exercise the installed implementation when possible; do not model web success solely with native mocks.
+- Before declaring cross-platform changes ready, run lint, typecheck, tests, web export, and Android export. Exports check bundling, not runtime or visual behavior. Record Android and iPhone Safari/home-screen verification separately, and never claim device verification from mocks or exports.

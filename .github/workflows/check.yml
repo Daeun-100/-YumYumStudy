@@ -32,6 +32,13 @@ jobs:
           EXPO_PUBLIC_APP_VARIANT: test
           EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      - name: Verify Android bundle alongside web
+        run: npx expo export --platform android --output-dir /tmp/yumyum-android-export
+        env:
+          APP_VARIANT: test
+          EXPO_PUBLIC_APP_VARIANT: test
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       - name: Check app version metadata (APK version advancement is checked by deployment)
         run: node scripts/deployment.mjs check
       - name: Verify release review against current source and production APK

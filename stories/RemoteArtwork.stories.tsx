@@ -1,3 +1,4 @@
+import { prepareImage } from '../src/lib/prepare-image';
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { useEffect, useMemo } from 'react';
 import { Image, Text, View } from 'react-native';
@@ -26,7 +27,7 @@ const previewUri=(path:string)=>{
 function Preview({screen,fail}:{screen:'home'|'focus'|'skins';fail:boolean}){
  const store=useMemo(()=>createArtworkResources({now:Date.now,url:a=>previewUri(a.path),fetchSkins:async()=>[definition('skin')],prepare:async m=>{
   if(fail)throw Error('Preview download failure');
-  await Promise.all([m.home,m.focus].map(a=>Image.prefetch(previewUri(a.path))));
+  await Promise.all([m.home,m.focus].map(a=>prepareImage(Image,previewUri(a.path),a)));
  }}),[fail]);
  useEffect(()=>{store.activate();void store.ingest(definition('background'));return()=>store.dispose();},[store]);
  return <ArtworkContext.Provider value={store}><View style={{width:390,height:800,backgroundColor:'#FCFCF9',overflow:'hidden'}}>
