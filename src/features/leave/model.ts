@@ -7,7 +7,7 @@ export function reservationReason(date: string, today: string, grants: LeaveGran
   if (date === today && days) {
     const week = studyWeek(today);
     const current = days.filter(d => studyWeek(d.studyDate) === week);
-    if (current.some(day => day.studyDate === today && day.superWatermelon) || (new Date(today + 'T00:00:00Z').getUTCDay() === 0 && new Set(current.filter(day => day.attendance !== 'leave' && !day.isRestDay && day.goalMinutes !== null && day.goalMinutes > 0 && day.closedSeconds + day.runningSeconds >= day.goalMinutes * 60).map(day => day.studyDate)).size === 7)) return '오늘은 이번 주 목표 달성 보상에 포함된 날이라 연차로 변경할 수 없어요.';
+    if (current.some(day => day.studyDate === today && day.superWatermelon) || (new Date(today + 'T00:00:00Z').getUTCDay() === 0 && new Set(current.filter(day => (day.confirmedGoalAchieved === undefined || day.confirmedGoalAchieved === true) && day.attendance !== 'leave' && !day.isRestDay && day.goalMinutes !== null && day.goalMinutes > 0 && day.closedSeconds + day.runningSeconds >= day.goalMinutes * 60).map(day => day.studyDate)).size === 7)) return '오늘은 이번 주 목표 달성 보상에 포함된 날이라 연차로 변경할 수 없어요.';
     const earned = grants.some(g => (g.kind ?? 'reward') === 'reward' && g.earningWeek === week) || weeklyAchievement(current) >= 6;
     if (earned && weeklyAchievement(current.filter(d => d.studyDate !== today)) < 6) return '오늘은 이번 주 보상 연차 획득에 포함된 날이라 연차로 변경할 수 없어요.';
   }
@@ -17,7 +17,7 @@ export function reservationReason(date: string, today: string, grants: LeaveGran
   return eligible ? null : '이 날짜에 사용할 수 있는 연차가 없어요.';
 }
 export function weeklyAchievement(days: DayRecord[]): number {
-  return Math.min(6, days.filter(day => day.attendance !== 'leave' && !day.isRestDay && day.goalMinutes !== null && day.goalMinutes > 0 && day.closedSeconds + day.runningSeconds >= day.goalMinutes * 60).length);
+  return Math.min(6, days.filter(day => (day.confirmedGoalAchieved === undefined || day.confirmedGoalAchieved === true) && day.attendance !== 'leave' && !day.isRestDay && day.goalMinutes !== null && day.goalMinutes > 0 && day.closedSeconds + day.runningSeconds >= day.goalMinutes * 60).length);
 }
 export const koreanDate = (instant: string) => new Date(Date.parse(instant) + 9 * 3600000).toISOString().slice(0, 10);
 

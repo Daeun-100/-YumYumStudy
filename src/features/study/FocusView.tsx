@@ -24,12 +24,13 @@ export type FocusViewProps = {
   initialSceneSize?: { width: number; height: number };
   renderRoomOverlay?(size: { width: number; height: number }): ReactNode;
   members: FocusMember[]; memberCount: number | null; seconds: number | null; sessionSeconds?: number | null; goalMinutes: number | null;
+  goalApproved?: boolean;
   running: boolean; busy?: boolean; disabled?: boolean; retry?: boolean;
   onBack(): void; onFriends(): void; onToggle(): void; onAllowedApps?(): void;
 };
 
 /** Shared Storybook and app layout. All session state comes from the caller. */
-export function FocusView({ backgroundId, effectsEnabled = true, effectStrength = 1, onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl, initialSceneSize }: FocusViewProps) {
+export function FocusView({ backgroundId, effectsEnabled = true, effectStrength = 1, onWake, wakeSentIds = [], members, memberCount, seconds, sessionSeconds = null, goalMinutes, goalApproved = false, running, busy, disabled, retry, onBack, onFriends, onToggle, onAllowedApps, renderRoomOverlay, timerControl, initialSceneSize }: FocusViewProps) {
   const { resolveCharacterArtwork } = useSkinArtwork(members.map(member=>member.activeSkinId));
   const background = useBackgroundArtwork('focus', backgroundId);
   const { height } = useWindowDimensions();
@@ -43,7 +44,7 @@ export function FocusView({ backgroundId, effectsEnabled = true, effectStrength 
   const characterSize = Math.min(115, (sceneWidth - 48) / 4 * 1.25);
   const characterBottom = { bunny: 1154, bear: 1234, cat: 1227, puppy: 1208, maltese: 1100, pomeranian: 1150, blackcat: 1172 };
   const percent = seconds === null ? null : progress(seconds, goalMinutes);
-  const achieved = percent !== null && percent >= 100;
+  const achieved = goalApproved;
   return <>
     <View style={s.header}><Button label="←" size="icon" variant="ghost" accessibilityLabel="홈으로 돌아가기" onPress={onBack} /><Text accessibilityRole="header" style={s.title}>우리 공부방</Text><Button label={onAllowedApps ? '허용앱' : `${memberCount ?? '—'}명`} size="compact" variant="raised" accessibilityLabel={onAllowedApps ? '내 허용앱 목록 열기' : `친구 ${memberCount ?? ''}명 현황 보기`} onPress={onAllowedApps ?? onFriends} /></View>
     <View onLayout={artwork.onLayout} style={s.art}>
@@ -65,10 +66,10 @@ export function FocusView({ backgroundId, effectsEnabled = true, effectStrength 
     <Card variant="panel" style={[s.panel, compact && { paddingTop: 14, paddingBottom: 14, gap: 6 }]}>
       <View style={s.timerHeading}>
         <Text style={s.secondary}>이번 집중</Text>
-        <View pointerEvents="none" accessibilityElementsHidden={!achieved} importantForAccessibility={achieved ? 'auto' : 'no-hide-descendants'} style={[s.achievement, { opacity: achieved ? 1 : 0 }]}><AchievementBadge label="달성 완료" /></View>
+        {achieved && <View pointerEvents="none" style={s.achievement}><AchievementBadge label="달성 완료" /></View>}
       </View>
       <View style={s.timeRow}><Text accessibilityLabel="이번 집중 시간" numberOfLines={1} adjustsFontSizeToFit style={[s.timer, compact && { fontSize: 52, lineHeight: 64 }]}>{seconds === null ? '--:--:--' : timer(sessionSeconds ?? 0)}</Text></View>
-      <Text style={s.goalSummary}>{seconds === null ? '오늘 누적 — / 오늘 목표 —' : `오늘 누적 ${duration(seconds, false)} / ${goalLabel(goalMinutes)}`}</Text>
+      <Text style={s.goalSummary}>{!achieved && percent !== null && percent >= 100 ? '달성 확인 중 · ' : ''}{seconds === null ? '오늘 누적 — / 오늘 목표 —' : `오늘 누적 ${duration(seconds, false)} / ${goalLabel(goalMinutes)}`}</Text>
       <View style={s.progressRow}><View accessibilityRole="progressbar" accessibilityLabel="오늘 목표 달성률" accessibilityValue={percent === null ? { text: '목표 없음' } : { min: 0, max: 100, now: Math.min(percent, 100), text: `${percent}%` }} style={s.track}><View style={[s.fill, { width: `${Math.min(percent ?? 0, 100)}%` }]} /></View><Text style={s.secondary}>{percent === null ? '—' : `${percent}%`}</Text></View>
       {timerControl ?? <Button label={retry ? '↻' : running ? 'Ⅱ' : '▶'} size="round" accessibilityLabel={retry ? '공부 요청 다시 시도' : running ? '공부 일시정지' : '공부 시작'} loading={busy} disabled={disabled} onPress={onToggle} style={compact ? { width: 64, height: 64 } : undefined} />}
     </Card>

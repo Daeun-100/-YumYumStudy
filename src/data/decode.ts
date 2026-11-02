@@ -51,6 +51,7 @@ export function decodeDay(value: unknown): DayRecord {
     studyDate, closedSeconds: seconds(row.closedSeconds), runningSeconds: seconds(row.runningSeconds),
     goalMinutes, attendance: row.attendance as DayRecord['attendance'],
     isRestDay: row.isRestDay, goalAchieved: row.goalAchieved,
+    ...(row.confirmedGoalAchieved !== undefined ? { confirmedGoalAchieved: row.confirmedGoalAchieved === null ? null : row.confirmedGoalAchieved === true ? true : row.confirmedGoalAchieved === false ? false : invalid() } : {}),
     ...(row.superWatermelon !== undefined ? { superWatermelon: row.superWatermelon as boolean } : {}),
   };
 }

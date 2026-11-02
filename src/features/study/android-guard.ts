@@ -25,7 +25,7 @@ export async function guardTransport() {
   await nativeWait(studyGuard!.setTransport(`${url.replace(/\/$/, '')}/rest/v1/rpc/stop_study_on_exit`, key, data.session.access_token, data.session.user.id, studyRoomId));
   return data.session.user.id;
 }
-export async function reconcileAndroidGuard(snapshot: Snapshot<TodayData>, recovered = false): Promise<{ snapshot: Snapshot<TodayData>; notice: string | null }> {
+export async function reconcileAndroidGuard(snapshot: Snapshot<TodayData>, recovered = false): Promise<{ snapshot: Snapshot<TodayData>; notice: string | null; clock?: { sessionId: string; serverNow: string; receivedAt: number } }> {
   if (Platform.OS !== 'android' || !studyGuard) return { snapshot, notice: null as string | null };
   const owner = snapshot.data.profile.id;
   const basic = await basicStudyMode.get(owner);
@@ -49,7 +49,7 @@ export async function reconcileAndroidGuard(snapshot: Snapshot<TodayData>, recov
       }
       return { snapshot: stopped, notice };
     } catch {
-      return { snapshot: stopped, notice: `${notice ? `${notice}\n` : ''}공부는 멈췄어요. 서버 기록을 동기화한 뒤 직접 재개해 주세요.` };
+      throw new Error('공부는 멈췄어요. 중지 기록을 서버와 동기화한 뒤 다시 확인해 주세요.');
     }
   }
   if (active && (!link || link.sessionId !== active.id || link.ownerId !== owner || link.roomId !== studyRoomId)) {
@@ -60,5 +60,8 @@ export async function reconcileAndroidGuard(snapshot: Snapshot<TodayData>, recov
   }
   if (link && link.ownerId === owner && link.roomId === studyRoomId && !active && !link.endedAt) await nativeWait(studyGuard.acknowledgeStop(link.sessionId));
   if (active) await guardTransport();
-  return { snapshot, notice: null as string | null };
+  const clock = active && link?.sessionId === active.id && link.ownerId === owner && link.roomId === studyRoomId
+    && link.clockServerNow && link.clockReceivedAt !== undefined
+    ? { sessionId: link.sessionId, serverNow: link.clockServerNow, receivedAt: link.clockReceivedAt } : undefined;
+  return { snapshot, notice: null as string | null, clock };
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { celebrationForToday, createDailyCelebrationTracker, goalReached, weekDates } from '../src/features/celebrations/model.ts';
+import { celebrationForProgress, celebrationForToday, createDailyCelebrationTracker, goalReached, weekDates } from '../src/features/celebrations/model.ts';
 
 const uid = 'owner';
 const date = '2026-10-31';
@@ -76,4 +76,11 @@ test('storage failure still suppresses repeats in the same run', async () => {
   assert.equal(await tracker.wasStarted(uid, 1, date), false);
   await tracker.start(uid, 1, date);
   assert.equal(await tracker.wasStarted(uid, 1, date), true);
+});
+
+
+test('unapproved server snapshot cannot launch celebration or reward despite a full local timer', () => {
+  const day = { studyDate: '2026-10-31', closedSeconds: 0, runningSeconds: 10801, goalMinutes: 180, goalAchieved: false, confirmedGoalAchieved: false, isRestDay: false, attendance: 'present' };
+  const today = { serverNow: '2026-10-31T18:14:21Z', data: { profile: { id: 'test' }, day, activeSession: null } };
+  assert.equal(celebrationForProgress('test',day.studyDate,today,[],10801),null);
 });

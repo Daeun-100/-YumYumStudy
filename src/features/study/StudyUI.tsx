@@ -19,12 +19,12 @@ export function Avatar({ size = 64, character = 'bunny', activeSkinId }: { id?: 
   return <ArtworkImage fallbackSource={defaultArtwork(character).home} source={resolveCharacterArtwork(character, activeSkinId).home} resizeMode="contain" style={{ width: size, height: size }} accessibilityLabel={`${characters[character].label} 캐릭터`} />;
 }
 
-export function Progress({ seconds, goal }: { seconds: number; goal: number | null }) {
+export function Progress({ seconds, goal, goalApproved = false }: { seconds: number; goal: number | null; goalApproved?: boolean }) {
   const value = progress(seconds, goal);
   return <View style={ui.progressRow}>
     <View accessibilityRole="progressbar" accessibilityLabel="오늘 목표 달성률" accessibilityValue={value === null ? { text: '목표 없음' } : { min: 0, max: 100, now: Math.min(value, 100), text: `목표 달성률 ${value}%` }} style={ui.track}>
       <View style={[ui.fill, { width: `${Math.min(value ?? 0, 100)}%` }]} />
-    </View>{value !== null && value >= 100 && <AchievementBadge compact />}<Text style={ui.muted}>{value === null ? '—' : `${value}%`}</Text>
+    </View>{goalApproved && <AchievementBadge compact />}<Text style={ui.muted}>{value === null ? '—' : `${value}%`}</Text>
   </View>;
 }
 export function RoomArt({ tall = false }: { tall?: boolean }) {

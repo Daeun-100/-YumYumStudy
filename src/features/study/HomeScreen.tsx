@@ -16,6 +16,7 @@ import { useStudy } from './StudyProvider';
 import { StudyControl } from './StudyControl';
 import { displayedSeconds, goalLabel, progress, timer } from './presentation';
 
+import { approvedGoal } from '../../lib/session-timeline';
 import { HomeArtwork } from './HomeArtwork';
 
 export function HomeScreen() {
@@ -47,7 +48,7 @@ export function HomeScreen() {
         <View style={s.timerRow}><StudyControl round roundSize={56} onStarted={() => router.navigate('/focus')} /><Text numberOfLines={1} adjustsFontSizeToFit style={[s.metric, compact && { fontSize: 40 }]}>{data ? timer(seconds) : '—'}</Text></View>
         <View style={s.row}><View accessibilityRole="progressbar" accessibilityLabel={todayLeave ? '연차일의 기존 목표 대비 공부량' : '오늘 목표 달성률'} accessibilityValue={percent === null ? { text: '목표 없음' } : { min: 0, max: 100, now: Math.min(percent, 100), text: `${percent}%` }} style={[s.track, todayLeave && { backgroundColor: colors.leaveTrack }]}><View style={[s.fill, { width: `${Math.min(percent ?? 0, 100)}%` }]} /></View><Text style={s.secondary}>{percent === null ? '—' : `${percent}%`}</Text></View>
         </View>
-        <View style={s.goalRow}>{todayLeave ? <Pressable accessibilityRole="button" accessibilityLabel="연차 탭으로 이동" onPress={() => router.navigate('/leave')} style={({ pressed }) => [s.goal, { minHeight: 44, justifyContent: 'center', borderRadius: 12 }, pressed && { backgroundColor: colors.surfacePressed }]}><Text style={[s.secondary, { color: colors.leave }]}>✈  오늘 연차  ›</Text></Pressable> : <Button label={data ? `${goalLabel(data.day.goalMinutes)}  ›` : '오늘 목표 —'} variant="ghost" size="compact" onPress={() => router.navigate({ pathname: '/goals', params: { view: 'preview' } })} disabled={!data} style={s.goal} />}{percent !== null && percent >= 100 && <AchievementBadge label="달성 완료" />}</View>
+        <View style={s.goalRow}>{todayLeave ? <Pressable accessibilityRole="button" accessibilityLabel="연차 탭으로 이동" onPress={() => router.navigate('/leave')} style={({ pressed }) => [s.goal, { minHeight: 44, justifyContent: 'center', borderRadius: 12 }, pressed && { backgroundColor: colors.surfacePressed }]}><Text style={[s.secondary, { color: colors.leave }]}>✈  오늘 연차  ›</Text></Pressable> : <Button label={data ? `${goalLabel(data.day.goalMinutes)}  ›` : '오늘 목표 —'} variant="ghost" size="compact" onPress={() => router.navigate({ pathname: '/goals', params: { view: 'preview' } })} disabled={!data} style={s.goal} />}{data && approvedGoal(data.day) ? <AchievementBadge label="달성 완료" /> : percent !== null && percent >= 100 ? <Text style={s.secondary}>달성 확인 중</Text> : null}</View>
       </View>
       <View onLayout={artwork.onLayout} style={s.scene}>
         {height !== null && scene && <HomeArtwork backgroundId={eventBackgrounds.home} effectsEnabled={focused} activeSkinId={identity.profile?.activeSkinId} character={identity.profile?.character ?? 'bunny'} width={scene.width} height={scene.height} />}

@@ -9,12 +9,14 @@ export function weekDates(date: string): string[] {
   return Array.from({ length: 7 }, (_, index) => new Date(day.getTime() + index * 86400000).toISOString().slice(0, 10));
 }
 export function goalReached(day: DayRecord): boolean {
+  if (day.confirmedGoalAchieved !== undefined) return day.confirmedGoalAchieved === true;
   return day.goalMinutes !== null && day.goalMinutes > 0 && day.closedSeconds + day.runningSeconds >= day.goalMinutes * 60;
 }
 
 /** Live progress is allowed only after the caller verifies the current foreground session. */
 export function celebrationForProgress(uid: string, date: string, today: Snapshot<TodayData>, history: DayRecord[], seconds = today.data.day.closedSeconds + today.data.day.runningSeconds): Celebration | null {
   const current = today.data.day;
+  if (current.confirmedGoalAchieved !== undefined && current.confirmedGoalAchieved !== true) return null;
   if (today.data.profile.id !== uid || current.studyDate !== date || getStudyDate(today.serverNow) !== date || !current.goalMinutes || current.goalMinutes <= 0 || seconds < current.goalMinutes * 60) return null;
   const dates = weekDates(date);
   const records = new Map(history.map(day => [day.studyDate, day]));

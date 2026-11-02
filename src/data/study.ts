@@ -3,6 +3,7 @@ import type { ConnectionState, DayRecord, GoalSettings, GoalWeek, RoomMember, Sn
 import { getSupabase } from '../lib/supabase';
 import { getStudyDayBounds } from '../lib/study-day';
 import { callRpc } from './rpc';
+import { monotonicNow } from '../lib/monotonic';
 import { decodeGoals, decodeGoalSettings, decodeHistory, decodeRoom, decodeSession, decodeSnapshot, decodeToday } from './decode';
 import { randomUUID } from 'expo-crypto';
 import { createStudyStarter } from '../lib/study-start-core';
@@ -16,12 +17,22 @@ function validateUuid(value: string): void {
   }
 }
 
+async function timedRpc<T>(name: string, args: Record<string, unknown> | undefined, decode: (value: unknown) => T): Promise<Snapshot<T>> {
+  const sentAt = monotonicNow();
+  const result = await callRpc(name, args);
+  const receivedAt = monotonicNow();
+  return { ...decodeSnapshot(result, decode), receipt: { sentAt, receivedAt } };
+}
 export async function getToday(): Promise<Snapshot<TodayData>> {
-  return decodeSnapshot(await callRpc('get_today'), decodeToday);
+  return timedRpc('get_today', undefined, decodeToday);
+}
+export async function confirmStudyTime(sessionId: string, observedAt: string): Promise<Snapshot<TodayData>> {
+  validateUuid(sessionId);
+  return timedRpc('confirm_study_time', { p_session_id: sessionId, p_observed_at: observedAt }, decodeToday);
 }
 async function sendStudyStart(requestId: string): Promise<Snapshot<StudySession>> {
   validateUuid(requestId);
-  return decodeSnapshot(await callRpc('start_study', { p_request_id: requestId }), decodeSession);
+  return timedRpc('start_study', { p_request_id: requestId }, decodeSession);
 }
 const starter = createStudyStarter({
   getUid: ensureStudyIdentity,
@@ -32,9 +43,9 @@ const starter = createStudyStarter({
 // Screens never generate request IDs or bypass persistent retry handling.
 export function startStudy(): Promise<Snapshot<StudySession>> { return withRoomOperation(() => starter.start()); }
 export function resumePendingStudyStart(): Promise<Snapshot<StudySession> | null> { return withRoomOperation(() => starter.resume()); }
-export async function stopStudy(sessionId: string): Promise<Snapshot<StudySession>> {
+export async function stopStudy(sessionId: string, stoppedAt: string): Promise<Snapshot<StudySession>> {
   validateUuid(sessionId);
-  return decodeSnapshot(await callRpc('stop_study', { p_session_id: sessionId }), decodeSession);
+  return timedRpc('stop_study_on_exit', { p_session_id: sessionId, p_stopped_at: stoppedAt }, decodeSession);
 }
 export async function getRoom(): Promise<Snapshot<RoomMember[]>> {
   return decodeSnapshot(await callRpc('get_room'), decodeRoom);

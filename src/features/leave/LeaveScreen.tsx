@@ -57,7 +57,7 @@ export function LeaveScreen() {
     const date = shiftDate(month, i);
     const day = calendar?.find(day => day.studyDate === date);
     const reserved = grants.some(grant => grant.scheduledDate === date && (grant.status === 'SCHEDULED' || grant.status === 'USED'));
-    return { date, minutes: (day?.closedSeconds ?? 0) / 60, goal: day?.goalMinutes ?? null,
+    return { date, goalApproved: day?.confirmedGoalAchieved, minutes: (day?.closedSeconds ?? 0) / 60, goal: day?.goalMinutes ?? null,
       status: reserved ? 'leave' as const : day?.isRestDay ? 'rest' as const : 'empty' as const, sessions: [] };
   });
   return <View style={ui.outer}><View style={ui.page}>

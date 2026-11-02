@@ -2,7 +2,7 @@ import { requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';
 
 export type GuardApp = { packageName: string; label: string; iconUri?: string | null };
-export type GuardLink = { sessionId: string; ownerId: string; roomId: number; endedAt: string | null; confirmed: boolean };
+export type GuardLink = { sessionId: string; ownerId: string; roomId: number; endedAt: string | null; confirmed: boolean; clockServerNow?: string; clockReceivedAt?: number };
 export type GuardStatus = {
   link: GuardLink | null;
   running: boolean; elapsedMs: number; reason: string; foreground: string;
@@ -11,6 +11,8 @@ export type GuardStatus = {
   allowed: string[]; events: { at: number; message: string }[]; pollMs: number;
 };
 type GuardNative = {
+  monotonicNow?(): number;
+  bindStudyClock?(id: string, owner: string, room: number, startedAt: string, serverNow: string, receivedAt: number): Promise<void>;
   status(): Promise<GuardStatus>; apps(): Promise<GuardApp[]>;
   openUsageSettings(): Promise<void>; select(packages: string[]): Promise<void>;
   openAppSettings(): Promise<void>; reviewRestrictedSettings(): Promise<void>;
