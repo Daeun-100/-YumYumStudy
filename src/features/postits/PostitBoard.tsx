@@ -58,7 +58,7 @@ export function PostitBoard({ createId, scene, notes, add, remove, error, noteBo
   return <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       {notes.map(note => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={`${note.author}의 포스트잇 열기`} disabled={placing} onPress={() => setSelected(note)} style={[s.noteTarget, { left: Math.max(0, Math.min(scene.width - 44, note.x * scene.width - 22)), top: Math.max(0, Math.min(scene.height - 44, note.y * scene.height - 22)) }]}>
-        <View style={[s.note, !note.design_revision && noteBorder && s.noteBorder, { transform: [{ rotate: note.id.charCodeAt(0) % 2 ? '-7deg' : '6deg' }] }, { width: 30, height: 30 / POSTIT_PAPER_ASPECT_RATIO }]}><PostitPaper artwork={lookup(note.design_revision)} color={note.color} imageUrl={imageUrl} />{!note.design_revision && <View style={s.fold} />}</View>
+        <View style={[s.note, noteBorder && (!note.design_revision || lookup(note.design_revision)?.id === 'halloween-ghost') && s.noteBorder, noteBorder && lookup(note.design_revision)?.id === 'halloween-ghost' && s.halloweenNoteBorder, { transform: [{ rotate: note.id.charCodeAt(0) % 2 ? '-7deg' : '6deg' }] }, { width: 30, height: 30 / POSTIT_PAPER_ASPECT_RATIO }]}><PostitPaper artwork={lookup(note.design_revision)} color={note.color} imageUrl={imageUrl} />{(!note.design_revision || lookup(note.design_revision)?.id === 'halloween-ghost') && <View style={s.fold} />}</View>
       </Pressable>)}
       {placing ? <>
         <Pressable accessibilityRole="button" accessibilityLabel="공부방에서 포스트잇을 붙일 위치 선택" disabled={busy} style={StyleSheet.absoluteFill} onPress={({ nativeEvent }) => {
@@ -105,6 +105,7 @@ const s = StyleSheet.create({
   noteTarget: { position: 'absolute', width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   note: { width: 30, height: 32, borderRadius: 2, boxShadow: '0px 2px 4px rgba(60, 40, 20, 0.20)', overflow: 'hidden' },
   noteBorder: { borderWidth: 1.5, borderColor: '#776745' },
+  halloweenNoteBorder: { borderColor: '#7952A3' },
   fold: { position: 'absolute', bottom: 0, right: 0, width: 0, height: 0, borderLeftWidth: 8, borderBottomWidth: 8, borderLeftColor: 'rgba(0,0,0,0.10)', borderBottomColor: '#FFFBEF' },
   add: { position: 'absolute', top: 16, right: 16 },
   quietAdd: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 22, backgroundColor: 'rgba(255,253,246,0.70)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.45)' },
