@@ -4,4 +4,4 @@ export type SkinEffect = {
   kind: 'warmSteam';
   home: SkinEffectPlacement;
   focus: SkinEffectPlacement;
-};
+} | { kind: 'storyFragments' };
