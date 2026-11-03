@@ -7,6 +7,7 @@ export function applyDeparture(snapshot: Snapshot<TodayData>, sessionId: string,
   if (activeSession?.id !== sessionId) return snapshot;
   const before = secondsInStudyDay(activeSession.startedAt, snapshot.serverNow, day.studyDate);
   const after = secondsInStudyDay(activeSession.startedAt, endedAt, day.studyDate);
+  const approvedMinimum = day.confirmedGoalAchieved === true && day.goalMinutes ? day.goalMinutes * 60 : 0;
   return { ...snapshot, data: { ...snapshot.data, activeSession: null,
-    day: { ...day, closedSeconds: Math.max(day.closedSeconds, day.closedSeconds + day.runningSeconds + after - before), runningSeconds: 0 } } };
+    day: { ...day, closedSeconds: Math.max(approvedMinimum, day.closedSeconds, day.closedSeconds + day.runningSeconds + after - before), runningSeconds: 0 } } };
 }

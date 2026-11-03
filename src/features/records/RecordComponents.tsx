@@ -30,7 +30,7 @@ export function RecordMark({ kind }: { kind: 'achieved' | StudyRecord['status'] 
 export function RecordDayMark({ day, superWatermelon = false }: { day: StudyRecord; superWatermelon?: boolean }) {
   if (superWatermelon && day.status !== 'leave' && achieved(day)) return <AchievementIcon size={18} superWatermelon />;
   const percent = day.status === 'leave' || day.status === 'rest' ? null : watermelonGoalPercent(day.minutes * 60, day.goal);
-  return percent !== null && percent > 0 ? <AchievementProgressIcon percent={percent} /> : <RecordMark kind={achieved(day) ? 'achieved' : day.status} />;
+  return percent !== null && percent > 0 ? <AchievementProgressIcon percent={day.goalApproved !== undefined && !day.goalApproved ? Math.min(percent, 99) : percent} /> : <RecordMark kind={achieved(day) ? 'achieved' : day.status} />;
 }
 export function RecordLegend() { return <View style={s.legend}>{([['achieved', '목표 달성'], ['study', '공부함'], ['empty', '기록 없음'], ['rest', '쉬는 날'], ['leave', '연차']] as const).map(([kind, label]) => <View key={kind} style={s.legendItem}><RecordMark kind={kind} /><Text style={s.caption}>{label}</Text></View>)}</View>; }
 const dayLabel = (day: StudyRecord, compact = false) => `${day.date}, ${compact ? duration(day.minutes) : recordedDuration(day.minutes)}, ${day.goal === null ? '목표 미설정' : `목표 ${duration(day.goal)}`}, ${achieved(day) ? '목표 달성' : day.status === 'rest' ? '쉬는 날' : day.status === 'leave' ? '연차' : day.status === 'empty' ? '기록 없음' : '공부함'}`;

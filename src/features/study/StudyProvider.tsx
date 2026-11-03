@@ -1,3 +1,7 @@
+import { monotonicNow, refreshClockOnResume } from '../../lib/monotonic';
+import { createSessionTimeline, projectTimeline, approvedGoal, type SessionTimeline } from '../../lib/session-timeline';
+import { createStopOutbox } from '../../lib/study-stop-core';
+import { sessionStorage } from '../../lib/session-storage';
 import { isUpdateReloading } from '../ota/reload-gate';
 import { createStudyResourceDemand } from '../../lib/study-resource-demand';
 import { StudyResourceContext } from './study-resources';
@@ -18,7 +22,7 @@ import { basicStudyMode, guardTransport, reconcileAndroidGuard } from './android
 import { studyRoomId, withRoomOperation } from '../../lib/room';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useMemo, useSyncExternalStore, useLayoutEffect, type PropsWithChildren } from 'react';
 import { isAppActive } from '../../hooks/useRefreshOnResume';
-import { getRoom, getToday, resumePendingStudyStart, startStudy, stopStudy, subscribeStudyChanges } from '../../data/study';
+import { getRoom, getToday, confirmStudyTime, resumePendingStudyStart, startStudy, stopStudy, subscribeStudyChanges } from '../../data/study';
 import { useIdentity } from '../../components/IdentityProvider';
 import { displayedSeconds } from './presentation';
 import { createServerClock } from '../../lib/clock';
@@ -77,6 +81,22 @@ export function StudyProvider({ children }: PropsWithChildren) {
   const confirmedForegroundEpoch = useRef(-1);
   useEffect(() => { latestSnapshot.current = today; }, [today]);
   const clock = useRef<(() => number) | null>(null);
+  const timeline = useRef<SessionTimeline | null>(null);
+  const timelineEpoch = useRef(-1);
+  const outbox = useMemo(() => createStopOutbox(sessionStorage, `yumyumstudy.pending-stop.${scope}`), [scope]);
+  const adoptClock = useCallback((snapshot: Snapshot<TodayData>) => {
+    const session = snapshot.data.activeSession;
+    if (!session) timeline.current = null;
+    else if ((timeline.current?.sessionId !== session.id || (refreshClockOnResume && timelineEpoch.current !== foregroundRef.current.epoch)) && snapshot.receipt) {
+      timeline.current = createSessionTimeline(session.id, snapshot.serverNow, snapshot.receipt, monotonicNow);
+    }
+    timelineEpoch.current = foregroundRef.current.epoch;
+    const projected = projectTimeline(snapshot, timeline.current);
+    clock.current = session && timeline.current ? timeline.current.now
+      : createServerClock(snapshot.serverNow, monotonicNow, snapshot.receipt?.receivedAt);
+    setNow(clock.current());
+    return projected;
+  }, [setNow]);
   const lock = useRef(false);
   const pending = useRef<{ type: 'start' } | { type: 'stop'; id: string } | null>(null);
   const sequence = useRef(0);
@@ -96,7 +116,7 @@ export function StudyProvider({ children }: PropsWithChildren) {
   useLayoutEffect(() => {
     generation.current++; sequence.current++; roomSequence.current++;
     startupFlight.current = null;
-    clock.current = null; latestSnapshot.current = null; confirmedSnapshot.current = null;
+    timeline.current = null; clock.current = null; latestSnapshot.current = null; confirmedSnapshot.current = null;
   }, [scope]);
   // Friend requests have their own lifetime: neither slow friends nor a timer
   // mutation may hold up applying the authenticated owner's snapshot.
@@ -140,11 +160,16 @@ export function StudyProvider({ children }: PropsWithChildren) {
         } catch { /* Continue to server reconciliation; no session is started here. */ }
       }
       try {
+        await outbox.flush(event => stopStudy(event.sessionId, event.stoppedAt));
         let snapshot = await withTimeout(getToday(), 15000, '공부 기록을 불러오지 못했어요. 다시 시도해 주세요.');
         if (!alive.current || request !== sequence.current || requestedGeneration !== generation.current || currentScope.current !== scope) return;
         try {
           const guarded = await measure('study.reconcile', () => withTimeout(withRoomOperation(() => reconcileAndroidGuard(snapshot)), 10000, '휴대폰 공부 기록 동기화가 지연되고 있어요. 다시 시도해 주세요.'));
           snapshot = guarded.snapshot;
+          if (!alive.current || request !== sequence.current || requestedGeneration !== generation.current || currentScope.current !== scope) return;
+          if (guarded.clock && (timeline.current?.sessionId !== guarded.clock.sessionId || timeline.current.serverMs !== Date.parse(guarded.clock.serverNow) || timeline.current.receivedAt !== guarded.clock.receivedAt)) {
+            timeline.current = createSessionTimeline(guarded.clock.sessionId, guarded.clock.serverNow, { sentAt: guarded.clock.receivedAt, receivedAt: guarded.clock.receivedAt }, monotonicNow);
+          }
           if (request === sequence.current && requestedGeneration === generation.current && currentScope.current === scope) {
             confirmedSnapshot.current = snapshot;
             if (isAppActive() && foregroundRef.current.active && foregroundRef.current.epoch === foregroundEpoch) {
@@ -154,9 +179,11 @@ export function StudyProvider({ children }: PropsWithChildren) {
           }
         } catch { /* Native status is not a server error and stays out of the home banner. */ }
         if (!alive.current || request !== sequence.current || requestedGeneration !== generation.current || currentScope.current !== scope) return;
-        clock.current = createServerClock(snapshot.serverNow);
-        latestSnapshot.current = snapshot;
-        setNow(clock.current()); setToday(snapshot);
+        const projected = adoptClock(snapshot);
+        latestSnapshot.current = projected;
+        if (confirmedSnapshot.current === snapshot) confirmedSnapshot.current = projected;
+        setCelebrationProof(previous => previous?.snapshot === snapshot ? { ...previous, snapshot: projected } : previous);
+        setToday(projected);
         if (actionConfirmed(pending.current, snapshot.data.activeSession?.id ?? null)) {
           pending.current = null; setActionFailed(false);
         }
@@ -168,7 +195,7 @@ export function StudyProvider({ children }: PropsWithChildren) {
         if (alive.current && request === sequence.current && currentScope.current === scope) setLoading(false);
       }
     }), changed);
-  }, [scope, ownerId, setNow]);
+  }, [scope, ownerId, adoptClock, outbox]);
   const todayObservation = useResourceRefresh({ scope: `${scope}:today`, enabled: !!scope && startupReady && observesToday, connected: true, refresh: loadToday });
   const roomObservation = useResourceRefresh({ scope: `${scope}:room`, enabled: !!scope && startupReady && observesRoom, connected: realtimeConnected, refresh: loadRoom });
   const markTodayFresh = todayObservation.markFresh, markRoomFresh = roomObservation.markFresh;
@@ -259,7 +286,13 @@ export function StudyProvider({ children }: PropsWithChildren) {
     const action = pending.current ?? (today.data.activeSession ? { type: 'stop' as const, id: today.data.activeSession.id } : { type: 'start' as const });
     let prepared = false;
     let requestingServer = false;
+    const stopAt = new Date(timeline.current?.now() ?? clock.current?.() ?? Date.parse(today.serverNow)).toISOString();
     try {
+      if (action.type === 'stop') {
+        const saved = await outbox.save({ sessionId: action.id, stoppedAt: stopAt });
+        const stopped = applyDeparture(today, action.id, saved.stoppedAt);
+        latestSnapshot.current = stopped; setToday(stopped);
+      }
       if (Platform.OS === 'android' && studyGuard) {
         // Finish old guarded departures before choosing the next session's mode.
         if (action.type === 'start') {
@@ -273,21 +306,30 @@ export function StudyProvider({ children }: PropsWithChildren) {
           } else {
             if (status?.link?.endedAt && !status.link.confirmed) throw new Error('이전 공부의 일시정지를 동기화한 뒤 다시 시작해 주세요.');
             await measure('timer.transport', guardTransport);
+            if (!studyGuard!.bindStudyClock) throw new Error('정확한 시간 기록을 위해 새 APK로 업데이트해 주세요.');
             prepared = true;
             await measure('timer.prepare', () => withTimeout(studyGuard!.prepareStudy(new Date(clock.current?.() ?? Date.parse(today.serverNow)).toISOString()), 5000, '공부 준비가 지연되고 있어요. 다시 시도해 주세요.'));
           }
         } else if (!await basicStudyMode.get(identity.profile!.id)) {
-          try { await withTimeout(studyGuard.pause(), 3000, '공부 일시정지 확인이 지연되고 있어요.'); } catch { /* Still send the server stop. */ }
+          await withTimeout(studyGuard.pause(), 3000, '공부 일시정지 확인이 지연되고 있어요.');
+          const status = await withTimeout(studyGuard.status(), 3000, '중지 시각 확인 지연');
+          if (status.link?.sessionId === action.id && status.link.ownerId === identity.profile!.id && status.link.roomId === studyRoomId && status.link.endedAt) {
+            await outbox.save({ sessionId: action.id, stoppedAt: status.link.endedAt });
+          }
         }
       }
       pending.current = action;
       requestingServer = true;
-      const result = await withTimeout(action.type === 'start' ? startStudy() : stopStudy(action.id), 20000, '서버의 처리 결과를 확인하지 못했어요. 같은 요청으로 다시 확인해 주세요.');
+      const savedStop = action.type === 'stop' ? await outbox.read() : null;
+      const result = await withTimeout(action.type === 'start' ? startStudy() : stopStudy(action.id, savedStop!.stoppedAt), 20000, '서버의 처리 결과를 확인하지 못했어요. 같은 요청으로 다시 확인해 주세요.');
       requestingServer = false;
+      if (savedStop) await outbox.acknowledge(savedStop);
+      if (!alive.current || currentScope.current !== scope) return false;
+      if (action.type === 'start' && result.receipt && !result.data.endedAt) timeline.current = createSessionTimeline(result.data.id, result.serverNow, result.receipt, monotonicNow);
       invalidateRecordQueries(studyRoomId);
       if (studyGuard && Platform.OS === 'android') {
         if (action.type === 'start' && !result.data.endedAt && prepared) {
-          await measure('timer.bind', () => withTimeout(studyGuard!.bindStudy(result.data.id, identity.profile!.id, studyRoomId, new Date(result.data.startedAt).toISOString()), 5000, '공부 감시 연결을 확인하지 못했어요. 기록을 다시 확인해 주세요.'));
+          await measure('timer.bind', () => withTimeout(studyGuard!.bindStudyClock!(result.data.id, identity.profile!.id, studyRoomId, new Date(result.data.startedAt).toISOString(), new Date(result.serverNow).toISOString(), result.receipt!.receivedAt), 5000, '공부 감시 연결을 확인하지 못했어요. 기록을 다시 확인해 주세요.'));
           if (AppState.currentState !== 'active') await withTimeout(studyGuard.pause(), 3000, '공부 일시정지 확인이 지연되고 있어요.');
         } else if (result.data.endedAt) {
           await basicStudyMode.clear(identity.profile!.id);
@@ -297,12 +339,14 @@ export function StudyProvider({ children }: PropsWithChildren) {
       if (!alive.current || currentScope.current !== scope) return false;
       // Apply the acknowledged session before reloading, even if the next read fails.
       sequence.current++;
-      clock.current = createServerClock(result.serverNow);
+      clock.current = !result.data.endedAt && timeline.current ? timeline.current.now : createServerClock(result.serverNow, monotonicNow, result.receipt?.receivedAt);
       setNow(clock.current());
       setToday(previous => {
         if (!previous) return previous;
-        const total = displayedSeconds(previous.data.day, previous.data.activeSession, previous.serverNow, Date.parse(result.data.endedAt ?? result.serverNow));
         const stopped = result.data.endedAt !== null;
+        const total = stopped
+          ? applyDeparture(today, result.data.id, result.data.endedAt!).data.day.closedSeconds
+          : displayedSeconds(previous.data.day, previous.data.activeSession, previous.serverNow, Date.parse(result.serverNow));
         return { serverNow: result.serverNow, data: { ...previous.data, activeSession: stopped ? null : result.data,
           day: { ...previous.data.day, closedSeconds: stopped ? total : previous.data.day.closedSeconds,
             runningSeconds: stopped ? 0 : total - previous.data.day.closedSeconds } } };
@@ -315,12 +359,12 @@ export function StudyProvider({ children }: PropsWithChildren) {
         try { await withTimeout(studyGuard.pause(), 3000, '공부 준비 정리가 지연되고 있어요.'); } catch { /* Persisted start requests are reconciled on return. */ }
       }
       if (!alive.current || currentScope.current !== scope) return false;
-      setError(requestingServer ? toStudyError(failure).message : null);
-      setActionFailed(requestingServer);
+      setError(toStudyError(failure).message);
+      setActionFailed(requestingServer || pending.current !== null);
       return false;
     }
     finally { finish(succeeded ? 'ok' : 'error'); lock.current = false; if (alive.current && currentScope.current === scope) { setBusy(false); void refresh(); if (demand.read().room && isAppActive()) void refreshRoom(); } }
-  }, [today, startupReady, identity.loading, identity.error, identity.profile, refresh, refreshRoom, demand, scope, setNow]);
+  }, [today, startupReady, identity.loading, identity.error, identity.profile, refresh, refreshRoom, demand, scope, setNow, outbox]);
   // Reload eligibility must read the synchronous mutation lock and latest server
   // snapshot, including native stop acknowledgements, rather than the route.
   const prepareUpdateReload = useCallback(async () => {
@@ -338,6 +382,45 @@ export function StudyProvider({ children }: PropsWithChildren) {
         && !snapshot.data.activeSession && confirmedSnapshot.current === snapshot;
     } catch { return false; }
   }, [scope, startupReady, loadToday, ownerId]);
+  useEffect(() => {
+    if (!scope || !startupReady || !active || !today?.data.activeSession || approvedGoal(today.data.day)) return;
+    let disposed = false, flight = false;
+    const certify = async () => {
+      const snapshot = latestSnapshot.current;
+      const live = timeline.current;
+      if (disposed || flight || lock.current || !isAppActive() || !snapshot?.data.activeSession || !live || live.sessionId !== snapshot.data.activeSession.id) return;
+      const seconds = displayedSeconds(snapshot.data.day, snapshot.data.activeSession, snapshot.serverNow, live.now());
+      const goal = snapshot.data.day.goalMinutes;
+      if (!goal || seconds < goal * 60) return;
+      flight = true;
+      const observedAt = new Date(live.now()).toISOString();
+      const currentGeneration = generation.current;
+      const certEpoch = foregroundRef.current.epoch;
+      try {
+        await outbox.flush(event => stopStudy(event.sessionId, event.stoppedAt));
+        const reconciled = await reconcileAndroidGuard(snapshot);
+        if (!reconciled.snapshot.data.activeSession) { await refresh(); return; }
+        if (reconciled.clock && (live.serverMs !== Date.parse(reconciled.clock.serverNow) || live.receivedAt !== reconciled.clock.receivedAt)) {
+          // A native status read may have failed at startup. Recover its canonical
+          // anchor before issuing proof from a provisional UI-only clock.
+          await refresh(); return;
+        }
+        if (disposed || lock.current || !isAppActive() || currentGeneration !== generation.current || currentScope.current !== scope || certEpoch !== foregroundRef.current.epoch) return;
+        const result = await confirmStudyTime(live.sessionId, observedAt);
+        if (disposed || lock.current || !isAppActive() || currentGeneration !== generation.current || currentScope.current !== scope || certEpoch !== foregroundRef.current.epoch) return;
+        const projected = adoptClock(result);
+        latestSnapshot.current = projected; setToday(projected);
+        confirmedSnapshot.current = projected;
+        confirmedForegroundEpoch.current = foregroundRef.current.epoch;
+        setCelebrationProof({ snapshot: projected, epoch: foregroundRef.current.epoch, scope });
+        if (demand.read().room) void refreshRoom();
+      } catch { /* Keep the aura off; retry only while active, with a bounded interval. */ }
+      finally { flight = false; }
+    };
+    void certify();
+    const timer = setInterval(() => { void certify(); }, 5000);
+    return () => { disposed = true; clearInterval(timer); };
+  }, [scope, startupReady, active, today, adoptClock, outbox, refresh, refreshRoom, demand]);
   const canCelebrateLive = active && foreground.active && celebrationProof?.epoch === foreground.epoch && celebrationProof?.scope === scope && celebrationProof?.snapshot === today && !busy && !actionFailed;
   const value = useMemo(() => ({ today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, canCelebrateLive, startupError, prepareUpdateReload, retryStartup, refresh, confirmToday, refreshRoom, toggle }), [today, room, loading, roomLoading, busy, error, roomError, actionFailed, startupReady, canCelebrateLive, startupError, prepareUpdateReload, retryStartup, refresh, confirmToday, refreshRoom, toggle]);
   return <StudyClockContext.Provider value={time}><StudyResourceContext.Provider value={demand}><Context.Provider value={value}>{children}</Context.Provider></StudyResourceContext.Provider></StudyClockContext.Provider>;

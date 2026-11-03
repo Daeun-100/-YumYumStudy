@@ -67,7 +67,8 @@ export function ProfileScreen() {
     if (date > today || !day || day.isRestDay || day.attendance === 'leave') return null;
     const snapshot = study.today;
     const seconds = date === today && snapshot ? displayedSeconds(day, snapshot.data.activeSession, snapshot.serverNow, study.error ? Date.parse(snapshot.serverNow) : Math.max(now, Date.parse(snapshot.serverNow))) : day.closedSeconds + day.runningSeconds;
-    return watermelonGoalPercent(seconds, day.goalMinutes);
+    const percent = watermelonGoalPercent(seconds, day.goalMinutes);
+    return percent !== null && day.confirmedGoalAchieved !== undefined && !day.confirmedGoalAchieved ? Math.min(percent, 99) : percent;
   }) : [];
   const goals = summary?.goals.current;
   const total = goals?.reduce<number>((sum, value) => sum + (value ?? 0), 0) ?? 0;

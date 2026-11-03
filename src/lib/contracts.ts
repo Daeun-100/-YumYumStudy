@@ -21,6 +21,7 @@ export type DayRecord = {
   attendance: 'present' | 'absent' | 'pending' | 'leave';
   isRestDay: boolean;
   goalAchieved: boolean | null;
+  confirmedGoalAchieved?: boolean | null;
 };
 export type GoalSettings = { isFirstSetup?: boolean; current: GoalWeek; scheduled: GoalWeek | null; effectiveDate: StudyDate | null };
 export type LeaveState = 'AVAILABLE' | 'SCHEDULED' | 'USED' | 'EXPIRED';
@@ -32,7 +33,7 @@ export type LeaveGrant = { approvedAt?: string | null; status: LeaveState; sched
 // Each grant belongs to exactly one state; only AVAILABLE contributes to the balance.
 export type LeaveStatus = { revision: number; availableCount: number; grants: LeaveGrant[] };
 export type RoomMember = { profile: Profile; today: DayRecord; activeSession: StudySession | null };
-export type Snapshot<T> = { serverNow: string; data: T };
+export type Snapshot<T> = { serverNow: string; data: T; receipt?: { sentAt: number; receivedAt: number } };
 export type TodayData = { profile: Profile; day: DayRecord; activeSession: StudySession | null };
 export type ConnectionState = 'connecting' | 'connected' | 'disconnected';
 export type StudyErrorCode = 'NETWORK' | 'UNAUTHORIZED' | 'VALIDATION' | 'POLICY_PENDING' | 'NOT_CONFIGURED' | 'UNKNOWN';

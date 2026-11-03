@@ -11,7 +11,10 @@ test('Android timer policy: launch provenance, app switching, manual resume, tim
   try {
     execFileSync(join(javaHome, 'bin/javac'), ['-d', dir,
       'modules/study-guard/android/src/main/java/expo/modules/studyguard/GuardSession.java',
-      'tests/native/GuardSessionTest.java']);
+      'tests/native/GuardSessionTest.java',
+      'modules/study-guard/android/src/main/java/expo/modules/studyguard/SessionClock.java',
+      'tests/native/SessionClockTest.java']);
+    execFileSync(join(javaHome, 'bin/java'), ['-cp', dir, 'SessionClockTest']);
     execFileSync(join(javaHome, 'bin/java'), ['-cp', dir, 'GuardSessionTest']);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

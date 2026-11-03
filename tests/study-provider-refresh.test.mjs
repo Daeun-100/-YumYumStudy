@@ -1,3 +1,6 @@
+import { displayedSeconds } from '../src/features/study/presentation.ts';
+import * as timeline from '../src/lib/session-timeline.ts';
+import { createStopOutbox } from '../src/lib/study-stop-core.ts';
 import * as reloadGate from '../src/features/ota/reload-gate.ts';
 import { createHookRuntime } from './helpers/hooks.mjs';
 import test from 'node:test';
@@ -23,7 +26,7 @@ const snapshot = active => ({ serverNow: '2026-10-27T00:00:00Z', data: {
   activeSession: active ? { id: active, startedAt: '2026-10-27T00:00:00Z', endedAt: null } : null,
 } });
 
-function mount({ resources = ['today', 'room'], guard: nativeGuard = null } = {}) {
+function mount({ resources = ['today', 'room'], guard: nativeGuard = null, web = false } = {}) {
   const runtime = createHookRuntime();
   const timers = new Map();
   const intervals = new Map();
@@ -44,9 +47,14 @@ function mount({ resources = ['today', 'room'], guard: nativeGuard = null } = {}
   };
   const react = runtime.react;
   const guard = { reconcileAndroidGuard: async value => ({ snapshot: value }) };
+  const stopStorage = new Map();
   const modules = {
+    '../../lib/monotonic': { monotonicNow: () => now, refreshClockOnResume: web },
+    '../../lib/session-timeline': timeline,
+    '../../lib/study-stop-core': { createStopOutbox },
+    '../../lib/session-storage': { sessionStorage: { getItem: key => stopStorage.get(key) ?? null, setItem: (key, value) => stopStorage.set(key, value), removeItem: key => stopStorage.delete(key) } },
     react, 'react/jsx-runtime': { jsx: (_type, props) => ['ClockProvider', 'ResourceProvider'].includes(_type) ? props.children : props.value },
-    'react-native': { Platform: { OS: nativeGuard ? 'android' : 'ios' }, AppState: { currentState: 'active' } },
+    'react-native': { Platform: { OS: web ? 'web' : nativeGuard ? 'android' : 'ios' }, AppState: { currentState: 'active' } },
     '../../lib/shared-request': { createSharedRequest },
     '../../lib/study-clock': { createStudyClock },
     './study-clock': { StudyClockContext: { Provider: 'ClockProvider' } },
@@ -63,7 +71,7 @@ function mount({ resources = ['today', 'room'], guard: nativeGuard = null } = {}
     '../../data/study': data,
     '../../components/IdentityProvider': { useIdentity: () => identity },
     './android-guard': guard,
-    './presentation': { displayedSeconds: () => 0 },
+    './presentation': { displayedSeconds },
     '../../lib/clock': { createServerClock: () => () => 0 },
     '../../lib/study-day': { getStudyDate: () => '2026-10-27' },
     '../../lib/contracts': { toStudyError: error => error },
@@ -86,7 +94,11 @@ function mount({ resources = ['today', 'room'], guard: nativeGuard = null } = {}
   vm.runInNewContext(source, context);
   const render = () => runtime.render(() => context.exports.StudyProvider({ children: null }));
   const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
-  return { render, calls, data, identity, guard, change: (owner = 'friend') => onChange?.(owner),
+  return { render, calls, data, identity, guard, now: () => now, flush,
+    async tickIntervals() { for (const job of [...intervals.values()]) { job.callback(); await flush(); } },
+    intervalCount: () => intervals.size,
+    unmount: () => runtime.dispose(),
+    change: (owner = 'friend') => onChange?.(owner),
     connection: value => onConnection?.(value),
     setResources(resources) { releaseDemand(); releaseDemand = demand.acquire(resources); },
     setActive(value) { active = value; },
@@ -393,4 +405,49 @@ test('timer controls cannot start a session after OTA has committed to reload', 
     assert.equal(await app.render().toggle(), false);
     assert.equal(app.calls.start, 0);
   } finally { reloadGate.cancelUpdateReload(); }
+});
+
+
+test('web milestone waits for server approval and manual stop keeps its original endpoint through 26s delay', async () => {
+  const app=mount({resources:['today'],web:true});
+  const sid='22222222-2222-4222-8222-222222222222';
+  let approved=false, stopped=false, confirmations=0, endpoint;
+  const start=Date.parse('2026-10-27T00:00:00Z');
+  const current=()=>({serverNow:new Date(start+app.now()).toISOString(),receipt:{sentAt:app.now(),receivedAt:app.now()},data:{
+    profile:{id:'owner'},day:{studyDate:'2026-10-27',closedSeconds:stopped?60:0,runningSeconds:stopped?0:Math.floor(app.now()/1000),goalMinutes:1,goalAchieved:approved,confirmedGoalAchieved:approved},
+    activeSession:stopped?null:{id:sid,startedAt:new Date(start).toISOString(),endedAt:null}
+  }});
+  app.data.getToday=async()=>current();
+  const approval=deferred();
+  app.data.confirmStudyTime=async(id,at)=>{confirmations++;assert.equal(id,sid);assert.equal(Date.parse(at),start+60000);await approval.promise;approved=true;return current();};
+  await app.render().retryStartup();app.render();
+  await app.advance(60000);await app.tickIntervals();
+  let state=app.render();assert.equal(state.today.data.day.confirmedGoalAchieved,false);assert.equal(confirmations,1);
+  approval.resolve();await app.flush();state=app.render();
+  assert.equal(state.today.data.day.confirmedGoalAchieved,true);
+  const stopReply=deferred();
+  app.data.stopStudy=async(id,at)=>{endpoint=at;await stopReply.promise;stopped=true;return {serverNow:new Date(start+app.now()).toISOString(),data:{id,startedAt:new Date(start).toISOString(),endedAt:at}};};
+  const stop=state.toggle();await app.flush();
+  await app.advance(26000);stopReply.resolve();await stop;await app.flush();
+  assert.equal(Date.parse(endpoint),start+60000);
+  state=app.render();assert.equal(state.today.data.activeSession,null);assert.equal(state.today.data.day.closedSeconds,60);
+});
+
+test('web resume obtains a fresh shared anchor before certifying after browser suspension', async () => {
+  const app=mount({resources:['today'],web:true});
+  const sid='22222222-2222-4222-8222-222222222222';const start=Date.parse('2026-10-27T00:00:00Z');let serverElapsed=0;
+  app.data.getToday=async()=>({serverNow:new Date(start+serverElapsed).toISOString(),receipt:{sentAt:app.now(),receivedAt:app.now()},data:{profile:{id:'owner'},day:{studyDate:'2026-10-27',closedSeconds:0,runningSeconds:serverElapsed/1000,goalMinutes:180,goalAchieved:false,confirmedGoalAchieved:false},activeSession:{id:sid,startedAt:new Date(start).toISOString(),endedAt:null}}});
+  await app.render().retryStartup();app.render();
+  app.setActive(false);app.render();serverElapsed=3600000;
+  app.setActive(true);app.render();await app.render().refresh();
+  const state=app.render();assert.equal(state.today.data.day.runningSeconds,3600);
+  assert.equal(Date.parse(state.today.serverNow),start+serverElapsed);
+});
+
+
+test('milestone retry timers are removed on unmount', async () => {
+  const app=mount({resources:['today'],web:true});
+  app.data.getToday=async()=>({...snapshot('22222222-2222-4222-8222-222222222222'),receipt:{sentAt:0,receivedAt:0}});
+  await app.render().retryStartup();app.render();assert.ok(app.intervalCount()>0);
+  app.unmount();assert.equal(app.intervalCount(),0);
 });

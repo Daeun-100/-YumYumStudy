@@ -28,8 +28,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const InProgress: Story = { name: '집중 · 목표 미달성 (50%)' };
-export const Achieved: Story = { name: '집중 · 목표 달성 (100%)', args: { seconds: 10800 } };
-export const Exceeded: Story = { name: '집중 · 목표 초과 달성 (125%)', args: { seconds: 13500 } };
+export const Achieved: Story = { name: '집중 · 목표 달성 (100%)', args: { seconds: 10800, goalApproved: true } };
+export const Exceeded: Story = { name: '집중 · 목표 초과 달성 (125%)', args: { seconds: 13500, goalApproved: true } };
 export const MultipleAchievers: Story = {
   name: '집중 · 친구 여러 명 목표 달성',
   args: {
@@ -42,3 +42,5 @@ export const MultipleAchievers: Story = {
     memberCount: 4,
   },
 };
+
+export const Confirming: Story = { name: '집중 · 달성 확인 중', args: { seconds: 10800, goalApproved: false } };

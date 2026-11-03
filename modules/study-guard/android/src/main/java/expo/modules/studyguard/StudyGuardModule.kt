@@ -46,6 +46,10 @@ class StudyGuardModule : Module() {
       check(!GuardStore.state(context()).running) { "일시정지 후 허용앱을 변경해 주세요" }
       GuardStore.prefs(context()).edit().putStringSet("allowed", packages.toSet()).apply()
     }.runOnQueue(Queues.MAIN)
+    Function("monotonicNow") { GuardStore.now().toDouble() }
+    AsyncFunction("bindStudyClock") { id: String, owner: String, room: Int, startedAt: String, serverNow: String, receivedAt: Double ->
+      StudyLink.bindClock(context(), id, owner, room, startedAt, serverNow, receivedAt.toLong())
+    }.runOnQueue(Queues.MAIN)
     AsyncFunction("setTransport") { url: String, key: String, token: String, owner: String, room: Int ->
       StudyLink.transport(context(), url, key, token, owner, room)
     }.runOnQueue(Queues.MAIN)

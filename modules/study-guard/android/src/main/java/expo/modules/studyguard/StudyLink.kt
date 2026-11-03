@@ -47,7 +47,9 @@ internal object StudyLink {
     load(context)
     return link?.let { mapOf("sessionId" to it.getString("sessionId"), "ownerId" to it.getString("ownerId"),
       "roomId" to it.getInt("roomId"), "endedAt" to if (it.has("endedAt")) it.getString("endedAt") else null,
-      "confirmed" to it.optBoolean("confirmed", false)) }
+      "confirmed" to it.optBoolean("confirmed", false),
+      "clockServerNow" to if (it.optBoolean("clockV2", false)) iso(anchorServer) else null,
+      "clockReceivedAt" to if (it.optBoolean("clockV2", false)) anchorMono.toDouble() else null) }
   }
   fun transport(context: Context, url: String, key: String, token: String, owner: String, room: Int) {
     load(context)
@@ -70,13 +72,29 @@ internal object StudyLink {
       .put("startedAt", initial).put("checkpoint", iso(maxOf(initial, anchorServer))).put("confirmed", false)
     prepared = false; persist(context); checkpoint(context, GuardStore.state(context))
   }
+  fun bindClock(context: Context, id: String, owner: String, room: Int, startedAt: String, serverNow: String, receivedAt: Long) {
+    check(receivedAt >= 0 && receivedAt <= GuardStore.now()) { "Invalid clock receipt" }
+    // Unlike legacy prepare(), pair the server value with its original receipt,
+    // not with the later instant at which this queued function finally executes.
+    anchorServer = parse(serverNow); anchorMono = receivedAt
+    val state = GuardStore.state(context)
+    val initial = parse(startedAt)
+    if (state.running) {
+      state.accumulated = 0
+      state.startedAt = receivedAt - (anchorServer - initial).coerceAtLeast(0)
+    } else {
+      state.accumulated = (SessionClock.serverAt(initial, anchorServer, receivedAt, state.stoppedAt) - initial).coerceAtLeast(0)
+    }
+    bind(context, id, owner, room, startedAt)
+    link!!.put("clockV2", true); persist(context); GuardStore.save(context)
+  }
   fun checkpoint(context: Context, state: GuardSession) {
     load(context)
     val current = link ?: return
     if (current.optBoolean("confirmed", false)) return
     if (!current.has("endedAt")) {
       val at = if (state.running) GuardStore.now() else state.stoppedAt
-      val serverAt = maxOf(current.getLong("startedAt"), anchorServer + (at - anchorMono).coerceAtLeast(0))
+      val serverAt = SessionClock.serverAt(current.getLong("startedAt"), anchorServer, anchorMono, at)
       current.put("checkpoint", iso(serverAt))
       if (!state.running) current.put("endedAt", current.getString("checkpoint"))
       persist(context)

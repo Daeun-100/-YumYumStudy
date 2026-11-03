@@ -39,3 +39,11 @@ test('basic timer needs no native permissions or selected allowed apps', () => {
   assert.equal(canMonitorStudy({ usageAccess: true, notificationAccess: true, allowed: [] }), false);
   assert.equal(canMonitorStudy({ usageAccess: true, notificationAccess: true, allowed: ['app'] }), true);
 });
+
+
+test('a late native stop cannot retract a server-approved goal in the local preview', () => {
+  const original=make();original.data.day={...original.data.day,closedSeconds:0,runningSeconds:180,goalMinutes:3,confirmedGoalAchieved:true};
+  const stopped=applyDeparture(original,'session','2026-10-27T03:00:30Z');
+  assert.equal(stopped.data.day.closedSeconds,180);
+  assert.equal(stopped.data.day.confirmedGoalAchieved,true);
+});

@@ -1,3 +1,4 @@
+import * as timeline from '../src/lib/session-timeline.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -12,7 +13,7 @@ const serverNow = '2026-10-27T01:00:00Z';
 function member(id, seconds, goalMinutes, active = false) {
   return {
     profile: { id, displayName: id, character: 'bear' },
-    today: { studyDate: '2026-10-27', closedSeconds: active ? 0 : seconds, runningSeconds: active ? seconds : 0, goalMinutes, goalAchieved: false },
+    today: { studyDate: '2026-10-27', closedSeconds: active ? 0 : seconds, runningSeconds: active ? seconds : 0, goalMinutes, goalAchieved: false, confirmedGoalAchieved: goalMinutes > 0 && seconds >= goalMinutes * 60 },
     activeSession: active ? { id: `session-${id}`, userId: id, startedAt: new Date(Date.parse(serverNow) - seconds * 1000).toISOString(), endedAt: null } : null,
   };
 }
@@ -31,6 +32,7 @@ function focusProps(study, ownerId, focused = true) {
     './useScreenNow': { useScreenNow: () => study.now },
     './FocusScreenView': { FocusScreenView: 'FocusScreenView' },
     './presentation': presentation,
+    '../../lib/session-timeline': timeline,
     '../navigation/useAndroidBack': { useAndroidBack: () => {} },
     './StudyControl': {}, '../call-friend/CallFriendDialog': {}, '../postits/PostitOverlay': {}, '../allowed-apps/AllowedAppsLauncher': {},
   };
@@ -52,12 +54,14 @@ test('every viewer receives achievement flags for all friends using each friendâ
   }
 });
 
-test('friend aura activates at the goal boundary between room snapshots and survives pause', () => {
+test('friend aura waits for server approval at the local boundary and survives pause', () => {
   const friend = member('friend', 3599, 60, true);
   const study = { room: { serverNow, data: [friend] }, now: Date.parse(serverNow), today: null };
   const achieved = () => focusProps(study, 'owner').members.find(value => value.id === 'friend').achieved;
   assert.equal(achieved(), false);
   study.now += 1000;
+  assert.equal(achieved(), false);
+  friend.today.confirmedGoalAchieved = true;
   assert.equal(achieved(), true);
   study.room.data = [member('friend', 3600, 60)];
   assert.equal(achieved(), true);
